@@ -7,132 +7,138 @@ import {
   Wallet,
   type LucideIcon,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/format";
 import {
+  selectCreditOutstanding,
   selectTotalBalance,
   useFinanceStore,
 } from "@/store/useFinanceStore";
 import type { AccountType } from "@/types";
+import { cn } from "@/lib/utils";
 
-const typeMeta: Record<
-  AccountType,
-  { label: string; icon: LucideIcon; badge: "default" | "secondary" | "warning" }
-> = {
-  checking: { label: "Corrente", icon: Wallet, badge: "default" },
-  savings: { label: "Poupança", icon: PiggyBank, badge: "secondary" },
-  credit: { label: "Crédito", icon: CreditCard, badge: "warning" },
-  cash: { label: "Dinheiro", icon: Landmark, badge: "secondary" },
-  investment: { label: "Investimento", icon: TrendingUp, badge: "secondary" },
+const typeMeta: Record<AccountType, { label: string; icon: LucideIcon }> = {
+  checking: { label: "Corrente", icon: Wallet },
+  savings: { label: "Poupança", icon: PiggyBank },
+  credit: { label: "Crédito", icon: CreditCard },
+  cash: { label: "Dinheiro", icon: Landmark },
+  investment: { label: "Investimento", icon: TrendingUp },
 };
 
 export function AccountsPage() {
   const accounts = useFinanceStore((s) => s.accounts);
   const totalBalance = useFinanceStore(selectTotalBalance);
+  const creditOutstanding = useFinanceStore(selectCreditOutstanding);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground">
-            Saldo consolidado (excluindo crédito)
+    <div className="space-y-10">
+      <section className="flex flex-col gap-8 border-b border-border pb-10 md:flex-row md:items-end md:justify-between">
+        <div className="space-y-3">
+          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+            Saldo líquido
           </p>
-          <p className="mt-1 text-3xl font-semibold tabular-nums tracking-tight">
+          <h1 className="font-mono text-5xl font-light tracking-tight md:text-6xl">
             {formatCurrency(totalBalance)}
+          </h1>
+          <p className="font-mono text-xs text-muted-foreground">
+            {accounts.filter((a) => a.type !== "credit").length} contas líquidas
+            <span className="px-2">·</span>
+            crédito em aberto{" "}
+            <span className="tabular-nums">
+              {formatCurrency(creditOutstanding)}
+            </span>
           </p>
         </div>
-        <Button className="gap-1.5">
-          <Plus className="h-4 w-4" />
+
+        <Button size="sm" className="gap-1.5 rounded-sm text-xs">
+          <Plus className="h-3.5 w-3.5" strokeWidth={2} />
           Nova conta
         </Button>
-      </div>
+      </section>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {accounts.map((acc) => {
-          const meta = typeMeta[acc.type];
-          const Icon = meta.icon;
-          const isNegative = acc.balance < 0;
+      <section>
+        <div className="mb-4 flex items-center gap-3">
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            Contas ({accounts.length})
+          </p>
+          <div className="h-px flex-1 bg-border" />
+        </div>
 
-          return (
-            <Card
-              key={acc.id}
-              className="group relative overflow-hidden transition-shadow hover:shadow-float"
-            >
+        <div className="grid grid-cols-1 gap-px overflow-hidden border border-border bg-border md:grid-cols-2 xl:grid-cols-3">
+          {accounts.map((acc) => {
+            const meta = typeMeta[acc.type];
+            const Icon = meta.icon;
+            const isNegative = acc.balance < 0;
+
+            return (
               <div
-                className="absolute inset-x-0 top-0 h-1"
-                style={{ backgroundColor: acc.color }}
-              />
-              <CardContent className="space-y-5 p-6">
+                key={acc.id}
+                className="group flex flex-col gap-5 bg-background p-5 transition-colors hover:bg-accent/30"
+              >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div
-                      className="grid h-11 w-11 place-items-center rounded-lg text-white shadow-sm"
-                      style={{ backgroundColor: acc.color }}
-                    >
-                      <Icon className="h-5 w-5" />
-                    </div>
+                    <Icon
+                      className="h-4 w-4 text-muted-foreground"
+                      strokeWidth={1.5}
+                    />
                     <div>
-                      <p className="text-sm font-semibold">{acc.name}</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-sm font-medium">{acc.name}</p>
+                      <p className="font-mono text-[11px] text-muted-foreground">
                         {acc.institution}
                       </p>
                     </div>
                   </div>
-                  <Badge variant={meta.badge}>{meta.label}</Badge>
+                  <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                    {meta.label}
+                  </span>
                 </div>
 
-                <div>
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                <div className="space-y-1">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                     {acc.type === "credit"
                       ? "Fatura em aberto"
                       : "Saldo atual"}
                   </p>
                   <p
-                    className={
-                      "mt-1.5 text-2xl font-semibold tabular-nums tracking-tight " +
-                      (isNegative ? "text-destructive" : "text-foreground")
-                    }
+                    className={cn(
+                      "font-mono text-2xl font-normal tabular-nums tracking-tight",
+                      isNegative && "text-destructive",
+                    )}
                   >
+                    {isNegative && "−"}
                     {formatCurrency(Math.abs(acc.balance))}
                   </p>
                 </div>
 
                 {acc.lastFour && (
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span className="font-mono tracking-wider">
-                      •••• •••• •••• {acc.lastFour}
+                  <div className="flex items-center justify-between border-t border-border pt-3">
+                    <span className="font-mono text-[11px] tracking-wider text-muted-foreground">
+                      •••• {acc.lastFour}
                     </span>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-7 px-2 text-xs opacity-0 transition-opacity group-hover:opacity-100"
+                      className="h-6 px-2 font-mono text-[10px] uppercase tracking-wider opacity-0 transition-opacity group-hover:opacity-100"
                     >
-                      Detalhes
+                      Detalhes →
                     </Button>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          );
-        })}
+              </div>
+            );
+          })}
+        </div>
 
         <button
-          className="group grid min-h-[220px] place-items-center rounded-xl border-2 border-dashed border-border bg-transparent transition-colors hover:border-primary/60 hover:bg-primary/5"
+          className="group mt-px flex w-full items-center justify-center gap-2 border border-t-0 border-border bg-background py-4 text-muted-foreground transition-colors hover:bg-accent/30 hover:text-foreground"
           onClick={() => {}}
         >
-          <div className="flex flex-col items-center gap-2 text-muted-foreground transition-colors group-hover:text-primary">
-            <div className="grid h-11 w-11 place-items-center rounded-full bg-muted transition-colors group-hover:bg-primary/10">
-              <Plus className="h-5 w-5" />
-            </div>
-            <p className="text-sm font-medium">Adicionar conta</p>
-            <p className="max-w-[200px] text-center text-xs">
-              Corrente, poupança, cartão, investimento ou dinheiro em espécie.
-            </p>
-          </div>
+          <Plus className="h-3.5 w-3.5" strokeWidth={1.5} />
+          <span className="font-mono text-[11px] uppercase tracking-wider">
+            Adicionar conta
+          </span>
         </button>
-      </div>
+      </section>
     </div>
   );
 }

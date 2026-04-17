@@ -1,21 +1,20 @@
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Card } from "@/components/ui/card";
 
 interface StatCardProps {
   label: string;
   value: string;
   delta?: { value: string; positive?: boolean };
-  icon: LucideIcon;
+  icon?: LucideIcon;
   accent?: "primary" | "success" | "warning" | "destructive" | "neutral";
 }
 
-const accentMap: Record<NonNullable<StatCardProps["accent"]>, string> = {
-  primary: "bg-primary/10 text-primary",
-  success: "bg-success/10 text-success",
-  warning: "bg-warning/10 text-warning",
-  destructive: "bg-destructive/10 text-destructive",
-  neutral: "bg-muted text-muted-foreground",
+const dotMap: Record<NonNullable<StatCardProps["accent"]>, string> = {
+  primary: "bg-foreground",
+  success: "bg-success",
+  warning: "bg-warning",
+  destructive: "bg-destructive",
+  neutral: "bg-muted-foreground",
 };
 
 export function StatCard({
@@ -23,40 +22,45 @@ export function StatCard({
   value,
   delta,
   icon: Icon,
-  accent = "primary",
+  accent = "neutral",
 }: StatCardProps) {
   return (
-    <Card className="group relative overflow-hidden p-5 transition-shadow hover:shadow-float">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+    <div className="group flex flex-col gap-4 border border-border p-5 transition-colors hover:bg-accent/30">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span
+            className={cn("h-1.5 w-1.5 rounded-full", dotMap[accent])}
+            aria-hidden
+          />
+          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
             {label}
           </p>
-          <p className="mt-2 truncate text-2xl font-semibold tabular-nums tracking-tight">
-            {value}
-          </p>
-          {delta && (
-            <p
-              className={cn(
-                "mt-1 text-xs font-medium tabular-nums",
-                delta.positive
-                  ? "text-success"
-                  : "text-destructive",
-              )}
-            >
-              {delta.value}
-            </p>
-          )}
         </div>
-        <div
-          className={cn(
-            "grid h-10 w-10 shrink-0 place-items-center rounded-lg transition-transform group-hover:scale-105",
-            accentMap[accent],
-          )}
-        >
-          <Icon className="h-5 w-5" />
-        </div>
+        {Icon && (
+          <Icon
+            className="h-3.5 w-3.5 text-muted-foreground"
+            strokeWidth={1.5}
+          />
+        )}
       </div>
-    </Card>
+
+      <div className="space-y-1.5">
+        <p className="truncate font-mono text-2xl font-normal tracking-tight">
+          {value}
+        </p>
+        {delta && (
+          <p
+            className={cn(
+              "font-mono text-[11px] tabular-nums",
+              delta.positive
+                ? "text-success"
+                : "text-destructive",
+            )}
+          >
+            {delta.value}
+          </p>
+        )}
+      </div>
+    </div>
   );
 }

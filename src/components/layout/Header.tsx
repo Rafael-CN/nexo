@@ -1,64 +1,52 @@
 import { useLocation } from "react-router-dom";
-import { Bell, Plus, Search } from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const titles: Record<string, { title: string; subtitle: string }> = {
-  "/": {
-    title: "Visão Geral",
-    subtitle: "Sua vida financeira num piscar de olhos.",
-  },
-  "/calendario": {
-    title: "Projeção de Calendário",
-    subtitle: "Veja como seu saldo evolui dia a dia.",
-  },
-  "/contas": {
-    title: "Contas",
-    subtitle: "Saldos, instituições e organização.",
-  },
-  "/transacoes": {
-    title: "Transações",
-    subtitle: "Histórico detalhado e lançamentos futuros.",
-  },
-  "/metas": {
-    title: "Metas",
-    subtitle: "Objetivos financeiros e progresso.",
-  },
-  "/configuracoes": {
-    title: "Configurações",
-    subtitle: "Preferências, categorias e conta.",
-  },
+const titles: Record<string, string> = {
+  "/": "Visão Geral",
+  "/calendario": "Calendário",
+  "/contas": "Contas",
+  "/transacoes": "Transações",
+  "/metas": "Metas",
+  "/configuracoes": "Configurações",
 };
 
 export function Header() {
   const { pathname } = useLocation();
-  const info = titles[pathname] ?? titles["/"];
+  const title = titles[pathname] ?? "Visão Geral";
+  const today = format(new Date(), "dd MMM yyyy", { locale: ptBR });
 
   return (
-    <header className="sticky top-0 z-20 flex items-center gap-4 border-b border-border bg-background/70 px-8 py-4 backdrop-blur">
-      <div className="min-w-0 flex-1">
-        <h1 className="truncate text-xl font-semibold tracking-tight">
-          {info.title}
+    <header className="sticky top-0 z-20 flex h-12 items-center gap-4 border-b border-border bg-background px-6">
+      <div className="flex min-w-0 flex-1 items-baseline gap-3">
+        <h1 className="truncate text-sm font-medium tracking-tight">
+          {title}
         </h1>
-        <p className="truncate text-sm text-muted-foreground">
-          {info.subtitle}
-        </p>
+        <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+          {today}
+        </span>
       </div>
 
       <div className="hidden items-center gap-2 md:flex">
         <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search
+            className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+            strokeWidth={1.5}
+          />
           <input
             type="search"
-            placeholder="Buscar transação, conta..."
-            className="h-9 w-72 rounded-md border border-border bg-card pl-9 pr-3 text-sm shadow-sm outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/30"
+            placeholder="Buscar"
+            className="h-8 w-64 rounded-sm border border-border bg-background pl-8 pr-3 font-mono text-xs outline-none transition focus:border-foreground/40"
           />
+          <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 font-mono text-[10px] text-muted-foreground">
+            ⌘K
+          </span>
         </div>
 
-        <Button variant="outline" size="icon" aria-label="Notificações">
-          <Bell className="h-4 w-4" />
-        </Button>
-        <Button size="sm" className="gap-2">
-          <Plus className="h-4 w-4" />
+        <Button size="sm" className="gap-1.5 rounded-sm text-xs">
+          <Plus className="h-3.5 w-3.5" strokeWidth={2} />
           Nova transação
         </Button>
       </div>
