@@ -8,9 +8,10 @@ import { cn } from "@/lib/utils";
 
 interface TransactionRowProps {
   transaction: Transaction;
+  onClick?: () => void;
 }
 
-export function TransactionRow({ transaction }: TransactionRowProps) {
+export function TransactionRow({ transaction, onClick }: TransactionRowProps) {
   const categories = useFinanceStore((s) => s.categories);
   const accounts = useFinanceStore((s) => s.accounts);
 
@@ -21,7 +22,16 @@ export function TransactionRow({ transaction }: TransactionRowProps) {
   const date = parseISO(transaction.date);
 
   return (
-    <div className="group grid grid-cols-[80px_1fr_auto] items-center gap-4 border-b border-border px-1 py-3 transition-colors last:border-b-0 hover:bg-accent/40">
+    <div
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={onClick ? (e) => e.key === "Enter" && onClick() : undefined}
+      className={cn(
+        "group grid grid-cols-[80px_1fr_auto] items-center gap-4 border-b border-border px-1 py-3 transition-colors last:border-b-0 hover:bg-accent/40",
+        onClick && "cursor-pointer",
+      )}
+    >
       <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
         {format(date, "dd MMM", { locale: ptBR })}
       </span>
