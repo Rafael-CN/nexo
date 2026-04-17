@@ -1,4 +1,4 @@
-import type { Account, Category, Transaction } from "@/types";
+import type { Account, Category, Goal, Transaction } from "@/types";
 import { addDays, formatISO, startOfToday, subDays } from "date-fns";
 
 const today = startOfToday();
@@ -200,5 +200,48 @@ export const mockTransactions: Transaction[] = [
     type: "expense",
     isProjected: true,
     recurrenceId: "rec_aluguel",
+  },
+];
+
+export const mockGoals: Goal[] = [
+  {
+    id: "goal_reserva",
+    name: "Reserva de Emergência",
+    description: "6 meses de despesas fixas cobertas",
+    targetAmount: 20_000,
+    currentAmount: 14_300,
+    accountId: "acc_poupanca",
+    status: "active",
+    monthlyContribution: 800,
+  },
+  {
+    id: "goal_europa",
+    name: "Viagem para Europa",
+    description: "Portugal e Espanha — julho de 2027",
+    targetAmount: 15_000,
+    currentAmount: 3_200,
+    deadline: "2027-07-01",
+    status: "active",
+    monthlyContribution: 950,
+  },
+  {
+    id: "goal_notebook",
+    name: "MacBook Pro M4",
+    description: "Para trabalho e edição de vídeo",
+    targetAmount: 18_000,
+    currentAmount: 6_800,
+    deadline: "2026-12-01",
+    status: "active",
+    monthlyContribution: 1_100,
+  },
+  {
+    id: "goal_carro",
+    name: "Entrada do Carro",
+    description: "30% de entrada — Honda Civic",
+    targetAmount: 35_000,
+    currentAmount: 4_500,
+    deadline: "2028-03-01",
+    status: "active",
+    monthlyContribution: 1_200,
   },
 ];

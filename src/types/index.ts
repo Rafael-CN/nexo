@@ -49,3 +49,17 @@ export interface RecurrenceRule {
   interval: number;
   until?: string;
 }
+
+export type GoalStatus = "active" | "paused" | "completed";
+
+export interface Goal {
+  id: string;
+  name: string;
+  description?: string;
+  targetAmount: number;
+  currentAmount: number;
+  deadline?: string; // ISO date "YYYY-MM-DD"
+  accountId?: string;
+  status: GoalStatus;
+  monthlyContribution?: number;
+}

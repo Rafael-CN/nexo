@@ -8,6 +8,7 @@ import { DashboardPage } from "@/pages/Dashboard";
 import { CalendarPage } from "@/pages/Calendar";
 import { AccountsPage } from "@/pages/Accounts";
 import { TransactionsPage } from "@/pages/Transactions";
+import { GoalsPage } from "@/pages/Goals";
 import { PlaceholderPage } from "@/pages/Placeholder";
 
 const router = createBrowserRouter([
@@ -19,7 +20,7 @@ const router = createBrowserRouter([
       { path: "calendario", element: <CalendarPage /> },
       { path: "contas", element: <AccountsPage /> },
       { path: "transacoes", element: <TransactionsPage /> },
-      { path: "metas", element: <PlaceholderPage label="Metas financeiras" /> },
+      { path: "metas", element: <GoalsPage /> },
       {
         path: "configuracoes",
         element: <PlaceholderPage label="Configurações" />,
