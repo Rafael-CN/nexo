@@ -1,9 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { format, parseISO, differenceInMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Flag, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { GoalModal } from "@/components/shared/GoalModal";
 import {
   selectGoalsSummary,
   useFinanceStore,
@@ -16,15 +17,30 @@ export function GoalsPage() {
   const goals = useFinanceStore(useShallow((s) => s.goals));
   const summary = useFinanceStore(useShallow(selectGoalsSummary));
 
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<Goal | null>(null);
+
+  function openNew() {
+    setEditing(null);
+    setModalOpen(true);
+  }
+
+  function openEdit(goal: Goal) {
+    setEditing(goal);
+    setModalOpen(true);
+  }
+
   const sorted = useMemo(
     () =>
       [...goals].sort((a, b) => {
-        if (a.deadline && b.deadline) return a.deadline.localeCompare(b.deadline);
+        if (a.deadline && b.deadline)
+          return a.deadline.localeCompare(b.deadline);
         if (a.deadline) return -1;
         if (b.deadline) return 1;
-        const pA = a.currentAmount / a.targetAmount;
-        const pB = b.currentAmount / b.targetAmount;
-        return pA - pB;
+        return (
+          a.currentAmount / a.targetAmount -
+          b.currentAmount / b.targetAmount
+        );
       }),
     [goals],
   );
@@ -55,7 +71,11 @@ export function GoalsPage() {
           </p>
         </div>
 
-        <Button size="sm" className="gap-1.5 rounded-sm text-xs">
+        <Button
+          size="sm"
+          className="gap-1.5 rounded-sm text-xs"
+          onClick={openNew}
+        >
           <Plus className="h-3.5 w-3.5" strokeWidth={2} />
           Nova meta
         </Button>
@@ -69,29 +89,64 @@ export function GoalsPage() {
           <div className="h-px flex-1 bg-border" />
         </div>
 
-        <div className="grid grid-cols-1 gap-px overflow-hidden border border-border bg-border md:grid-cols-2">
-          {sorted.map((goal) => (
-            <GoalCard key={goal.id} goal={goal} />
-          ))}
-        </div>
+        {sorted.length === 0 ? (
+          <div className="grid place-items-center gap-3 border border-dashed border-border py-12 text-center">
+            <Flag className="h-5 w-5 text-muted-foreground" strokeWidth={1.5} />
+            <p className="font-mono text-[11px] uppercase tracking-wider">
+              Nenhuma meta cadastrada
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Crie sua primeira meta financeira para começar.
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="mt-1 gap-1.5 rounded-sm text-xs"
+              onClick={openNew}
+            >
+              <Plus className="h-3.5 w-3.5" strokeWidth={2} />
+              Nova meta
+            </Button>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 gap-px overflow-hidden border border-border bg-border md:grid-cols-2">
+              {sorted.map((goal) => (
+                <GoalCard key={goal.id} goal={goal} onEdit={() => openEdit(goal)} />
+              ))}
+            </div>
 
-        <button
-          className="mt-px flex w-full items-center justify-center gap-2 border border-t-0 border-border bg-background py-4 text-muted-foreground transition-colors hover:bg-accent/30 hover:text-foreground"
-          onClick={() => {}}
-        >
-          <Plus className="h-3.5 w-3.5" strokeWidth={1.5} />
-          <span className="font-mono text-[11px] uppercase tracking-wider">
-            Adicionar meta
-          </span>
-        </button>
+            <button
+              className="mt-px flex w-full items-center justify-center gap-2 border border-t-0 border-border bg-background py-4 text-muted-foreground transition-colors hover:bg-accent/30 hover:text-foreground"
+              onClick={openNew}
+            >
+              <Plus className="h-3.5 w-3.5" strokeWidth={1.5} />
+              <span className="font-mono text-[11px] uppercase tracking-wider">
+                Adicionar meta
+              </span>
+            </button>
+          </>
+        )}
       </section>
 
-      <OverallProgress goals={sorted} />
+      {sorted.length > 0 && <OverallProgress goals={sorted} />}
+
+      <GoalModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        goal={editing}
+      />
     </div>
   );
 }
 
-function GoalCard({ goal }: { goal: Goal }) {
+function GoalCard({
+  goal,
+  onEdit,
+}: {
+  goal: Goal;
+  onEdit: () => void;
+}) {
   const accounts = useFinanceStore(useShallow((s) => s.accounts));
   const account = accounts.find((a) => a.id === goal.accountId);
 
@@ -109,8 +164,7 @@ function GoalCard({ goal }: { goal: Goal }) {
   const deadlineInfo = useMemo(() => {
     if (!goal.deadline) return null;
     const parsed = parseISO(goal.deadline);
-    const now = new Date();
-    const monthsLeft = differenceInMonths(parsed, now);
+    const monthsLeft = differenceInMonths(parsed, new Date());
     return {
       label: format(parsed, "MMM yyyy", { locale: ptBR }),
       monthsLeft,
@@ -119,7 +173,7 @@ function GoalCard({ goal }: { goal: Goal }) {
   }, [goal.deadline, monthsToGoal]);
 
   return (
-    <div className="group flex flex-col gap-5 bg-background p-5 transition-colors hover:bg-accent/30">
+    <div className="group relative flex flex-col gap-5 bg-background p-5 transition-colors hover:bg-accent/30">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           <Flag
@@ -127,7 +181,14 @@ function GoalCard({ goal }: { goal: Goal }) {
             strokeWidth={1.5}
           />
           <div>
-            <p className="text-sm font-medium leading-tight">{goal.name}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium leading-tight">{goal.name}</p>
+              {goal.status === "paused" && (
+                <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60">
+                  pausada
+                </span>
+              )}
+            </div>
             {goal.description && (
               <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
                 {goal.description}
@@ -190,7 +251,12 @@ function GoalCard({ goal }: { goal: Goal }) {
             <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
               Prazo · {deadlineInfo.label}
               <span className="normal-case tracking-normal">
-                {" "}({deadlineInfo.monthsLeft > 0 ? `${deadlineInfo.monthsLeft} meses` : "vencido"})
+                {" "}
+                (
+                {deadlineInfo.monthsLeft > 0
+                  ? `${deadlineInfo.monthsLeft} meses`
+                  : "vencido"}
+                )
               </span>
             </p>
           </div>
@@ -198,11 +264,15 @@ function GoalCard({ goal }: { goal: Goal }) {
 
         {monthsToGoal !== null && !deadlineInfo && (
           <div className="flex items-center gap-2">
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-success" aria-hidden />
+            <span
+              className="h-1.5 w-1.5 shrink-0 rounded-full bg-success"
+              aria-hidden
+            />
             <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
               Projeção ·{" "}
               <span className="normal-case tracking-normal">
-                {monthsToGoal} {monthsToGoal === 1 ? "mês" : "meses"} no ritmo atual
+                {monthsToGoal} {monthsToGoal === 1 ? "mês" : "meses"} no ritmo
+                atual
               </span>
             </p>
           </div>
@@ -221,7 +291,7 @@ function GoalCard({ goal }: { goal: Goal }) {
             ) : (
               <span>
                 No ritmo de {formatCurrency(goal.monthlyContribution ?? 0)}/mês,
-                meta atingida em {monthsToGoal} meses
+                meta em {monthsToGoal} meses
               </span>
             )}
           </p>
@@ -232,6 +302,17 @@ function GoalCard({ goal }: { goal: Goal }) {
             Conta vinculada · {account.name}
           </p>
         )}
+
+        <div className="flex justify-end pt-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 font-mono text-[10px] uppercase tracking-wider opacity-0 transition-opacity group-hover:opacity-100"
+            onClick={onEdit}
+          >
+            Ajustar meta →
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -239,7 +320,6 @@ function GoalCard({ goal }: { goal: Goal }) {
 
 function OverallProgress({ goals }: { goals: Goal[] }) {
   const active = goals.filter((g) => g.status === "active");
-
   if (active.length === 0) return null;
 
   return (
