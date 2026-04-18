@@ -1,9 +1,10 @@
 import { create } from "zustand";
-import type { Account, Category, Goal, Transaction } from "@/types";
+import type { Account, Category, Goal, RecurrenceRule, Transaction } from "@/types";
 import {
   mockAccounts,
   mockCategories,
   mockGoals,
+  mockRecurrenceRules,
   mockTransactions,
 } from "@/mocks/financeData";
 
@@ -12,6 +13,7 @@ interface FinanceState {
   categories: Category[];
   transactions: Transaction[];
   goals: Goal[];
+  recurrenceRules: RecurrenceRule[];
 
   addTransaction: (txn: Transaction) => void;
   removeTransaction: (id: string) => void;
@@ -27,6 +29,7 @@ export const useFinanceStore = create<FinanceState>((set) => ({
   categories: mockCategories,
   transactions: mockTransactions,
   goals: mockGoals,
+  recurrenceRules: mockRecurrenceRules,
 
   addTransaction: (txn) =>
     set((state) => ({ transactions: [...state.transactions, txn] })),

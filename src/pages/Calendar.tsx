@@ -19,15 +19,19 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/format";
-import { useFinanceStore } from "@/store/useFinanceStore";
+import { selectTotalBalance, useFinanceStore } from "@/store/useFinanceStore";
+import { useProjection } from "@/hooks/useProjection";
 import type { Transaction } from "@/types";
 
 const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 export function CalendarPage() {
   const transactions = useFinanceStore(useShallow((s) => s.transactions));
+  const baseBalance = useFinanceStore(selectTotalBalance);
+  const { expanded, dailyBalances } = useProjection();
 
   const today = startOfToday();
+  const todayIso = formatISO(today, { representation: "date" });
   const [viewMonth, setViewMonth] = useState(() => startOfMonth(today));
 
   const isCurrentMonth = isSameMonth(today, viewMonth);
@@ -38,20 +42,25 @@ export function CalendarPage() {
     return eachDayOfInterval({ start: gridStart, end: gridEnd });
   }, [viewMonth]);
 
+  // Merge store transactions + expanded recurring so future months show occurrences
   const byDate = useMemo(() => {
     const map = new Map<string, Transaction[]>();
-    for (const t of transactions) {
+    for (const t of [...transactions, ...expanded]) {
       const list = map.get(t.date) ?? [];
       list.push(t);
       map.set(t.date, list);
     }
     return map;
-  }, [transactions]);
+  }, [transactions, expanded]);
 
   const monthPrefix = format(viewMonth, "yyyy-MM");
-  const projectedCount = transactions.filter(
-    (t) => t.isProjected && t.date.startsWith(monthPrefix),
-  ).length;
+  const projectedCount = useMemo(
+    () =>
+      [...transactions, ...expanded].filter(
+        (t) => t.isProjected && t.date.startsWith(monthPrefix),
+      ).length,
+    [transactions, expanded, monthPrefix],
+  );
 
   return (
     <div className="space-y-10">
@@ -117,19 +126,20 @@ export function CalendarPage() {
             const items = byDate.get(iso) ?? [];
             const inMonth = isSameMonth(day, viewMonth);
             const dayIsToday = isToday(day);
+            const isPast = iso < todayIso;
 
-            const income = items
-              .filter((t) => t.type === "income")
-              .reduce((a, t) => a + t.amount, 0);
-            const expense = items
-              .filter((t) => t.type === "expense")
-              .reduce((a, t) => a + t.amount, 0);
+            // Balance to display: today → base, future → projection, past → none
+            const projectedBalance = dayIsToday
+              ? baseBalance
+              : isPast
+                ? undefined
+                : dailyBalances.get(iso);
 
             return (
               <div
                 key={iso}
                 className={cn(
-                  "relative min-h-[120px] border-b border-r border-border p-2 transition-colors",
+                  "relative min-h-[110px] border-b border-r border-border p-2 transition-colors",
                   (i + 1) % 7 === 0 && "border-r-0",
                   i >= days.length - 7 && "border-b-0",
                   !inMonth && "bg-muted/10",
@@ -140,64 +150,65 @@ export function CalendarPage() {
                   <span
                     className={cn(
                       "font-mono text-[11px] tabular-nums",
-                      !inMonth && "text-muted-foreground/50",
+                      !inMonth && "text-muted-foreground/40",
                       dayIsToday && "font-semibold text-foreground",
                     )}
                   >
                     {format(day, "dd")}
                   </span>
                   {items.length > 0 && (
-                    <span className="font-mono text-[9px] text-muted-foreground">
+                    <span className="font-mono text-[9px] text-muted-foreground/60">
                       {items.length}
                     </span>
                   )}
                 </div>
 
-                <div className="mt-2 space-y-1">
-                  {items.slice(0, 2).map((t) => {
-                    const isIncome = t.type === "income";
-                    return (
-                      <div
-                        key={t.id}
-                        className="flex items-center gap-1.5 text-[10px]"
+                <div className="mt-1.5 space-y-0.5">
+                  {items.slice(0, 2).map((t) => (
+                    <div
+                      key={t.id}
+                      className="flex items-center gap-1 text-[10px]"
+                    >
+                      <span
+                        className={cn(
+                          "h-1 w-1 shrink-0 rounded-full",
+                          t.type === "income" ? "bg-success" : "bg-destructive",
+                        )}
+                        aria-hidden
+                      />
+                      <span
+                        className={cn(
+                          "truncate leading-tight",
+                          t.isProjected
+                            ? "text-muted-foreground/70"
+                            : "text-foreground",
+                        )}
                       >
-                        <span
-                          className={cn(
-                            "h-1 w-1 shrink-0 rounded-full",
-                            isIncome ? "bg-success" : "bg-destructive",
-                          )}
-                          aria-hidden
-                        />
-                        <span
-                          className={cn(
-                            "truncate",
-                            t.isProjected && "text-muted-foreground",
-                          )}
-                        >
-                          {t.title}
-                        </span>
-                      </div>
-                    );
-                  })}
+                        {t.title}
+                      </span>
+                    </div>
+                  ))}
                   {items.length > 2 && (
-                    <p className="font-mono text-[9px] text-muted-foreground">
+                    <p className="font-mono text-[9px] text-muted-foreground/60">
                       +{items.length - 2}
                     </p>
                   )}
                 </div>
 
-                {(income > 0 || expense > 0) && (
-                  <div className="absolute bottom-1.5 left-2 right-2 flex items-center justify-between font-mono text-[9px] tabular-nums">
-                    {income > 0 && (
-                      <span className="text-success">
-                        +{formatCurrency(income, true)}
-                      </span>
-                    )}
-                    {expense > 0 && (
-                      <span className="ml-auto text-destructive">
-                        −{formatCurrency(expense, true)}
-                      </span>
-                    )}
+                {projectedBalance !== undefined && (
+                  <div className="absolute bottom-1.5 left-2 right-2">
+                    <p
+                      className={cn(
+                        "font-mono text-[9px] tabular-nums",
+                        projectedBalance < 0
+                          ? "text-destructive"
+                          : dayIsToday
+                            ? "text-foreground/70"
+                            : "text-muted-foreground/60",
+                      )}
+                    >
+                      {formatCurrency(projectedBalance, true)}
+                    </p>
                   </div>
                 )}
               </div>
@@ -208,16 +219,17 @@ export function CalendarPage() {
         <div className="mt-4 flex flex-wrap items-center gap-4 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
           <Legend color="bg-success" label="Entrada" />
           <Legend color="bg-destructive" label="Saída" />
-          <span>· projetadas em cinza ·</span>
+          <span>·</span>
+          <span className="normal-case tracking-normal text-muted-foreground/70">
+            Valor no canto inferior = saldo líquido projetado no fim do dia
+          </span>
         </div>
       </section>
 
       {isCurrentMonth && (
         <TodayDetail
           date={today}
-          transactions={
-            byDate.get(formatISO(today, { representation: "date" })) ?? []
-          }
+          transactions={byDate.get(todayIso) ?? []}
         />
       )}
     </div>

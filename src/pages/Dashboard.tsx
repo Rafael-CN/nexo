@@ -12,24 +12,33 @@ import { Button } from "@/components/ui/button";
 import {
   selectMonthFlow,
   selectTotalBalance,
-  selectUpcomingTransactions,
   useFinanceStore,
 } from "@/store/useFinanceStore";
+import { useProjection } from "@/hooks/useProjection";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
+
+const UPCOMING_LIMIT = 8;
+const DAYS_14 = 14;
 
 export function DashboardPage() {
   const accounts = useFinanceStore(useShallow((s) => s.accounts));
   const transactions = useFinanceStore(useShallow((s) => s.transactions));
   const totalBalance = useFinanceStore(selectTotalBalance);
+  const { allUpcoming } = useProjection();
+
   const upcoming = useMemo(
-    () =>
-      selectUpcomingTransactions(
-        { transactions } as Parameters<typeof selectUpcomingTransactions>[0],
-        6,
-      ),
-    [transactions],
+    () => allUpcoming.slice(0, UPCOMING_LIMIT),
+    [allUpcoming],
   );
+
+  const upcoming14Count = useMemo(() => {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() + DAYS_14);
+    const cutoffIso = cutoff.toISOString().slice(0, 10);
+    return allUpcoming.filter((t) => t.date <= cutoffIso).length;
+  }, [allUpcoming]);
+
   const monthFlow = useMemo(
     () =>
       selectMonthFlow(
@@ -75,7 +84,7 @@ export function DashboardPage() {
         <div className="bg-background">
           <StatCard
             label="Próximos 14 dias"
-            value={`${upcoming.length} lançamentos`}
+            value={`${upcoming14Count} lançamentos`}
             delta={{ value: "Ver calendário →", positive: true }}
             icon={CalendarClock}
             accent="warning"
@@ -148,7 +157,7 @@ function SectionDivider({ label }: { label: string }) {
 function UpcomingLedger({
   transactions,
 }: {
-  transactions: ReturnType<typeof selectUpcomingTransactions>;
+  transactions: import("@/types").Transaction[];
 }) {
   return (
     <div className="space-y-4">

@@ -1,4 +1,4 @@
-import type { Account, Category, Goal, Transaction } from "@/types";
+import type { Account, Category, Goal, RecurrenceRule, Transaction } from "@/types";
 import { addDays, formatISO, startOfToday, subDays } from "date-fns";
 
 const today = startOfToday();
@@ -201,6 +201,15 @@ export const mockTransactions: Transaction[] = [
     isProjected: true,
     recurrenceId: "rec_aluguel",
   },
+];
+
+export const mockRecurrenceRules: RecurrenceRule[] = [
+  { id: "rec_salario",    frequency: "monthly", interval: 1 },
+  { id: "rec_aluguel",   frequency: "monthly", interval: 1 },
+  { id: "rec_netflix",   frequency: "monthly", interval: 1 },
+  { id: "rec_spotify",   frequency: "monthly", interval: 1 },
+  { id: "rec_academia",  frequency: "monthly", interval: 1 },
+  { id: "rec_rendimento", frequency: "monthly", interval: 1 },
 ];
 
 export const mockGoals: Goal[] = [
