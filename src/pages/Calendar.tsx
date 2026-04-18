@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import {
   addDays,
+  addMonths,
   eachDayOfInterval,
   format,
   formatISO,
@@ -11,6 +12,7 @@ import {
   startOfMonth,
   startOfToday,
   startOfWeek,
+  subMonths,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -26,13 +28,15 @@ export function CalendarPage() {
   const transactions = useFinanceStore(useShallow((s) => s.transactions));
 
   const today = startOfToday();
-  const monthStart = startOfMonth(today);
-  const gridStart = startOfWeek(monthStart, { weekStartsOn: 0 });
-  const gridEnd = addDays(gridStart, 41);
-  const days = useMemo(
-    () => eachDayOfInterval({ start: gridStart, end: gridEnd }),
-    [gridStart, gridEnd],
-  );
+  const [viewMonth, setViewMonth] = useState(() => startOfMonth(today));
+
+  const isCurrentMonth = isSameMonth(today, viewMonth);
+
+  const days = useMemo(() => {
+    const gridStart = startOfWeek(viewMonth, { weekStartsOn: 0 });
+    const gridEnd = addDays(gridStart, 41);
+    return eachDayOfInterval({ start: gridStart, end: gridEnd });
+  }, [viewMonth]);
 
   const byDate = useMemo(() => {
     const map = new Map<string, Transaction[]>();
@@ -44,7 +48,10 @@ export function CalendarPage() {
     return map;
   }, [transactions]);
 
-  const projectedCount = transactions.filter((t) => t.isProjected).length;
+  const monthPrefix = format(viewMonth, "yyyy-MM");
+  const projectedCount = transactions.filter(
+    (t) => t.isProjected && t.date.startsWith(monthPrefix),
+  ).length;
 
   return (
     <div className="space-y-10">
@@ -54,7 +61,7 @@ export function CalendarPage() {
             Projeção mensal
           </p>
           <h1 className="font-mono text-4xl font-light capitalize tracking-tight md:text-5xl">
-            {format(today, "MMMM yyyy", { locale: ptBR })}
+            {format(viewMonth, "MMMM yyyy", { locale: ptBR })}
           </h1>
           <p className="font-mono text-xs text-muted-foreground">
             {projectedCount} lançamentos projetados no período
@@ -67,13 +74,18 @@ export function CalendarPage() {
             size="icon"
             className="h-8 w-8 rounded-sm"
             aria-label="Mês anterior"
+            onClick={() => setViewMonth((m) => subMonths(m, 1))}
           >
             <ChevronLeft className="h-3.5 w-3.5" strokeWidth={1.5} />
           </Button>
           <Button
             variant="outline"
             size="sm"
-            className="h-8 rounded-sm px-3 font-mono text-[11px] uppercase tracking-wider"
+            className={cn(
+              "h-8 rounded-sm px-3 font-mono text-[11px] uppercase tracking-wider",
+              isCurrentMonth && "text-muted-foreground",
+            )}
+            onClick={() => setViewMonth(startOfMonth(startOfToday()))}
           >
             Hoje
           </Button>
@@ -82,6 +94,7 @@ export function CalendarPage() {
             size="icon"
             className="h-8 w-8 rounded-sm"
             aria-label="Próximo mês"
+            onClick={() => setViewMonth((m) => addMonths(m, 1))}
           >
             <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.5} />
           </Button>
@@ -102,7 +115,7 @@ export function CalendarPage() {
           {days.map((day, i) => {
             const iso = formatISO(day, { representation: "date" });
             const items = byDate.get(iso) ?? [];
-            const inMonth = isSameMonth(day, today);
+            const inMonth = isSameMonth(day, viewMonth);
             const dayIsToday = isToday(day);
 
             const income = items
@@ -196,18 +209,17 @@ export function CalendarPage() {
           <Legend color="bg-success" label="Entrada" />
           <Legend color="bg-destructive" label="Saída" />
           <span>· projetadas em cinza ·</span>
-          <span className="ml-auto normal-case tracking-normal">
-            Dia selecionado abrirá detalhe do saldo projetado (em breve).
-          </span>
         </div>
       </section>
 
-      <TodayDetail
-        date={today}
-        transactions={
-          byDate.get(formatISO(today, { representation: "date" })) ?? []
-        }
-      />
+      {isCurrentMonth && (
+        <TodayDetail
+          date={today}
+          transactions={
+            byDate.get(formatISO(today, { representation: "date" })) ?? []
+          }
+        />
+      )}
     </div>
   );
 }
