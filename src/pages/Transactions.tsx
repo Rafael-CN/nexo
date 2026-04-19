@@ -1,9 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ArrowDownUp, Filter, Plus } from "lucide-react";
 import { TransactionRow } from "@/components/shared/TransactionRow";
+import { TransactionModal } from "@/components/shared/TransactionModal";
 import { Button } from "@/components/ui/button";
 import { useFinanceStore } from "@/store/useFinanceStore";
 import { formatCurrency } from "@/lib/format";
@@ -11,6 +12,18 @@ import type { Transaction } from "@/types";
 
 export function TransactionsPage() {
   const transactions = useFinanceStore(useShallow((s) => s.transactions));
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<Transaction | null>(null);
+
+  function openNew() {
+    setEditing(null);
+    setModalOpen(true);
+  }
+
+  function openEdit(t: Transaction) {
+    setEditing(t);
+    setModalOpen(true);
+  }
 
   const { groups, totals } = useMemo(() => {
     const sorted = [...transactions].sort((a, b) =>
@@ -72,7 +85,11 @@ export function TransactionsPage() {
             <ArrowDownUp className="h-3.5 w-3.5" strokeWidth={1.5} />
             Ordenar
           </Button>
-          <Button size="sm" className="gap-1.5 rounded-sm text-xs">
+          <Button
+            size="sm"
+            className="gap-1.5 rounded-sm text-xs"
+            onClick={openNew}
+          >
             <Plus className="h-3.5 w-3.5" strokeWidth={2} />
             Nova
           </Button>
@@ -100,13 +117,23 @@ export function TransactionsPage() {
               </div>
               <div className="border-t border-border">
                 {list.map((t) => (
-                  <TransactionRow key={t.id} transaction={t} />
+                  <TransactionRow
+                    key={t.id}
+                    transaction={t}
+                    onClick={() => openEdit(t)}
+                  />
                 ))}
               </div>
             </div>
           );
         })}
       </section>
+
+      <TransactionModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        transaction={editing}
+      />
     </div>
   );
 }
