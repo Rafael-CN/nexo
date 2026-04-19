@@ -1,9 +1,17 @@
+import { useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { useFinanceStore } from "@/store/useFinanceStore";
 
 export function AppLayout() {
+  const initialize = useFinanceStore((s) => s.initialize);
+
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
+
   return (
     <TooltipProvider delayDuration={120}>
       <div className="flex h-full w-full overflow-hidden bg-background">
