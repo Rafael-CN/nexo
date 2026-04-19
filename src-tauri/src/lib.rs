@@ -1,7 +1,6 @@
 mod commands;
 mod db;
 mod models;
-mod seed;
 
 use db::DbState;
 use tauri::Manager;
@@ -14,7 +13,6 @@ pub fn run() {
             let app_data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&app_data_dir)?;
             let conn = db::open(app_data_dir)?;
-            seed::seed_all(&conn)?;
             app.manage(DbState(std::sync::Mutex::new(conn)));
             Ok(())
         })
@@ -25,6 +23,7 @@ pub fn run() {
             commands::add_transaction,
             commands::update_transaction,
             commands::delete_transaction,
+            commands::reset_database,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

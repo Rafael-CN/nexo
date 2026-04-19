@@ -126,3 +126,13 @@ pub fn delete_transaction(state: State<DbState>, id: String) -> CmdResult<()> {
         .map_err(e)?;
     Ok(())
 }
+
+#[tauri::command]
+pub fn reset_database(state: State<DbState>) -> CmdResult<()> {
+    let conn = state.0.lock().map_err(e)?;
+    conn.execute_batch(
+        "DELETE FROM transactions; DELETE FROM accounts; DELETE FROM categories;",
+    )
+    .map_err(e)?;
+    Ok(())
+}

@@ -2,6 +2,8 @@ import { Moon, Sun, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
+import { invoke } from "@tauri-apps/api/core";
+import { isTauri } from "@/lib/db";
 
 export function SettingsPage() {
   const { theme, setTheme } = useTheme();
@@ -119,6 +121,26 @@ export function SettingsPage() {
           <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground/60">
             Em desenvolvimento
           </span>
+        </SettingRow>
+      </SettingsSection>
+
+      {/* Desenvolvimento */}
+      <SettingsSection label="Desenvolvimento">
+        <SettingRow
+          label="Resetar banco de dados"
+          description="Apaga todos os dados e reinicia o app. Irreversível."
+        >
+          <button
+            type="button"
+            onClick={async () => {
+              if (!window.confirm("Apaga todos os dados e reinicia o app. Irreversível. Confirmar?")) return;
+              if (isTauri) await invoke("reset_database");
+              window.location.reload();
+            }}
+            className="border border-red-500 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-red-500 transition-colors hover:bg-red-500/10"
+          >
+            Resetar banco de dados
+          </button>
         </SettingRow>
       </SettingsSection>
 
