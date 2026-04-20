@@ -1,6 +1,7 @@
-use tauri::State;
 use crate::db::DbState;
 use crate::models::{Account, Category, Goal, Transaction};
+use rusqlite::Connection;
+use tauri::State;
 
 type CmdResult<T> = Result<T, String>;
 
@@ -8,11 +9,27 @@ fn e<E: std::fmt::Display>(err: E) -> String {
     err.to_string()
 }
 
+fn account_exists(conn: &Connection, id: &str) -> CmdResult<bool> {
+    entity_exists(conn, "accounts", id)
+}
+
+fn category_exists(conn: &Connection, id: &str) -> CmdResult<bool> {
+    entity_exists(conn, "categories", id)
+}
+
+fn entity_exists(conn: &Connection, table: &str, id: &str) -> CmdResult<bool> {
+    let sql = format!("SELECT EXISTS(SELECT 1 FROM {table} WHERE id=?1)");
+    let exists: i64 = conn.query_row(&sql, [id], |row| row.get(0)).map_err(e)?;
+    Ok(exists != 0)
+}
+
 #[tauri::command]
 pub fn get_accounts(state: State<DbState>) -> CmdResult<Vec<Account>> {
     let conn = state.0.lock().map_err(e)?;
     let mut stmt = conn
-        .prepare("SELECT id, name, institution, type, balance, color, icon, last_four FROM accounts")
+        .prepare(
+            "SELECT id, name, institution, type, balance, color, icon, last_four FROM accounts",
+        )
         .map_err(e)?;
     let rows = stmt
         .query_map([], |row| {
@@ -55,6 +72,7 @@ pub fn get_categories(state: State<DbState>) -> CmdResult<Vec<Category>> {
 
 #[tauri::command]
 pub fn add_account(state: State<DbState>, account: Account) -> CmdResult<()> {
+    account.validate()?;
     let conn = state.0.lock().map_err(e)?;
     conn.execute(
         "INSERT INTO accounts (id, name, institution, type, balance, color, icon, last_four)
@@ -76,6 +94,7 @@ pub fn add_account(state: State<DbState>, account: Account) -> CmdResult<()> {
 
 #[tauri::command]
 pub fn update_account(state: State<DbState>, account: Account) -> CmdResult<()> {
+    account.validate()?;
     let conn = state.0.lock().map_err(e)?;
     conn.execute(
         "UPDATE accounts SET name=?2, institution=?3, type=?4, balance=?5, color=?6, icon=?7, last_four=?8
@@ -125,6 +144,7 @@ pub fn delete_account(state: State<DbState>, id: String) -> CmdResult<()> {
 
 #[tauri::command]
 pub fn add_category(state: State<DbState>, category: Category) -> CmdResult<()> {
+    category.validate()?;
     let conn = state.0.lock().map_err(e)?;
     conn.execute(
         "INSERT INTO categories (id, name, color, icon, kind)
@@ -143,6 +163,7 @@ pub fn add_category(state: State<DbState>, category: Category) -> CmdResult<()> 
 
 #[tauri::command]
 pub fn update_category(state: State<DbState>, category: Category) -> CmdResult<()> {
+    category.validate()?;
     let conn = state.0.lock().map_err(e)?;
     conn.execute(
         "UPDATE categories SET name=?2, color=?3, icon=?4, kind=?5 WHERE id=?1",
@@ -209,7 +230,9 @@ pub fn get_transactions(state: State<DbState>) -> CmdResult<Vec<Transaction>> {
 
 #[tauri::command]
 pub fn add_transaction(state: State<DbState>, txn: Transaction) -> CmdResult<()> {
+    txn.validate()?;
     let conn = state.0.lock().map_err(e)?;
+    validate_transaction_refs(&conn, &txn)?;
     conn.execute(
         "INSERT INTO transactions
            (id, title, amount, date, account_id, category_id, type, is_projected, notes, recurrence_id)
@@ -226,16 +249,25 @@ pub fn add_transaction(state: State<DbState>, txn: Transaction) -> CmdResult<()>
 
 #[tauri::command]
 pub fn update_transaction(state: State<DbState>, txn: Transaction) -> CmdResult<()> {
+    txn.validate()?;
     let conn = state.0.lock().map_err(e)?;
+    validate_transaction_refs(&conn, &txn)?;
     conn.execute(
         "UPDATE transactions SET
            title=?2, amount=?3, date=?4, account_id=?5, category_id=?6,
            type=?7, is_projected=?8, notes=?9, recurrence_id=?10
          WHERE id=?1",
         rusqlite::params![
-            txn.id, txn.title, txn.amount, txn.date,
-            txn.account_id, txn.category_id, txn.transaction_type,
-            txn.is_projected as i32, txn.notes, txn.recurrence_id
+            txn.id,
+            txn.title,
+            txn.amount,
+            txn.date,
+            txn.account_id,
+            txn.category_id,
+            txn.transaction_type,
+            txn.is_projected as i32,
+            txn.notes,
+            txn.recurrence_id
         ],
     )
     .map_err(e)?;
@@ -281,7 +313,9 @@ pub fn get_goals(state: State<DbState>) -> CmdResult<Vec<Goal>> {
 
 #[tauri::command]
 pub fn add_goal(state: State<DbState>, goal: Goal) -> CmdResult<()> {
+    goal.validate()?;
     let conn = state.0.lock().map_err(e)?;
+    validate_goal_refs(&conn, &goal)?;
     conn.execute(
         "INSERT INTO goals
            (id, name, description, target_amount, current_amount, deadline, account_id, status, monthly_contribution)
@@ -304,7 +338,9 @@ pub fn add_goal(state: State<DbState>, goal: Goal) -> CmdResult<()> {
 
 #[tauri::command]
 pub fn update_goal(state: State<DbState>, goal: Goal) -> CmdResult<()> {
+    goal.validate()?;
     let conn = state.0.lock().map_err(e)?;
+    validate_goal_refs(&conn, &goal)?;
     conn.execute(
         "UPDATE goals SET
            name=?2, description=?3, target_amount=?4, current_amount=?5,
@@ -341,5 +377,27 @@ pub fn reset_database(state: State<DbState>) -> CmdResult<()> {
         "DELETE FROM goals; DELETE FROM transactions; DELETE FROM accounts; DELETE FROM categories;",
     )
     .map_err(e)?;
+    Ok(())
+}
+
+fn validate_transaction_refs(conn: &Connection, txn: &Transaction) -> CmdResult<()> {
+    if !account_exists(conn, &txn.account_id)? {
+        return Err("Conta da transacao nao foi encontrada.".into());
+    }
+
+    if !category_exists(conn, &txn.category_id)? {
+        return Err("Categoria da transacao nao foi encontrada.".into());
+    }
+
+    Ok(())
+}
+
+fn validate_goal_refs(conn: &Connection, goal: &Goal) -> CmdResult<()> {
+    if let Some(account_id) = &goal.account_id {
+        if !account_exists(conn, account_id)? {
+            return Err("Conta da meta nao foi encontrada.".into());
+        }
+    }
+
     Ok(())
 }

@@ -23,6 +23,7 @@ export function expandRecurring(
   rules: RecurrenceRule[],
   horizonDays = PROJECTION_DAYS,
 ): Transaction[] {
+  const todayIso = formatISO(new Date(), { representation: "date" });
   const horizonIso = formatISO(addDays(new Date(), horizonDays), {
     representation: "date",
   });
@@ -47,17 +48,19 @@ export function expandRecurring(
     let guard = 0;
 
     while (formatISO(next, { representation: "date" }) <= horizonIso) {
-      if (rule.until && formatISO(next, { representation: "date" }) > rule.until)
+      const isoDate = formatISO(next, { representation: "date" });
+      if (rule.until && isoDate > rule.until)
         break;
       if (++guard > 120) break; // safety cap
 
-      const isoDate = formatISO(next, { representation: "date" });
-      expanded.push({
-        ...anchor,
-        id: `${ruleId}_exp_${isoDate}`,
-        date: isoDate,
-        isProjected: true,
-      });
+      if (isoDate > todayIso) {
+        expanded.push({
+          ...anchor,
+          id: `${ruleId}_exp_${isoDate}`,
+          date: isoDate,
+          isProjected: true,
+        });
+      }
 
       next = advance(next, rule);
     }

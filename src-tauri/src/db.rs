@@ -3,16 +3,45 @@ use std::path::PathBuf;
 
 pub struct DbState(pub std::sync::Mutex<Connection>);
 
+const LATEST_SCHEMA_VERSION: i64 = 1;
+
 pub fn open(app_data_dir: PathBuf) -> Result<Connection> {
     let db_path = app_data_dir.join("financeiro.db");
-    let conn = Connection::open(db_path)?;
+    let mut conn = Connection::open(db_path)?;
     conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")?;
-    create_tables(&conn)?;
+    migrate_schema(&mut conn)?;
     Ok(conn)
 }
 
-fn create_tables(conn: &Connection) -> Result<()> {
-    conn.execute_batch(
+fn migrate_schema(conn: &mut Connection) -> Result<()> {
+    let mut current_version = schema_version(conn)?;
+
+    while current_version < LATEST_SCHEMA_VERSION {
+        match current_version {
+            0 => {
+                migrate_to_v1(conn)?;
+                current_version = 1;
+            }
+            _ => unreachable!("schema version is lower than latest but has no migration"),
+        }
+    }
+
+    Ok(())
+}
+
+fn schema_version(conn: &Connection) -> Result<i64> {
+    conn.query_row("PRAGMA user_version", [], |row| row.get(0))
+}
+
+fn set_schema_version(conn: &Connection, version: i64) -> Result<()> {
+    conn.pragma_update(None, "user_version", version)
+}
+
+fn migrate_to_v1(conn: &mut Connection) -> Result<()> {
+    let tx = conn.transaction()?;
+
+    // Keep the initial schema non-destructive so existing local databases can be adopted safely.
+    tx.execute_batch(
         "CREATE TABLE IF NOT EXISTS accounts (
             id          TEXT PRIMARY KEY,
             name        TEXT NOT NULL,
@@ -52,6 +81,18 @@ fn create_tables(conn: &Connection) -> Result<()> {
             account_id           TEXT,
             status               TEXT NOT NULL,
             monthly_contribution REAL
-        );",
-    )
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_transactions_date
+            ON transactions(date);
+        CREATE INDEX IF NOT EXISTS idx_transactions_account_id
+            ON transactions(account_id);
+        CREATE INDEX IF NOT EXISTS idx_transactions_category_id
+            ON transactions(category_id);
+        CREATE INDEX IF NOT EXISTS idx_goals_account_id
+            ON goals(account_id);",
+    )?;
+
+    set_schema_version(&tx, 1)?;
+    tx.commit()
 }

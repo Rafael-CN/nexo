@@ -8,6 +8,8 @@ interface FinanceState {
   transactions: Transaction[];
   goals: Goal[];
   recurrenceRules: RecurrenceRule[];
+  isInitializing: boolean;
+  initializeError: string | null;
   isLoaded: boolean;
 
   initialize: () => Promise<void>;
@@ -32,25 +34,56 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
   transactions: [],
   goals: [],
   recurrenceRules: [],
+  isInitializing: false,
+  initializeError: null,
   isLoaded: false,
 
   initialize: async () => {
-    if (isTauri) {
-      const [accounts, categories, transactions, goals] = await Promise.all([
-        db.getAccounts(),
-        db.getCategories(),
-        db.getTransactions(),
-        db.getGoals(),
-      ]);
-      set({ accounts, categories, transactions, goals, isLoaded: true });
-    } else {
+    if (get().isInitializing) return;
+
+    set({ isInitializing: true, initializeError: null });
+
+    try {
+      if (isTauri) {
+        const [accounts, categories, transactions, goals] = await Promise.all([
+          db.getAccounts(),
+          db.getCategories(),
+          db.getTransactions(),
+          db.getGoals(),
+        ]);
+        set({
+          accounts,
+          categories,
+          transactions,
+          goals,
+          isInitializing: false,
+          initializeError: null,
+          isLoaded: true,
+        });
+      } else {
+        set({
+          accounts: [],
+          categories: [],
+          transactions: [],
+          goals: [],
+          recurrenceRules: [],
+          isInitializing: false,
+          initializeError: null,
+          isLoaded: true,
+        });
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : typeof error === "string"
+            ? error
+            : "Nao foi possivel carregar seus dados financeiros.";
+
       set({
-        accounts: [],
-        categories: [],
-        transactions: [],
-        goals: [],
-        recurrenceRules: [],
-        isLoaded: true,
+        isInitializing: false,
+        initializeError: message,
+        isLoaded: false,
       });
     }
   },
