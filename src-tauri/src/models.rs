@@ -24,6 +24,23 @@ pub struct Category {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Goal {
+    pub id: String,
+    pub name: String,
+    pub description: Option<String>,
+    #[serde(rename = "targetAmount")]
+    pub target_amount: f64,
+    #[serde(rename = "currentAmount")]
+    pub current_amount: f64,
+    pub deadline: Option<String>,
+    #[serde(rename = "accountId")]
+    pub account_id: Option<String>,
+    pub status: String,
+    #[serde(rename = "monthlyContribution")]
+    pub monthly_contribution: Option<f64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Transaction {
     pub id: String,
     pub title: String,

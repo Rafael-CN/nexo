@@ -65,11 +65,13 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
   const isEdit = !!goal;
   const [form, setForm] = useState<FormState>(() => buildForm(goal));
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
       setForm(buildForm(goal));
       setError(null);
+      setSaving(false);
     }
   }, [open, goal]);
 
@@ -77,7 +79,7 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
-  function handleSave() {
+  async function handleSave() {
     setError(null);
     if (!form.name.trim()) return setError("Informe o nome da meta.");
     const target = parseAmount(form.targetAmount);
@@ -95,18 +97,32 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
       status: form.paused ? "paused" : "active",
     };
 
-    if (isEdit && goal) {
-      updateGoal(goal.id, payload);
-    } else {
-      addGoal({ id: crypto.randomUUID(), ...payload });
+    try {
+      setSaving(true);
+      if (isEdit && goal) {
+        await updateGoal(goal.id, payload);
+      } else {
+        await addGoal({ id: crypto.randomUUID(), ...payload });
+      }
+      onOpenChange(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
     }
-    onOpenChange(false);
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!goal) return;
-    removeGoal(goal.id);
-    onOpenChange(false);
+    try {
+      setSaving(true);
+      await removeGoal(goal.id);
+      onOpenChange(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
   }
 
   const liquidAccounts = accounts.filter((a) => a.type !== "credit");
@@ -124,7 +140,7 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
             <Label htmlFor="goal-name">Nome</Label>
             <Input
               id="goal-name"
-              placeholder="Ex: Reserva de emergência, Viagem…"
+              placeholder="Ex: Viagem, entrada do imovel..."
               value={form.name}
               onChange={(e) => set("name", e.target.value)}
               autoFocus
@@ -248,6 +264,7 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
                 "text-destructive hover:bg-destructive/10 hover:text-destructive",
               )}
               onClick={handleDelete}
+              disabled={saving}
             >
               <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
               Excluir
@@ -258,10 +275,16 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
             size="sm"
             className="rounded-sm text-xs"
             onClick={() => onOpenChange(false)}
+            disabled={saving}
           >
             Cancelar
           </Button>
-          <Button size="sm" className="rounded-sm text-xs" onClick={handleSave}>
+          <Button
+            size="sm"
+            className="rounded-sm text-xs"
+            onClick={handleSave}
+            disabled={saving}
+          >
             Salvar
           </Button>
         </DialogFooter>

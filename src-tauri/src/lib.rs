@@ -19,10 +19,20 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::get_accounts,
             commands::get_categories,
+            commands::add_account,
+            commands::update_account,
+            commands::delete_account,
+            commands::add_category,
+            commands::update_category,
+            commands::delete_category,
             commands::get_transactions,
             commands::add_transaction,
             commands::update_transaction,
             commands::delete_transaction,
+            commands::get_goals,
+            commands::add_goal,
+            commands::update_goal,
+            commands::delete_goal,
             commands::reset_database,
         ])
         .run(tauri::generate_context!())

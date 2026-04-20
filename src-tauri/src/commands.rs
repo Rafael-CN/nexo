@@ -1,6 +1,6 @@
 use tauri::State;
 use crate::db::DbState;
-use crate::models::{Account, Category, Transaction};
+use crate::models::{Account, Category, Goal, Transaction};
 
 type CmdResult<T> = Result<T, String>;
 
@@ -51,6 +51,129 @@ pub fn get_categories(state: State<DbState>) -> CmdResult<Vec<Category>> {
         .map_err(e)?;
     let categories: Vec<Category> = rows.collect::<Result<Vec<_>, _>>().map_err(e)?;
     Ok(categories)
+}
+
+#[tauri::command]
+pub fn add_account(state: State<DbState>, account: Account) -> CmdResult<()> {
+    let conn = state.0.lock().map_err(e)?;
+    conn.execute(
+        "INSERT INTO accounts (id, name, institution, type, balance, color, icon, last_four)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8)",
+        rusqlite::params![
+            account.id,
+            account.name,
+            account.institution,
+            account.account_type,
+            account.balance,
+            account.color,
+            account.icon,
+            account.last_four
+        ],
+    )
+    .map_err(e)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn update_account(state: State<DbState>, account: Account) -> CmdResult<()> {
+    let conn = state.0.lock().map_err(e)?;
+    conn.execute(
+        "UPDATE accounts SET name=?2, institution=?3, type=?4, balance=?5, color=?6, icon=?7, last_four=?8
+         WHERE id=?1",
+        rusqlite::params![
+            account.id,
+            account.name,
+            account.institution,
+            account.account_type,
+            account.balance,
+            account.color,
+            account.icon,
+            account.last_four
+        ],
+    )
+    .map_err(e)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn delete_account(state: State<DbState>, id: String) -> CmdResult<()> {
+    let conn = state.0.lock().map_err(e)?;
+    let txn_count: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM transactions WHERE account_id=?1",
+            [&id],
+            |row| row.get(0),
+        )
+        .map_err(e)?;
+    if txn_count > 0 {
+        return Err("Nao e possivel excluir uma conta com transacoes vinculadas.".into());
+    }
+    let goal_count: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM goals WHERE account_id=?1",
+            [&id],
+            |row| row.get(0),
+        )
+        .map_err(e)?;
+    if goal_count > 0 {
+        return Err("Nao e possivel excluir uma conta com metas vinculadas.".into());
+    }
+    conn.execute("DELETE FROM accounts WHERE id=?1", [id])
+        .map_err(e)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn add_category(state: State<DbState>, category: Category) -> CmdResult<()> {
+    let conn = state.0.lock().map_err(e)?;
+    conn.execute(
+        "INSERT INTO categories (id, name, color, icon, kind)
+         VALUES (?1,?2,?3,?4,?5)",
+        rusqlite::params![
+            category.id,
+            category.name,
+            category.color,
+            category.icon,
+            category.kind
+        ],
+    )
+    .map_err(e)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn update_category(state: State<DbState>, category: Category) -> CmdResult<()> {
+    let conn = state.0.lock().map_err(e)?;
+    conn.execute(
+        "UPDATE categories SET name=?2, color=?3, icon=?4, kind=?5 WHERE id=?1",
+        rusqlite::params![
+            category.id,
+            category.name,
+            category.color,
+            category.icon,
+            category.kind
+        ],
+    )
+    .map_err(e)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn delete_category(state: State<DbState>, id: String) -> CmdResult<()> {
+    let conn = state.0.lock().map_err(e)?;
+    let count: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM transactions WHERE category_id=?1",
+            [&id],
+            |row| row.get(0),
+        )
+        .map_err(e)?;
+    if count > 0 {
+        return Err("Nao e possivel excluir uma categoria com transacoes vinculadas.".into());
+    }
+    conn.execute("DELETE FROM categories WHERE id=?1", [id])
+        .map_err(e)?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -128,10 +251,94 @@ pub fn delete_transaction(state: State<DbState>, id: String) -> CmdResult<()> {
 }
 
 #[tauri::command]
+pub fn get_goals(state: State<DbState>) -> CmdResult<Vec<Goal>> {
+    let conn = state.0.lock().map_err(e)?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, name, description, target_amount, current_amount, deadline,
+                    account_id, status, monthly_contribution
+             FROM goals",
+        )
+        .map_err(e)?;
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(Goal {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                description: row.get(2)?,
+                target_amount: row.get(3)?,
+                current_amount: row.get(4)?,
+                deadline: row.get(5)?,
+                account_id: row.get(6)?,
+                status: row.get(7)?,
+                monthly_contribution: row.get(8)?,
+            })
+        })
+        .map_err(e)?;
+    let goals: Vec<Goal> = rows.collect::<Result<Vec<_>, _>>().map_err(e)?;
+    Ok(goals)
+}
+
+#[tauri::command]
+pub fn add_goal(state: State<DbState>, goal: Goal) -> CmdResult<()> {
+    let conn = state.0.lock().map_err(e)?;
+    conn.execute(
+        "INSERT INTO goals
+           (id, name, description, target_amount, current_amount, deadline, account_id, status, monthly_contribution)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)",
+        rusqlite::params![
+            goal.id,
+            goal.name,
+            goal.description,
+            goal.target_amount,
+            goal.current_amount,
+            goal.deadline,
+            goal.account_id,
+            goal.status,
+            goal.monthly_contribution
+        ],
+    )
+    .map_err(e)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn update_goal(state: State<DbState>, goal: Goal) -> CmdResult<()> {
+    let conn = state.0.lock().map_err(e)?;
+    conn.execute(
+        "UPDATE goals SET
+           name=?2, description=?3, target_amount=?4, current_amount=?5,
+           deadline=?6, account_id=?7, status=?8, monthly_contribution=?9
+         WHERE id=?1",
+        rusqlite::params![
+            goal.id,
+            goal.name,
+            goal.description,
+            goal.target_amount,
+            goal.current_amount,
+            goal.deadline,
+            goal.account_id,
+            goal.status,
+            goal.monthly_contribution
+        ],
+    )
+    .map_err(e)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn delete_goal(state: State<DbState>, id: String) -> CmdResult<()> {
+    let conn = state.0.lock().map_err(e)?;
+    conn.execute("DELETE FROM goals WHERE id=?1", [id])
+        .map_err(e)?;
+    Ok(())
+}
+
+#[tauri::command]
 pub fn reset_database(state: State<DbState>) -> CmdResult<()> {
     let conn = state.0.lock().map_err(e)?;
     conn.execute_batch(
-        "DELETE FROM transactions; DELETE FROM accounts; DELETE FROM categories;",
+        "DELETE FROM goals; DELETE FROM transactions; DELETE FROM accounts; DELETE FROM categories;",
     )
     .map_err(e)?;
     Ok(())

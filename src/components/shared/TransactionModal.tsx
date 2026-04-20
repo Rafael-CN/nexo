@@ -61,11 +61,13 @@ export function TransactionModal({ open, onOpenChange, transaction }: Props) {
   const isEdit = !!transaction;
   const [form, setForm] = useState<FormState>(() => buildForm(transaction));
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
       setForm(buildForm(transaction));
       setError(null);
+      setSaving(false);
     }
   }, [open, transaction]);
 
@@ -86,7 +88,7 @@ export function TransactionModal({ open, onOpenChange, transaction }: Props) {
     }));
   }
 
-  function handleSave() {
+  async function handleSave() {
     setError(null);
     if (!form.title.trim()) return setError("Informe o título.");
     const amount = parseFloat(form.amount.replace(",", "."));
@@ -105,18 +107,32 @@ export function TransactionModal({ open, onOpenChange, transaction }: Props) {
       isProjected: form.isProjected,
     };
 
-    if (isEdit && transaction) {
-      updateTransaction(transaction.id, payload);
-    } else {
-      addTransaction({ id: crypto.randomUUID(), ...payload });
+    try {
+      setSaving(true);
+      if (isEdit && transaction) {
+        await updateTransaction(transaction.id, payload);
+      } else {
+        await addTransaction({ id: crypto.randomUUID(), ...payload });
+      }
+      onOpenChange(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
     }
-    onOpenChange(false);
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!transaction) return;
-    removeTransaction(transaction.id);
-    onOpenChange(false);
+    try {
+      setSaving(true);
+      await removeTransaction(transaction.id);
+      onOpenChange(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -260,6 +276,7 @@ export function TransactionModal({ open, onOpenChange, transaction }: Props) {
               size="sm"
               className="mr-auto gap-1.5 rounded-sm text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
               onClick={handleDelete}
+              disabled={saving}
             >
               <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
               Excluir
@@ -270,10 +287,16 @@ export function TransactionModal({ open, onOpenChange, transaction }: Props) {
             size="sm"
             className="rounded-sm text-xs"
             onClick={() => onOpenChange(false)}
+            disabled={saving}
           >
             Cancelar
           </Button>
-          <Button size="sm" className="rounded-sm text-xs" onClick={handleSave}>
+          <Button
+            size="sm"
+            className="rounded-sm text-xs"
+            onClick={handleSave}
+            disabled={saving}
+          >
             Salvar
           </Button>
         </DialogFooter>

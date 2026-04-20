@@ -1,12 +1,5 @@
 import { create } from "zustand";
 import type { Account, Category, Goal, RecurrenceRule, Transaction } from "@/types";
-import {
-  mockAccounts,
-  mockCategories,
-  mockGoals,
-  mockRecurrenceRules,
-  mockTransactions,
-} from "@/mocks/financeData";
 import { db, isTauri } from "@/lib/db";
 
 interface FinanceState {
@@ -18,73 +11,133 @@ interface FinanceState {
   isLoaded: boolean;
 
   initialize: () => Promise<void>;
+  addAccount: (account: Account) => Promise<void>;
+  removeAccount: (id: string) => Promise<void>;
+  updateAccount: (id: string, patch: Partial<Account>) => Promise<void>;
+  addCategory: (category: Category) => Promise<void>;
+  removeCategory: (id: string) => Promise<void>;
+  updateCategory: (id: string, patch: Partial<Category>) => Promise<void>;
   addTransaction: (txn: Transaction) => Promise<void>;
   removeTransaction: (id: string) => Promise<void>;
   updateTransaction: (id: string, patch: Partial<Transaction>) => Promise<void>;
 
-  addGoal: (goal: Goal) => void;
-  removeGoal: (id: string) => void;
-  updateGoal: (id: string, patch: Partial<Goal>) => void;
+  addGoal: (goal: Goal) => Promise<void>;
+  removeGoal: (id: string) => Promise<void>;
+  updateGoal: (id: string, patch: Partial<Goal>) => Promise<void>;
 }
 
 export const useFinanceStore = create<FinanceState>((set, get) => ({
   accounts: [],
   categories: [],
   transactions: [],
-  goals: mockGoals,
-  recurrenceRules: mockRecurrenceRules,
+  goals: [],
+  recurrenceRules: [],
   isLoaded: false,
 
   initialize: async () => {
     if (isTauri) {
-      const [accounts, categories, transactions] = await Promise.all([
+      const [accounts, categories, transactions, goals] = await Promise.all([
         db.getAccounts(),
         db.getCategories(),
         db.getTransactions(),
+        db.getGoals(),
       ]);
-      set({ accounts, categories, transactions, isLoaded: true });
+      set({ accounts, categories, transactions, goals, isLoaded: true });
     } else {
       set({
-        accounts: mockAccounts,
-        categories: mockCategories,
-        transactions: mockTransactions,
+        accounts: [],
+        categories: [],
+        transactions: [],
+        goals: [],
+        recurrenceRules: [],
         isLoaded: true,
       });
     }
   },
 
+  addAccount: async (account) => {
+    if (isTauri) await db.addAccount(account);
+    set((state) => ({ accounts: [...state.accounts, account] }));
+  },
+
+  removeAccount: async (id) => {
+    if (isTauri) await db.deleteAccount(id);
+    set((state) => ({ accounts: state.accounts.filter((a) => a.id !== id) }));
+  },
+
+  updateAccount: async (id, patch) => {
+    const existing = get().accounts.find((a) => a.id === id);
+    if (!existing) return;
+    const merged = { ...existing, ...patch };
+    if (isTauri) await db.updateAccount(merged);
+    set((state) => ({
+      accounts: state.accounts.map((a) => (a.id === id ? merged : a)),
+    }));
+  },
+
+  addCategory: async (category) => {
+    if (isTauri) await db.addCategory(category);
+    set((state) => ({ categories: [...state.categories, category] }));
+  },
+
+  removeCategory: async (id) => {
+    if (isTauri) await db.deleteCategory(id);
+    set((state) => ({
+      categories: state.categories.filter((c) => c.id !== id),
+    }));
+  },
+
+  updateCategory: async (id, patch) => {
+    const existing = get().categories.find((c) => c.id === id);
+    if (!existing) return;
+    const merged = { ...existing, ...patch };
+    if (isTauri) await db.updateCategory(merged);
+    set((state) => ({
+      categories: state.categories.map((c) => (c.id === id ? merged : c)),
+    }));
+  },
+
   addTransaction: async (txn) => {
-    set((state) => ({ transactions: [...state.transactions, txn] }));
     if (isTauri) await db.addTransaction(txn);
+    set((state) => ({ transactions: [...state.transactions, txn] }));
   },
 
   removeTransaction: async (id) => {
+    if (isTauri) await db.deleteTransaction(id);
     set((state) => ({
       transactions: state.transactions.filter((t) => t.id !== id),
     }));
-    if (isTauri) await db.deleteTransaction(id);
   },
 
   updateTransaction: async (id, patch) => {
     const existing = get().transactions.find((t) => t.id === id);
     if (!existing) return;
     const merged = { ...existing, ...patch };
+    if (isTauri) await db.updateTransaction(merged);
     set((state) => ({
       transactions: state.transactions.map((t) => (t.id === id ? merged : t)),
     }));
-    if (isTauri) await db.updateTransaction(merged);
   },
 
-  addGoal: (goal) =>
-    set((state) => ({ goals: [...state.goals, goal] })),
+  addGoal: async (goal) => {
+    if (isTauri) await db.addGoal(goal);
+    set((state) => ({ goals: [...state.goals, goal] }));
+  },
 
-  removeGoal: (id) =>
-    set((state) => ({ goals: state.goals.filter((g) => g.id !== id) })),
+  removeGoal: async (id) => {
+    if (isTauri) await db.deleteGoal(id);
+    set((state) => ({ goals: state.goals.filter((g) => g.id !== id) }));
+  },
 
-  updateGoal: (id, patch) =>
+  updateGoal: async (id, patch) => {
+    const existing = get().goals.find((g) => g.id === id);
+    if (!existing) return;
+    const merged = { ...existing, ...patch };
+    if (isTauri) await db.updateGoal(merged);
     set((state) => ({
-      goals: state.goals.map((g) => (g.id === id ? { ...g, ...patch } : g)),
-    })),
+      goals: state.goals.map((g) => (g.id === id ? merged : g)),
+    }));
+  },
 }));
 
 // ---------- Seletores nomeados ----------

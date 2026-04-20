@@ -13,7 +13,11 @@ const titles: Record<string, string> = {
   "/configuracoes": "Configurações",
 };
 
-export function Header() {
+interface HeaderProps {
+  onNewTransaction: () => void;
+}
+
+export function Header({ onNewTransaction }: HeaderProps) {
   const { pathname } = useLocation();
   const title = titles[pathname] ?? "Visão Geral";
   const today = format(new Date(), "dd MMM yyyy", { locale: ptBR });
@@ -45,7 +49,11 @@ export function Header() {
           </span>
         </div>
 
-        <Button size="sm" className="gap-1.5 rounded-sm text-xs">
+        <Button
+          size="sm"
+          className="gap-1.5 rounded-sm text-xs"
+          onClick={onNewTransaction}
+        >
           <Plus className="h-3.5 w-3.5" strokeWidth={2} />
           Nova transação
         </Button>

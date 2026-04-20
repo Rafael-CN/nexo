@@ -41,6 +41,17 @@ fn create_tables(conn: &Connection) -> Result<()> {
             is_projected  INTEGER NOT NULL DEFAULT 0,
             notes         TEXT,
             recurrence_id TEXT
+        );
+        CREATE TABLE IF NOT EXISTS goals (
+            id                   TEXT PRIMARY KEY,
+            name                 TEXT NOT NULL,
+            description          TEXT,
+            target_amount        REAL NOT NULL,
+            current_amount       REAL NOT NULL,
+            deadline             TEXT,
+            account_id           TEXT,
+            status               TEXT NOT NULL,
+            monthly_contribution REAL
         );",
     )
 }
