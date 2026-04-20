@@ -4,6 +4,7 @@ const ACCOUNT_TYPES: &[&str] = &["checking", "savings", "credit", "cash", "inves
 const CATEGORY_KINDS: &[&str] = &["income", "expense"];
 const TRANSACTION_TYPES: &[&str] = &["income", "expense", "transfer"];
 const GOAL_STATUSES: &[&str] = &["active", "paused", "completed"];
+const RECURRENCE_FREQUENCIES: &[&str] = &["daily", "weekly", "monthly", "yearly"];
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Account {
@@ -62,6 +63,14 @@ pub struct Transaction {
     pub notes: Option<String>,
     #[serde(rename = "recurrenceId")]
     pub recurrence_id: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RecurrenceRule {
+    pub id: String,
+    pub frequency: String,
+    pub interval: i64,
+    pub until: Option<String>,
 }
 
 impl Account {
@@ -136,6 +145,27 @@ impl Goal {
 
         if let Some(monthly_contribution) = self.monthly_contribution {
             validate_non_negative("Contribuicao mensal da meta", monthly_contribution)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl RecurrenceRule {
+    pub fn validate(&self) -> Result<(), String> {
+        validate_required("ID da recorrencia", &self.id)?;
+        validate_enum(
+            "Frequencia da recorrencia",
+            &self.frequency,
+            RECURRENCE_FREQUENCIES,
+        )?;
+
+        if self.interval <= 0 {
+            return Err("Intervalo da recorrencia deve ser maior que zero.".into());
+        }
+
+        if let Some(until) = &self.until {
+            validate_date("Data final da recorrencia", until)?;
         }
 
         Ok(())
