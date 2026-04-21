@@ -1,5 +1,5 @@
 use crate::db::DbState;
-use crate::models::{Account, Category, Goal, Transaction};
+use crate::models::{Account, Category, Goal, RecurrenceRule, Transaction};
 use rusqlite::Connection;
 use tauri::State;
 
@@ -15,6 +15,10 @@ fn account_exists(conn: &Connection, id: &str) -> CmdResult<bool> {
 
 fn category_exists(conn: &Connection, id: &str) -> CmdResult<bool> {
     entity_exists(conn, "categories", id)
+}
+
+fn recurrence_rule_exists(conn: &Connection, id: &str) -> CmdResult<bool> {
+    entity_exists(conn, "recurrence_rules", id)
 }
 
 fn entity_exists(conn: &Connection, table: &str, id: &str) -> CmdResult<bool> {
@@ -198,6 +202,70 @@ pub fn delete_category(state: State<DbState>, id: String) -> CmdResult<()> {
 }
 
 #[tauri::command]
+pub fn get_recurrence_rules(state: State<DbState>) -> CmdResult<Vec<RecurrenceRule>> {
+    let conn = state.0.lock().map_err(e)?;
+    let mut stmt = conn
+        .prepare("SELECT id, frequency, interval, until FROM recurrence_rules")
+        .map_err(e)?;
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(RecurrenceRule {
+                id: row.get(0)?,
+                frequency: row.get(1)?,
+                interval: row.get(2)?,
+                until: row.get(3)?,
+            })
+        })
+        .map_err(e)?;
+    let rules: Vec<RecurrenceRule> = rows.collect::<Result<Vec<_>, _>>().map_err(e)?;
+    Ok(rules)
+}
+
+#[tauri::command]
+pub fn add_recurrence_rule(state: State<DbState>, rule: RecurrenceRule) -> CmdResult<()> {
+    rule.validate()?;
+    let conn = state.0.lock().map_err(e)?;
+    conn.execute(
+        "INSERT INTO recurrence_rules (id, frequency, interval, until)
+         VALUES (?1,?2,?3,?4)",
+        rusqlite::params![rule.id, rule.frequency, rule.interval, rule.until],
+    )
+    .map_err(e)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn update_recurrence_rule(state: State<DbState>, rule: RecurrenceRule) -> CmdResult<()> {
+    rule.validate()?;
+    let conn = state.0.lock().map_err(e)?;
+    conn.execute(
+        "UPDATE recurrence_rules SET frequency=?2, interval=?3, until=?4 WHERE id=?1",
+        rusqlite::params![rule.id, rule.frequency, rule.interval, rule.until],
+    )
+    .map_err(e)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn delete_recurrence_rule(state: State<DbState>, id: String) -> CmdResult<()> {
+    let conn = state.0.lock().map_err(e)?;
+    let count: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM transactions WHERE recurrence_id=?1",
+            [&id],
+            |row| row.get(0),
+        )
+        .map_err(e)?;
+    if count > 0 {
+        return Err("Nao e possivel excluir uma recorrencia com transacoes vinculadas.".into());
+    }
+
+    conn.execute("DELETE FROM recurrence_rules WHERE id=?1", [id])
+        .map_err(e)?;
+    Ok(())
+}
+
+#[tauri::command]
 pub fn get_transactions(state: State<DbState>) -> CmdResult<Vec<Transaction>> {
     let conn = state.0.lock().map_err(e)?;
     let mut stmt = conn
@@ -374,7 +442,7 @@ pub fn delete_goal(state: State<DbState>, id: String) -> CmdResult<()> {
 pub fn reset_database(state: State<DbState>) -> CmdResult<()> {
     let conn = state.0.lock().map_err(e)?;
     conn.execute_batch(
-        "DELETE FROM goals; DELETE FROM transactions; DELETE FROM accounts; DELETE FROM categories;",
+        "DELETE FROM goals; DELETE FROM transactions; DELETE FROM recurrence_rules; DELETE FROM accounts; DELETE FROM categories;",
     )
     .map_err(e)?;
     Ok(())
@@ -387,6 +455,12 @@ fn validate_transaction_refs(conn: &Connection, txn: &Transaction) -> CmdResult<
 
     if !category_exists(conn, &txn.category_id)? {
         return Err("Categoria da transacao nao foi encontrada.".into());
+    }
+
+    if let Some(recurrence_id) = &txn.recurrence_id {
+        if !recurrence_rule_exists(conn, recurrence_id)? {
+            return Err("Recorrencia da transacao nao foi encontrada.".into());
+        }
     }
 
     Ok(())

@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 pub struct DbState(pub std::sync::Mutex<Connection>);
 
-const LATEST_SCHEMA_VERSION: i64 = 1;
+const LATEST_SCHEMA_VERSION: i64 = 2;
 
 pub fn open(app_data_dir: PathBuf) -> Result<Connection> {
     let db_path = app_data_dir.join("financeiro.db");
@@ -21,6 +21,10 @@ fn migrate_schema(conn: &mut Connection) -> Result<()> {
             0 => {
                 migrate_to_v1(conn)?;
                 current_version = 1;
+            }
+            1 => {
+                migrate_to_v2(conn)?;
+                current_version = 2;
             }
             _ => unreachable!("schema version is lower than latest but has no migration"),
         }
@@ -94,5 +98,24 @@ fn migrate_to_v1(conn: &mut Connection) -> Result<()> {
     )?;
 
     set_schema_version(&tx, 1)?;
+    tx.commit()
+}
+
+fn migrate_to_v2(conn: &mut Connection) -> Result<()> {
+    let tx = conn.transaction()?;
+
+    tx.execute_batch(
+        "CREATE TABLE IF NOT EXISTS recurrence_rules (
+            id        TEXT PRIMARY KEY,
+            frequency TEXT NOT NULL,
+            interval  INTEGER NOT NULL,
+            until     TEXT
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_transactions_recurrence_id
+            ON transactions(recurrence_id);",
+    )?;
+
+    set_schema_version(&tx, 2)?;
     tx.commit()
 }
