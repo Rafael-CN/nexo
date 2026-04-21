@@ -39,20 +39,20 @@ export function DesktopTitleBar() {
           label="Minimizar"
           onClick={() => void getCurrentWindow().minimize()}
         >
-          <Minus className="h-3.5 w-3.5" strokeWidth={1.5} />
+          <Minus className="h-3.5 w-3.5" strokeWidth={1.7} />
         </WindowButton>
         <WindowButton
           label="Maximizar"
           onClick={() => void getCurrentWindow().toggleMaximize()}
         >
-          <Square className="h-3 w-3" strokeWidth={1.5} />
+          <Square className="h-3.5 w-3.5" strokeWidth={1.7} />
         </WindowButton>
         <WindowButton
           label="Fechar"
           onClick={() => void getCurrentWindow().close()}
           danger
         >
-          <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+          <X className="h-3.5 w-3.5" strokeWidth={1.7} />
         </WindowButton>
       </div>
     </div>
@@ -84,7 +84,9 @@ function WindowButton({
       type="button"
       variant="ghost"
     >
-      {children}
+      <span className="grid h-4 w-4 place-items-center [&_svg]:h-3.5 [&_svg]:w-3.5">
+        {children}
+      </span>
     </Button>
   );
 }
