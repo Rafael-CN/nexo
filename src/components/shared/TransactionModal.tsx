@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { format, isValid, parseISO } from "date-fns";
 import { Copy, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -13,21 +14,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DatePicker } from "@/components/shared/DatePicker";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { CurrencyInput } from "@/components/shared/CurrencyInput";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useFinanceStore } from "@/store/useFinanceStore";
 import { cn } from "@/lib/utils";
 import type {
-  RecurrenceFrequency,
   RecurrenceRule,
   Transaction,
   TransactionType,
 } from "@/types";
+import {
+  buildTransactionForm,
+  getDefaultTransactionAccountId,
+  parseCurrencyInputValue,
+  type TransactionModalFormState,
+} from "@/components/shared/transactionModalUtils";
+import { CategoryPicker } from "@/components/shared/CategoryPicker";
 
 interface Props {
   open: boolean;
@@ -36,21 +38,8 @@ interface Props {
   initialDate?: string;
 }
 
-interface FormState {
-  type: TransactionType;
-  title: string;
-  amount: string;
-  date: string;
-  accountId: string;
-  categoryId: string;
-  recurrenceFrequency: RecurrenceFrequency | "none";
-  recurrenceInterval: string;
-  recurrenceNoEnd: boolean;
-  recurrenceUntil: string;
-}
-
 const recurrenceOptions: {
-  value: FormState["recurrenceFrequency"];
+  value: TransactionModalFormState["recurrenceFrequency"];
   label: string;
 }[] = [
   { value: "none", label: "Sem repetição" },
@@ -59,25 +48,6 @@ const recurrenceOptions: {
   { value: "monthly", label: "Mensal" },
   { value: "yearly", label: "Anual" },
 ];
-
-function buildForm(
-  transaction?: Transaction | null,
-  rule?: RecurrenceRule | null,
-  initialDate?: string,
-): FormState {
-  return {
-    type: transaction?.type === "income" ? "income" : "expense",
-    title: transaction?.title ?? "",
-    amount: transaction ? String(transaction.amount) : "",
-    date: transaction?.date ?? initialDate ?? format(new Date(), "yyyy-MM-dd"),
-    accountId: transaction?.accountId ?? "",
-    categoryId: transaction?.categoryId ?? "",
-    recurrenceFrequency: rule?.frequency ?? "none",
-    recurrenceInterval: rule ? String(rule.interval) : "1",
-    recurrenceNoEnd: !rule?.until,
-    recurrenceUntil: rule?.until ?? "",
-  };
-}
 
 export function TransactionModal({
   open,
@@ -97,48 +67,66 @@ export function TransactionModal({
   const removeRecurrenceRule = useFinanceStore((s) => s.removeRecurrenceRule);
 
   const isEdit = !!transaction;
-  const currentRule =
-    transaction?.recurrenceId
-      ? recurrenceRules.find((rule) => rule.id === transaction.recurrenceId)
-      : null;
-  const [form, setForm] = useState<FormState>(() =>
-    buildForm(transaction, currentRule, initialDate),
+  const currentRule = useMemo(
+    () =>
+      transaction?.recurrenceId
+        ? recurrenceRules.find((rule) => rule.id === transaction.recurrenceId)
+        : null,
+    [recurrenceRules, transaction?.recurrenceId],
+  );
+  const defaultAccountId = useMemo(
+    () => getDefaultTransactionAccountId(accounts, transactions),
+    [accounts, transactions],
+  );
+  const [form, setForm] = useState<TransactionModalFormState>(() =>
+    buildTransactionForm(
+      transaction,
+      currentRule,
+      initialDate,
+      defaultAccountId,
+    ),
   );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (open) {
-      const rule =
-        transaction?.recurrenceId
-          ? recurrenceRules.find((r) => r.id === transaction.recurrenceId)
-          : null;
-      setForm(buildForm(transaction, rule, initialDate));
-      setError(null);
-      setSaving(false);
-    }
-  }, [open, transaction, recurrenceRules, initialDate]);
+    if (!open) return;
 
-  const filteredCategories = categories.filter((category) =>
-    form.type === "income"
-      ? category.kind === "income"
-      : category.kind === "expense",
-  );
-
-  function handleTypeChange(type: TransactionType) {
-    const catValid = categories.find(
-      (category) =>
-        category.id === form.categoryId &&
-        category.kind === (type === "income" ? "income" : "expense"),
+    setForm(
+      buildTransactionForm(
+        transaction,
+        currentRule,
+        initialDate,
+        defaultAccountId,
+      ),
     );
-    setForm((current) => ({
-      ...current,
-      type,
-      categoryId: catValid ? current.categoryId : "",
-    }));
+    setError(null);
+    setSaving(false);
+  }, [open, transaction, currentRule, initialDate, defaultAccountId]);
+
+  function updateField<K extends keyof TransactionModalFormState>(
+    key: K,
+    value: TransactionModalFormState[K],
+  ) {
+    setForm((current) => ({ ...current, [key]: value }));
   }
 
-  async function handleSave() {
+  function resetForNewEntry() {
+    setForm(
+      buildTransactionForm(null, null, form.date, form.accountId, form.type),
+    );
+    setError(null);
+  }
+
+  const accentClasses =
+    form.type === "income"
+      ? "border-success/20 bg-success/5 ring-success/10"
+      : "border-destructive/20 bg-destructive/5 ring-destructive/10";
+
+  const amountClasses =
+    form.type === "income" ? "text-success" : "text-destructive";
+
+  async function saveTransaction(keepOpenForNew = false) {
     setError(null);
     const amount = validateBaseForm();
     if (amount === null) return;
@@ -164,7 +152,9 @@ export function TransactionModal({
       !form.recurrenceNoEnd &&
       form.recurrenceUntil < form.date
     ) {
-      return setError("A data final da recorrência deve ser igual ou posterior à data da transação.");
+      return setError(
+        "A data final da recorrência deve ser igual ou posterior à data da transação.",
+      );
     }
 
     const todayIso = format(new Date(), "yyyy-MM-dd");
@@ -219,6 +209,11 @@ export function TransactionModal({
 
       if (recurrenceToRemove && shouldRemoveUnusedRule) {
         await removeRecurrenceRule(recurrenceToRemove);
+      }
+
+      if (keepOpenForNew && !isEdit) {
+        resetForNewEntry();
+        return;
       }
 
       onOpenChange(false);
@@ -284,23 +279,28 @@ export function TransactionModal({
       setError("Informe o título.");
       return null;
     }
-    const amount = parseFloat(form.amount.replace(",", "."));
+
+    const amount = parseCurrencyInputValue(form.amount);
     if (!amount || amount <= 0) {
       setError("Valor inválido.");
       return null;
     }
+
     if (!form.accountId) {
       setError("Selecione uma conta.");
       return null;
     }
+
     if (!form.categoryId) {
       setError("Selecione uma categoria.");
       return null;
     }
+
     if (!form.date || !isValid(parseISO(form.date))) {
       setError("Informe uma data válida.");
       return null;
     }
+
     return amount;
   }
 
@@ -310,88 +310,126 @@ export function TransactionModal({
     ).length;
   }
 
+  const selectedAccount = accounts.find((account) => account.id === form.accountId);
+  const selectedCategory = categories.find((category) => category.id === form.categoryId);
+
+  function handleTypeChange(type: TransactionType) {
+    const categoryStillValid = categories.some(
+      (category) =>
+        category.id === form.categoryId &&
+        category.kind === (type === "income" ? "income" : "expense"),
+    );
+
+    setForm((current) => ({
+      ...current,
+      type,
+      categoryId: categoryStillValid ? current.categoryId : "",
+    }));
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl">
         <DialogHeader className="border-b border-border">
-          <DialogTitle>
+          <DialogTitle className="text-sm font-medium tracking-tight">
             {isEdit ? "Editar transação" : "Nova transação"}
           </DialogTitle>
+          <DialogDescription>
+            {isEdit
+              ? "Ajuste valor, conta, categoria e recorrência."
+              : "Registro rápido com foco no valor e nos atalhos de entrada."}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5 px-6 py-5">
-          <div className="grid grid-cols-2 border border-border">
-            <TypeButton
-              label="Despesa"
-              active={form.type === "expense"}
-              onClick={() => handleTypeChange("expense")}
-              className="border-r border-border"
-            />
-            <TypeButton
-              label="Receita"
-              active={form.type === "income"}
-              onClick={() => handleTypeChange("income")}
-            />
-          </div>
+          <div className={cn("space-y-4 border p-4", accentClasses)}>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="inline-flex border border-border bg-background">
+                <TypeButton
+                  label="Despesa"
+                  active={form.type === "expense"}
+                  onClick={() => handleTypeChange("expense")}
+                  className="border-r border-border"
+                />
+                <TypeButton
+                  label="Receita"
+                  active={form.type === "income"}
+                  onClick={() => handleTypeChange("income")}
+                />
+              </div>
+              <div className="text-right">
+                <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+                  Conta
+                </p>
+                <p className="mt-1 truncate text-xs text-foreground">
+                  {selectedAccount?.name ?? "Selecionar"}
+                </p>
+              </div>
+            </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="txn-title">Título</Label>
-            <Input
-              id="txn-title"
-              placeholder="Ex: Aluguel, Salário..."
-              value={form.title}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  title: event.target.value,
-                }))
-              }
-              autoFocus
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="txn-amount">Valor (R$)</Label>
-              <Input
+              <Label htmlFor="txn-amount" className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+                Valor
+              </Label>
+              <CurrencyInput
                 id="txn-amount"
-                type="number"
-                min="0.01"
-                step="0.01"
-                placeholder="0,00"
-                className="font-mono tabular-nums"
+                placeholder="R$ 0,00"
+                className={cn(
+                  "h-16 border-0 bg-transparent px-0 font-mono text-4xl font-semibold tabular-nums tracking-tight shadow-none focus-visible:ring-0",
+                  amountClasses,
+                )}
                 value={form.amount}
+                onChange={(value) => updateField("amount", value)}
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-[1.4fr_0.9fr]">
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="txn-title"
+                className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground"
+              >
+                Título
+              </Label>
+              <Input
+                id="txn-title"
+                placeholder="Ex: Aluguel, salário..."
+                value={form.title}
                 onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    amount: event.target.value,
-                  }))
+                  updateField("title", event.target.value)
                 }
+                className="text-sm"
+                autoFocus
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="txn-date">Data</Label>
+              <Label
+                htmlFor="txn-date"
+                className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground"
+              >
+                Data
+              </Label>
               <DatePicker
                 id="txn-date"
                 className="font-mono"
                 value={form.date}
                 onChange={(value) =>
-                  setForm((current) => ({
-                    ...current,
-                    date: value,
-                  }))
+                  updateField("date", value)
                 }
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 md:grid-cols-[0.95fr_1.05fr]">
             <div className="space-y-1.5">
-              <Label>Conta</Label>
+              <Label className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+                Conta
+              </Label>
               <Select
                 value={form.accountId}
                 onValueChange={(value) =>
-                  setForm((current) => ({ ...current, accountId: value }))
+                  updateField("accountId", value)
                 }
               >
                 <SelectTrigger>
@@ -406,39 +444,42 @@ export function TransactionModal({
                 </SelectContent>
               </Select>
             </div>
+
             <div className="space-y-1.5">
-              <Label>Categoria</Label>
-              <Select
+              <Label className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+                Categoria
+              </Label>
+              <CategoryPicker
+                categories={categories}
+                type={form.type}
                 value={form.categoryId}
-                onValueChange={(value) =>
-                  setForm((current) => ({ ...current, categoryId: value }))
+                onChange={(value) =>
+                  updateField("categoryId", value)
                 }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecionar" />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredCategories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                disabled={saving}
+              />
+              {selectedCategory && (
+                <p className="font-mono text-[10px] text-muted-foreground">
+                  {selectedCategory.name}
+                </p>
+              )}
             </div>
           </div>
 
           <div className="grid grid-cols-[1fr_96px] gap-3">
             <div className="space-y-1.5">
-              <Label>Recorrência</Label>
+              <Label
+                className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground"
+              >
+                Recorrência
+              </Label>
               <Select
                 value={form.recurrenceFrequency}
                 onValueChange={(value) =>
-                  setForm((current) => ({
-                    ...current,
-                    recurrenceFrequency:
-                      value as FormState["recurrenceFrequency"],
-                  }))
+                  updateField(
+                    "recurrenceFrequency",
+                    value as TransactionModalFormState["recurrenceFrequency"],
+                  )
                 }
               >
                 <SelectTrigger>
@@ -454,7 +495,12 @@ export function TransactionModal({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="txn-recurrence-interval">Intervalo</Label>
+              <Label
+                htmlFor="txn-recurrence-interval"
+                className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground"
+              >
+                Intervalo
+              </Label>
               <Input
                 id="txn-recurrence-interval"
                 type="number"
@@ -464,10 +510,7 @@ export function TransactionModal({
                 value={form.recurrenceInterval}
                 disabled={form.recurrenceFrequency === "none"}
                 onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    recurrenceInterval: event.target.value,
-                  }))
+                  updateField("recurrenceInterval", event.target.value)
                 }
               />
             </div>
@@ -497,16 +540,18 @@ export function TransactionModal({
 
               {!form.recurrenceNoEnd && (
                 <div className="space-y-1.5">
-                  <Label htmlFor="txn-recurrence-until">Repetir até</Label>
+                  <Label
+                    htmlFor="txn-recurrence-until"
+                    className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground"
+                  >
+                    Repetir até
+                  </Label>
                   <DatePicker
                     id="txn-recurrence-until"
                     className="font-mono"
                     value={form.recurrenceUntil}
                     onChange={(value) =>
-                      setForm((current) => ({
-                        ...current,
-                        recurrenceUntil: value,
-                      }))
+                      updateField("recurrenceUntil", value)
                     }
                   />
                 </div>
@@ -515,11 +560,13 @@ export function TransactionModal({
           )}
 
           {error && (
-            <p className="font-mono text-[11px] text-destructive">{error}</p>
+            <p role="alert" className="font-mono text-[11px] text-destructive">
+              {error}
+            </p>
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex-wrap">
           {isEdit && (
             <div className="mr-auto flex items-center gap-1">
               <Button
@@ -553,10 +600,21 @@ export function TransactionModal({
           >
             Cancelar
           </Button>
+          {!isEdit && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="rounded-sm text-xs"
+              onClick={() => saveTransaction(true)}
+              disabled={saving}
+            >
+              Salvar e novo
+            </Button>
+          )}
           <Button
             size="sm"
             className="rounded-sm text-xs"
-            onClick={handleSave}
+            onClick={() => saveTransaction(false)}
             disabled={saving}
           >
             Salvar
@@ -582,8 +640,9 @@ function TypeButton({
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
       className={cn(
-        "py-2 font-mono text-[11px] uppercase tracking-wider transition-colors",
+        "px-3 py-2 text-[11px] uppercase tracking-[0.14em] transition-colors",
         active
           ? "bg-foreground text-background"
           : "bg-background text-muted-foreground hover:bg-accent hover:text-foreground",
