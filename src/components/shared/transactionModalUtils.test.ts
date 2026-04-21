@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   buildTransactionForm,
   filterTransactionCategories,
+  formatCurrencyInputValue,
   getDefaultTransactionAccountId,
+  parseCurrencyInputValue,
 } from "./transactionModalUtils";
 import type { Account, Category, Transaction } from "@/types";
 
@@ -60,6 +62,21 @@ describe("transactionModalUtils", () => {
     });
   });
 
+  it("formats currency while typing from cents", () => {
+    expect(formatCurrencyInputValue("1")).toContain("0,01");
+    expect(formatCurrencyInputValue("123456")).toContain("1.234,56");
+  });
+
+  it("parses formatted currency back to a number", () => {
+    expect(parseCurrencyInputValue("R$ 1.234,56")).toBe(1234.56);
+  });
+
+  it("formats existing transaction amounts for editing", () => {
+    const form = buildTransactionForm(transaction("t-1", "2025-04-21", "acc-1"));
+
+    expect(form.amount).toContain("10,00");
+  });
+
   it("filters categories by type and query", () => {
     const categories: Category[] = [
       {
@@ -90,4 +107,3 @@ describe("transactionModalUtils", () => {
     ]);
   });
 });
-

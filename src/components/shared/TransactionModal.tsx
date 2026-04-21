@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DatePicker } from "@/components/shared/DatePicker";
+import { CurrencyInput } from "@/components/shared/CurrencyInput";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useFinanceStore } from "@/store/useFinanceStore";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,7 @@ import type {
 import {
   buildTransactionForm,
   getDefaultTransactionAccountId,
+  parseCurrencyInputValue,
   type TransactionModalFormState,
 } from "@/components/shared/transactionModalUtils";
 import { CategoryPicker } from "@/components/shared/CategoryPicker";
@@ -278,7 +280,7 @@ export function TransactionModal({
       return null;
     }
 
-    const amount = parseFloat(form.amount.replace(",", "."));
+    const amount = parseCurrencyInputValue(form.amount);
     if (!amount || amount <= 0) {
       setError("Valor inválido.");
       return null;
@@ -369,21 +371,15 @@ export function TransactionModal({
               <Label htmlFor="txn-amount" className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
                 Valor
               </Label>
-              <Input
+              <CurrencyInput
                 id="txn-amount"
-                type="number"
-                min="0.01"
-                step="0.01"
-                inputMode="decimal"
-                placeholder="0,00"
+                placeholder="R$ 0,00"
                 className={cn(
                   "h-16 border-0 bg-transparent px-0 font-mono text-4xl font-semibold tabular-nums tracking-tight shadow-none focus-visible:ring-0",
                   amountClasses,
                 )}
                 value={form.amount}
-                onChange={(event) =>
-                  updateField("amount", event.target.value)
-                }
+                onChange={(value) => updateField("amount", value)}
               />
             </div>
           </div>

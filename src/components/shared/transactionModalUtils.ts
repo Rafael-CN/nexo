@@ -20,6 +20,31 @@ export interface TransactionModalFormState {
   recurrenceUntil: string;
 }
 
+const brlCurrencyFormatter = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+});
+
+export function formatCurrencyInputValue(value: string) {
+  const digits = value.replace(/\D/g, "");
+  if (!digits) return "";
+
+  return brlCurrencyFormatter.format(Number(digits) / 100);
+}
+
+export function formatTransactionAmount(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return "";
+
+  return brlCurrencyFormatter.format(value);
+}
+
+export function parseCurrencyInputValue(value: string) {
+  const digits = value.replace(/\D/g, "");
+  if (!digits) return Number.NaN;
+
+  return Number(digits) / 100;
+}
+
 export function getDefaultTransactionAccountId(
   accounts: Account[],
   transactions: Transaction[],
@@ -64,7 +89,7 @@ export function buildTransactionForm(
   return {
     type: transaction?.type === "income" ? "income" : defaultType,
     title: transaction?.title ?? "",
-    amount: transaction ? String(transaction.amount) : "",
+    amount: transaction ? formatTransactionAmount(transaction.amount) : "",
     date: transaction?.date ?? initialDate ?? format(new Date(), "yyyy-MM-dd"),
     accountId: transaction?.accountId ?? defaultAccountId,
     categoryId: transaction?.categoryId ?? "",
