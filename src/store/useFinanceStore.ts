@@ -7,6 +7,11 @@ import type {
   RecurrenceRule,
   Transaction,
 } from "@/types";
+import {
+  getCurrentAccountBalance,
+  getCurrentAccountBalances,
+  getTotalCurrentBalance,
+} from "@/lib/balance";
 import { db, isTauri } from "@/lib/db";
 
 export interface FinanceState {
@@ -222,22 +227,15 @@ export function calculateAccountBalance(
   transactions: Transaction[],
   dateIso = getTodayIso(),
 ) {
-  return transactions
-    .filter((t) => t.accountId === account.id && t.date <= dateIso)
-    .reduce((balance, t) => {
-      if (t.type === "income") return balance + t.amount;
-      if (t.type === "expense") return balance - t.amount;
-      return balance;
-    }, account.balance);
+  return getCurrentAccountBalance(
+    account,
+    transactions,
+    new Date(`${dateIso}T12:00:00`),
+  );
 }
 
 export const selectEffectiveAccountBalances = (s: FinanceState) =>
-  new Map(
-    s.accounts.map((account) => [
-      account.id,
-      calculateAccountBalance(account, s.transactions),
-    ]),
-  );
+  getCurrentAccountBalances(s.accounts, s.transactions);
 
 export const selectEffectiveAccountBalance = (
   s: FinanceState,
@@ -249,10 +247,7 @@ export const selectEffectiveAccountBalance = (
 };
 
 export const selectTotalBalance = (s: FinanceState) =>
-  s.accounts.reduce(
-    (acc, account) => acc + calculateAccountBalance(account, s.transactions),
-    0,
-  );
+  getTotalCurrentBalance(s.accounts, s.transactions);
 
 export const selectCreditOutstanding = (s: FinanceState) =>
   s.accounts

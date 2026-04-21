@@ -159,10 +159,10 @@ export function TransactionModal({ open, onOpenChange, transaction }: Props) {
     try {
       setSaving(true);
 
+      let recurrenceToRemove: string | undefined;
+
       if (form.recurrenceFrequency === "none") {
-        if (transaction?.recurrenceId) {
-          await removeRecurrenceRule(transaction.recurrenceId);
-        }
+        recurrenceToRemove = transaction?.recurrenceId;
       } else {
         const recurrenceId = transaction?.recurrenceId ?? crypto.randomUUID();
         const rule: RecurrenceRule = {
@@ -186,6 +186,11 @@ export function TransactionModal({ open, onOpenChange, transaction }: Props) {
       } else {
         await addTransaction({ id: crypto.randomUUID(), ...payload });
       }
+
+      if (recurrenceToRemove) {
+        await removeRecurrenceRule(recurrenceToRemove);
+      }
+
       onOpenChange(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -198,10 +203,10 @@ export function TransactionModal({ open, onOpenChange, transaction }: Props) {
     if (!transaction) return;
     try {
       setSaving(true);
+      await removeTransaction(transaction.id);
       if (transaction.recurrenceId) {
         await removeRecurrenceRule(transaction.recurrenceId);
       }
-      await removeTransaction(transaction.id);
       onOpenChange(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
