@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FinanceIcon } from "@/components/shared/IconPicker";
+import { buildDemoDataset } from "@/lib/demoData";
 import { saveLocalProfile, type LocalProfile } from "@/lib/profile";
 import { cn } from "@/lib/utils";
 import { useFinanceStore } from "@/store/useFinanceStore";
@@ -42,7 +43,15 @@ const defaultRelevantCategoryIds = new Set([
 
 export function Onboarding({ onComplete }: OnboardingProps) {
   const categories = useFinanceStore((s) => s.categories);
+  const accounts = useFinanceStore((s) => s.accounts);
+  const recurrenceRules = useFinanceStore((s) => s.recurrenceRules);
+  const transactions = useFinanceStore((s) => s.transactions);
+  const goals = useFinanceStore((s) => s.goals);
   const addAccount = useFinanceStore((s) => s.addAccount);
+  const addCategory = useFinanceStore((s) => s.addCategory);
+  const addRecurrenceRule = useFinanceStore((s) => s.addRecurrenceRule);
+  const addTransaction = useFinanceStore((s) => s.addTransaction);
+  const addGoal = useFinanceStore((s) => s.addGoal);
   const removeCategory = useFinanceStore((s) => s.removeCategory);
 
   const [name, setName] = useState("");
@@ -132,6 +141,50 @@ export function Onboarding({ onComplete }: OnboardingProps) {
           .filter((category) => !selectedCategoryIds.has(category.id))
           .map((category) => removeCategory(category.id)),
       );
+      saveLocalProfile(profile);
+      onComplete(profile);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDemoStart() {
+    setError(null);
+
+    const profile: LocalProfile = {
+      name: name.trim() || "Visitante",
+      createdAt: new Date().toISOString(),
+    };
+    const demo = buildDemoDataset();
+    const existingAccounts = new Set(accounts.map((item) => item.id));
+    const existingCategories = new Set(categories.map((item) => item.id));
+    const existingRules = new Set(recurrenceRules.map((item) => item.id));
+    const existingTransactions = new Set(transactions.map((item) => item.id));
+    const existingGoals = new Set(goals.map((item) => item.id));
+
+    try {
+      setSaving(true);
+
+      for (const category of demo.categories) {
+        if (!existingCategories.has(category.id)) await addCategory(category);
+      }
+      for (const account of demo.accounts) {
+        if (!existingAccounts.has(account.id)) await addAccount(account);
+      }
+      for (const rule of demo.recurrenceRules) {
+        if (!existingRules.has(rule.id)) await addRecurrenceRule(rule);
+      }
+      for (const transaction of demo.transactions) {
+        if (!existingTransactions.has(transaction.id)) {
+          await addTransaction(transaction);
+        }
+      }
+      for (const goal of demo.goals) {
+        if (!existingGoals.has(goal.id)) await addGoal(goal);
+      }
+
       saveLocalProfile(profile);
       onComplete(profile);
     } catch (err) {
@@ -246,6 +299,26 @@ export function Onboarding({ onComplete }: OnboardingProps) {
               <Landmark className="h-4 w-4" strokeWidth={1.7} />
               Criar meu painel
             </Button>
+
+            <button
+              type="button"
+              onClick={handleDemoStart}
+              disabled={saving}
+              className="flex w-full items-start gap-3 border border-border bg-background p-4 text-left transition-colors hover:bg-accent/30 disabled:pointer-events-none disabled:opacity-60"
+            >
+              <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center border border-border bg-accent/40">
+                <Sparkles className="h-4 w-4 text-muted-foreground" strokeWidth={1.7} />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-medium">
+                  Explorar com dados demo
+                </span>
+                <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                  Cria uma base realista com histórico, recorrências, metas e
+                  lançamentos futuros para testar relatórios e calendário.
+                </span>
+              </span>
+            </button>
           </section>
 
           <section className="space-y-5">

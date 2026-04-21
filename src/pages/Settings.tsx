@@ -1,4 +1,4 @@
-import { Moon, Sun, Upload } from "lucide-react";
+import { Database, Moon, Sun, Upload } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/hooks/useTheme";
@@ -139,8 +139,9 @@ export function SettingsPage() {
               if (isTauri) await invoke("reset_database");
               window.location.reload();
             }}
-            className="border border-red-500 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-red-500 transition-colors hover:bg-red-500/10"
+            className="inline-flex items-center gap-1.5 border border-red-500 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-red-500 transition-colors hover:bg-red-500/10"
           >
+            <Database className="h-3.5 w-3.5" strokeWidth={1.5} />
             Resetar banco de dados
           </button>
         </SettingRow>
