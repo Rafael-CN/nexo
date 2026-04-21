@@ -4,6 +4,7 @@ import { AlertCircle, Loader2, RefreshCw, WalletCards } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 import { CommandPalette } from "./CommandPalette";
+import { DesktopTitleBar } from "./DesktopTitleBar";
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Onboarding } from "@/components/shared/Onboarding";
@@ -30,15 +31,21 @@ export function AppLayout() {
     setCommandPaletteOpen(false);
     setTransactionModalOpen(true);
   };
+  const openSettings = () => navigate("/configuracoes");
 
   useEffect(() => {
     void initialize();
   }, [initialize]);
 
   useDesktopShortcuts({
-    enabled: isLoaded && accounts.length > 0,
+    enabled:
+      isLoaded &&
+      accounts.length > 0 &&
+      !commandPaletteOpen &&
+      !transactionModalOpen,
     onOpenPalette: openCommandPalette,
     onOpenNewTransaction: openNewTransaction,
+    onOpenSettings: openSettings,
     onNavigateToIndex: (index) => {
       const route = appRoutes[index];
       if (route) navigate(route.path);
@@ -48,11 +55,14 @@ export function AppLayout() {
   if (!isLoaded) {
     return (
       <TooltipProvider delayDuration={120}>
-        <StartupState
-          error={initializeError}
-          isRetrying={isInitializing}
-          onRetry={() => void initialize()}
-        />
+        <div className="flex h-full flex-col bg-background">
+          <DesktopTitleBar />
+          <StartupState
+            error={initializeError}
+            isRetrying={isInitializing}
+            onRetry={() => void initialize()}
+          />
+        </div>
       </TooltipProvider>
     );
   }
@@ -60,25 +70,31 @@ export function AppLayout() {
   if (accounts.length === 0) {
     return (
       <TooltipProvider delayDuration={120}>
-        <Onboarding onComplete={setProfile} />
+        <div className="flex h-full flex-col bg-background">
+          <DesktopTitleBar />
+          <Onboarding onComplete={setProfile} />
+        </div>
       </TooltipProvider>
     );
   }
 
   return (
     <TooltipProvider delayDuration={120}>
-      <div className="flex h-full w-full overflow-hidden bg-background">
-        <Sidebar profile={profile} />
-        <div className="flex h-full min-w-0 flex-1 flex-col">
-          <Header
-            onOpenCommandPalette={openCommandPalette}
-            onNewTransaction={openNewTransaction}
-          />
-          <main className="flex-1 overflow-y-auto">
-            <div className="mx-auto w-full max-w-[1400px] px-8 py-8 animate-fade-in">
-              <Outlet />
-            </div>
-          </main>
+      <div className="flex h-full flex-col bg-background">
+        <DesktopTitleBar />
+        <div className="flex min-h-0 w-full flex-1 overflow-hidden bg-background">
+          <Sidebar profile={profile} />
+          <div className="flex h-full min-w-0 flex-1 flex-col">
+            <Header
+              onOpenCommandPalette={openCommandPalette}
+              onNewTransaction={openNewTransaction}
+            />
+            <main className="flex-1 overflow-y-auto">
+              <div className="mx-auto w-full max-w-[1400px] animate-fade-in px-8 py-8">
+                <Outlet />
+              </div>
+            </main>
+          </div>
         </div>
       </div>
       <CommandPalette

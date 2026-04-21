@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { isEditableElement, isGlobalShortcutEvent } from "./keyboardShortcuts";
+import {
+  formatShortcut,
+  isEditableElement,
+  isGlobalShortcutEvent,
+  isShortcutEvent,
+} from "./keyboardShortcuts";
 
 describe("keyboard shortcuts", () => {
   it("detects editable elements", () => {
@@ -19,6 +24,7 @@ describe("keyboard shortcuts", () => {
         ctrlKey: true,
         metaKey: false,
         altKey: false,
+        shiftKey: false,
         repeat: false,
         defaultPrevented: false,
         target: null,
@@ -27,15 +33,38 @@ describe("keyboard shortcuts", () => {
 
     expect(
       isGlobalShortcutEvent({
-        key: "2",
+        key: ",",
         ctrlKey: true,
         metaKey: false,
         altKey: false,
+        shiftKey: false,
         repeat: false,
         defaultPrevented: false,
         target: null,
       } as unknown as KeyboardEvent),
     ).toBe(true);
+
+    expect(
+      isShortcutEvent(
+        {
+          key: "p",
+          ctrlKey: false,
+          metaKey: true,
+          altKey: false,
+          shiftKey: false,
+          repeat: false,
+          defaultPrevented: false,
+          target: null,
+        } as unknown as KeyboardEvent,
+        "mod+p",
+      ),
+    ).toBe(true);
+  });
+
+  it("formats shortcut labels for display", () => {
+    expect(formatShortcut("mod+k")).toBe("Ctrl/Cmd+K");
+    expect(formatShortcut("mod+,")).toBe("Ctrl/Cmd+,");
+    expect(formatShortcut("escape")).toBe("Esc");
   });
 
   it("blocks shortcuts while typing", () => {
@@ -45,6 +74,7 @@ describe("keyboard shortcuts", () => {
         ctrlKey: true,
         metaKey: false,
         altKey: false,
+        shiftKey: false,
         repeat: false,
         defaultPrevented: false,
         target: {

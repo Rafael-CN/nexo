@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, Plus, Search } from "lucide-react";
+import { Check, Plus, RefreshCw, Search, Settings } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -10,9 +11,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { formatShortcut } from "@/lib/keyboardShortcuts";
 import { appRoutes } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
-import type { LucideIcon } from "lucide-react";
+import { useFinanceStore } from "@/store/useFinanceStore";
 
 type CommandPaletteProps = {
   open: boolean;
@@ -51,19 +53,21 @@ export function CommandPalette({
 
   const actions = useMemo<PaletteAction[]>(
     () => [
-      ...appRoutes.map((route) => ({
-        id: route.path,
-        label: route.label,
-        description:
-          route.path === "/"
-            ? "Abrir painel inicial"
-            : `Abrir ${route.title.toLowerCase()}`,
-        icon: route.icon,
-        shortcut: route.shortcut,
-        keywords: route.keywords,
-        group: "Navegação" as const,
-        run: () => navigate(route.path),
-      })),
+      ...appRoutes
+        .filter((route) => route.path !== "/configuracoes")
+        .map((route) => ({
+          id: route.path,
+          label: route.label,
+          description:
+            route.path === "/"
+              ? "Abrir painel inicial"
+              : `Abrir ${route.title.toLowerCase()}`,
+          icon: route.icon,
+          shortcut: route.shortcut,
+          keywords: route.keywords,
+          group: "Navegação" as const,
+          run: () => navigate(route.path),
+        })),
       {
         id: "nova-transacao",
         label: "Nova transação",
@@ -73,6 +77,25 @@ export function CommandPalette({
         keywords: ["novo", "lançamento", "movimentação"],
         group: "Ações" as const,
         run: onNewTransaction,
+      },
+      {
+        id: "configuracoes",
+        label: "Configurações",
+        description: "Abrir preferências do aplicativo",
+        icon: Settings,
+        shortcut: ",",
+        keywords: ["tema", "preferências", "ajustes"],
+        group: "Ações" as const,
+        run: () => navigate("/configuracoes"),
+      },
+      {
+        id: "recarregar-dados",
+        label: "Recarregar dados",
+        description: "Sincronizar novamente o estado local com a base ativa",
+        icon: RefreshCw,
+        keywords: ["atualizar", "recarregar", "sincronizar"],
+        group: "Ações" as const,
+        run: () => void useFinanceStore.getState().initialize(),
       },
     ],
     [navigate, onNewTransaction],
@@ -131,7 +154,7 @@ export function CommandPalette({
       setSelectedIndex((current) =>
         filteredActions.length === 0
           ? 0
-          : Math.min(current + 1, filteredActions.length - 1),
+          : (current + 1) % filteredActions.length,
       );
       return;
     }
@@ -139,8 +162,22 @@ export function CommandPalette({
     if (event.key === "ArrowUp") {
       event.preventDefault();
       setSelectedIndex((current) =>
-        filteredActions.length === 0 ? 0 : Math.max(current - 1, 0),
+        filteredActions.length === 0
+          ? 0
+          : (current - 1 + filteredActions.length) % filteredActions.length,
       );
+      return;
+    }
+
+    if (event.key === "Home") {
+      event.preventDefault();
+      setSelectedIndex(0);
+      return;
+    }
+
+    if (event.key === "End") {
+      event.preventDefault();
+      setSelectedIndex(Math.max(filteredActions.length - 1, 0));
       return;
     }
 
@@ -152,7 +189,15 @@ export function CommandPalette({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="overflow-hidden p-0 sm:max-w-2xl">
+      <DialogContent
+        className="overflow-hidden p-0 sm:max-w-2xl"
+        onEscapeKeyDown={(event) => {
+          if (!query) return;
+          event.preventDefault();
+          setQuery("");
+          setSelectedIndex(0);
+        }}
+      >
         <DialogHeader className="border-b border-border px-4 py-4">
           <DialogTitle className="sr-only">Command palette</DialogTitle>
           <DialogDescription className="sr-only">
@@ -227,7 +272,7 @@ export function CommandPalette({
                               </span>
                               {action.shortcut && (
                                 <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                                  Ctrl/Cmd+{action.shortcut}
+                                  {formatShortcut(`mod+${action.shortcut}`)}
                                 </span>
                               )}
                             </div>

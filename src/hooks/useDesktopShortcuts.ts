@@ -4,6 +4,7 @@ import { isGlobalShortcutEvent } from "@/lib/keyboardShortcuts";
 type DesktopShortcutHandlers = {
   onOpenPalette: () => void;
   onOpenNewTransaction: () => void;
+  onOpenSettings: () => void;
   onNavigateToIndex: (index: number) => void;
   enabled?: boolean;
 };
@@ -11,6 +12,7 @@ type DesktopShortcutHandlers = {
 export function useDesktopShortcuts({
   onOpenPalette,
   onOpenNewTransaction,
+  onOpenSettings,
   onNavigateToIndex,
   enabled = true,
 }: DesktopShortcutHandlers) {
@@ -33,6 +35,12 @@ export function useDesktopShortcuts({
         return;
       }
 
+      if (key === ",") {
+        event.preventDefault();
+        onOpenSettings();
+        return;
+      }
+
       if (/^[1-7]$/.test(key)) {
         event.preventDefault();
         onNavigateToIndex(Number(key) - 1);
@@ -41,5 +49,11 @@ export function useDesktopShortcuts({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [enabled, onNavigateToIndex, onOpenNewTransaction, onOpenPalette]);
+  }, [
+    enabled,
+    onNavigateToIndex,
+    onOpenNewTransaction,
+    onOpenPalette,
+    onOpenSettings,
+  ]);
 }
