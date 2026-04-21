@@ -1,4 +1,5 @@
-const PROFILE_KEY = "financeiro.profile.v1";
+const PROFILE_KEY = "nexo.profile.v1";
+const LEGACY_PROFILE_KEY = "financeiro.profile.v1";
 
 export type LocalProfile = {
   name: string;
@@ -7,7 +8,9 @@ export type LocalProfile = {
 
 export function getLocalProfile(): LocalProfile | null {
   if (typeof window === "undefined") return null;
-  const raw = window.localStorage.getItem(PROFILE_KEY);
+  const raw =
+    window.localStorage.getItem(PROFILE_KEY) ??
+    window.localStorage.getItem(LEGACY_PROFILE_KEY);
   if (!raw) return null;
 
   try {

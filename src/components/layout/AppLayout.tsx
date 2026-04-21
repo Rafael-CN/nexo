@@ -135,7 +135,7 @@ function StartupState({ error, isRetrying, onRetry }: StartupStateProps) {
         </div>
 
         <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-          financeiro /v1
+          Nexo / v1
         </p>
         <h1 className="mt-2 text-xl font-medium tracking-tight">
           {error ? "Não foi possível iniciar" : "Carregando seu painel"}

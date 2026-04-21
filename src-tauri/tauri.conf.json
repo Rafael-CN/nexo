@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Financeiro",
+  "productName": "Nexo",
   "version": "0.1.0",
-  "identifier": "com.financeiro.app",
+  "identifier": "com.nexo.desktop",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,12 +12,12 @@
   "app": {
     "windows": [
       {
-        "title": "Financeiro",
+        "title": "Nexo",
         "width": 1400,
         "height": 900,
         "minWidth": 1100,
         "minHeight": 720,
-        "decorations": true,
+        "decorations": false,
         "resizable": true,
         "fullscreen": false,
         "center": true

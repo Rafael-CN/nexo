@@ -5,7 +5,9 @@ import "./index.css";
 
 // Aplica o tema antes do React pintar (evita flash)
 (() => {
-  const stored = localStorage.getItem("financeiro:theme");
+  const stored =
+    localStorage.getItem("nexo:theme") ??
+    localStorage.getItem("financeiro:theme");
   const prefersDark =
     window.matchMedia &&
     window.matchMedia("(prefers-color-scheme: dark)").matches;

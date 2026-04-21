@@ -27,10 +27,10 @@ export function Sidebar({ profile }: { profile: LocalProfile | null }) {
             </p>
             <div className="mt-1 flex items-baseline gap-1.5">
               <span className="font-mono text-[15px] font-medium tracking-tight">
-                financeiro
+                Nexo
               </span>
               <span className="font-mono text-[11px] text-muted-foreground">
-                shell
+                /v1
               </span>
             </div>
           </div>

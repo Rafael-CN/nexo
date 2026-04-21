@@ -6,7 +6,11 @@ pub struct DbState(pub std::sync::Mutex<Connection>);
 const LATEST_SCHEMA_VERSION: i64 = 2;
 
 pub fn open(app_data_dir: PathBuf) -> Result<Connection> {
-    let db_path = app_data_dir.join("financeiro.db");
+    let db_path = app_data_dir.join("nexo.db");
+    let legacy_db_path = app_data_dir.join("financeiro.db");
+    if !db_path.exists() && legacy_db_path.exists() {
+        let _ = std::fs::copy(&legacy_db_path, &db_path);
+    }
     let mut conn = Connection::open(db_path)?;
     conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")?;
     migrate_schema(&mut conn)?;
