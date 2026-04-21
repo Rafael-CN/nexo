@@ -10,9 +10,9 @@ import {
 import { StatCard } from "@/components/shared/StatCard";
 import { TransactionRow } from "@/components/shared/TransactionRow";
 import { Button } from "@/components/ui/button";
+import { getCurrentAccountBalances } from "@/lib/balance";
 import {
   getTodayIso,
-  selectEffectiveAccountBalances,
   selectMonthFlow,
   selectTotalBalance,
   useFinanceStore,
@@ -29,7 +29,10 @@ export function DashboardPage() {
   const transactions = useFinanceStore(useShallow((s) => s.transactions));
   const goals = useFinanceStore(useShallow((s) => s.goals));
   const totalBalance = useFinanceStore(selectTotalBalance);
-  const accountBalances = useFinanceStore(selectEffectiveAccountBalances);
+  const accountBalances = useMemo(
+    () => getCurrentAccountBalances(accounts, transactions),
+    [accounts, transactions],
+  );
   const { allUpcoming } = useProjection();
 
   const upcoming = useMemo(

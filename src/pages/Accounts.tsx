@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button";
 import { AccountModal } from "@/components/shared/AccountModal";
 import { CategoryModal } from "@/components/shared/CategoryModal";
 import { FinanceIcon } from "@/components/shared/IconPicker";
+import { getCurrentAccountBalances } from "@/lib/balance";
 import { formatCurrency } from "@/lib/format";
 import {
-  selectEffectiveAccountBalances,
   selectTotalBalance,
   useFinanceStore,
 } from "@/store/useFinanceStore";
@@ -24,8 +24,12 @@ const typeMeta: Record<AccountType, { label: string; fallbackIcon: string }> = {
 export function AccountsPage() {
   const accounts = useFinanceStore((s) => s.accounts);
   const categories = useFinanceStore((s) => s.categories);
+  const transactions = useFinanceStore((s) => s.transactions);
   const totalBalance = useFinanceStore(selectTotalBalance);
-  const accountBalances = useFinanceStore(selectEffectiveAccountBalances);
+  const accountBalances = useMemo(
+    () => getCurrentAccountBalances(accounts, transactions),
+    [accounts, transactions],
+  );
 
   const [accountModalOpen, setAccountModalOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
