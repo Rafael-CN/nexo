@@ -54,7 +54,7 @@ export function CashflowBars({
         <div className="h-px flex-1 bg-border" />
       </div>
 
-      <div className="grid grid-cols-1 gap-px border border-border bg-transparent sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-px overflow-hidden border border-border bg-background sm:grid-cols-2 xl:grid-cols-4">
         {points.map((point) => {
           const inflowHeight = formatHeight(point.inflow ?? Math.max(point.value ?? 0, 0), computedMax);
           const outflowHeight = formatHeight(point.outflow ?? Math.max(-(point.value ?? 0), 0), computedMax);
@@ -63,9 +63,9 @@ export function CashflowBars({
             (point.inflow ?? 0) - (point.outflow ?? 0);
 
           return (
-            <div key={point.label} className="bg-background p-4">
+            <div key={point.label} className="flex min-h-[248px] flex-col justify-between bg-background p-5">
               <div className="flex items-start justify-between gap-3">
-                <div>
+                <div className="min-w-0">
                   <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                     {point.label}
                   </p>
@@ -79,8 +79,8 @@ export function CashflowBars({
                 </div>
               </div>
 
-              <div className="mt-4 flex h-28 items-center">
-                <div className="flex h-full w-full items-center gap-2">
+              <div className="mt-5 flex flex-1 items-end">
+                <div className="flex h-[128px] w-full items-center gap-2">
                   <div className="flex h-full flex-1 flex-col justify-end">
                     <div className="flex h-1/2 items-end justify-center">
                       <div
@@ -100,7 +100,7 @@ export function CashflowBars({
                 </div>
               </div>
 
-              <div className="mt-3 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+              <div className="mt-4 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
                 <span>In</span>
                 <span>Out</span>
               </div>

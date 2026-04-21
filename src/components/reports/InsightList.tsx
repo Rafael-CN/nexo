@@ -45,14 +45,14 @@ export function InsightList({
         <Sparkles className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.5} />
       </div>
 
-      <div className="border-t border-border">
+      <div className="overflow-hidden border border-border bg-background">
         {items.map((item, index) => {
           const ToneIcon = item.icon ?? toneIconMap[item.tone ?? "neutral"];
 
           return (
             <div
               key={`${item.title}-${index}`}
-              className="flex items-start gap-3 border-b border-border py-3 last:border-b-0"
+              className="flex items-start gap-3 border-b border-border px-5 py-4 last:border-b-0"
             >
               <div className={cn("mt-0.5 shrink-0", toneTextMap[item.tone ?? "neutral"])}>
                 <ToneIcon className="h-3.5 w-3.5" strokeWidth={1.75} />

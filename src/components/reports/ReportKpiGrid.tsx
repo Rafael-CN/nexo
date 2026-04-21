@@ -23,7 +23,7 @@ export function ReportKpiGrid({ items, className }: ReportKpiGridProps) {
   return (
     <div
       className={cn(
-        "grid grid-cols-1 gap-px border border-border bg-transparent sm:grid-cols-2 xl:grid-cols-4",
+        "grid grid-cols-1 gap-px overflow-hidden border border-border bg-background sm:grid-cols-2 xl:grid-cols-4",
         className,
       )}
     >
@@ -31,7 +31,7 @@ export function ReportKpiGrid({ items, className }: ReportKpiGridProps) {
         <ReportKpiCard
           key={item.label}
           {...item}
-          className="border-0"
+          className="border-0 bg-background"
         />
       ))}
     </div>

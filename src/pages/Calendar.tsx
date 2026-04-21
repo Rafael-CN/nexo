@@ -165,7 +165,7 @@ export function CalendarPage() {
         </div>
 
         <div className="flex flex-col gap-3 md:flex-row md:items-center">
-          <div className="grid grid-cols-2 border border-border font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+        <div className="grid grid-cols-2 overflow-hidden border border-border bg-background font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
             <ProjectionMetric
               label="Semana"
               value={weeklyBalances[0]?.balance ?? baseBalance}
@@ -383,7 +383,7 @@ function ProjectionMetric({
   value: number;
 }) {
   return (
-    <div className="min-w-[104px] border-r border-border px-3 py-2 last:border-r-0">
+    <div className="min-w-[104px] border-r border-border bg-background px-3 py-2 last:border-r-0">
       <p>{label}</p>
       <p
         className={cn(
@@ -425,7 +425,7 @@ function SelectionSummary({ summary }: { summary: SelectedRangeSummary }) {
         <div className="h-px flex-1 bg-border" />
       </div>
 
-      <div className="grid grid-cols-1 gap-px overflow-hidden border border-border bg-transparent md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-px overflow-hidden border border-border bg-background md:grid-cols-4">
         <SelectionMetric
           label={summary.days === 1 ? "Data" : `${summary.days} dias`}
           value={title}
@@ -503,7 +503,7 @@ function SelectionMetric({
   accent?: "success" | "destructive";
 }) {
   return (
-    <div className="bg-background p-4">
+    <div className="min-h-[88px] bg-background p-4">
       <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
         {label}
       </p>

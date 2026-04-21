@@ -7,6 +7,7 @@ interface StatCardProps {
   delta?: { value: string; positive?: boolean };
   icon?: LucideIcon;
   accent?: "primary" | "success" | "warning" | "destructive" | "neutral";
+  className?: string;
 }
 
 const dotMap: Record<NonNullable<StatCardProps["accent"]>, string> = {
@@ -23,22 +24,28 @@ export function StatCard({
   delta,
   icon: Icon,
   accent = "neutral",
+  className,
 }: StatCardProps) {
   return (
-    <div className="group flex h-full min-h-[108px] flex-col justify-between gap-4 border border-border p-5 transition-colors hover:bg-accent/30">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+    <div
+      className={cn(
+        "group flex h-full min-h-[124px] flex-col justify-between gap-4 border border-border bg-background p-5 transition-colors hover:bg-accent/15",
+        className,
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
           <span
             className={cn("h-1.5 w-1.5 rounded-full", dotMap[accent])}
             aria-hidden
           />
-          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+          <p className="truncate font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
             {label}
           </p>
         </div>
         {Icon && (
           <Icon
-            className="h-3.5 w-3.5 text-muted-foreground"
+            className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
             strokeWidth={1.5}
           />
         )}

@@ -50,7 +50,7 @@ export function ReportKpiCard({
   return (
     <div
       className={cn(
-        "group flex min-h-[124px] flex-col justify-between border border-border bg-background p-5 transition-colors hover:bg-accent/20",
+        "group flex min-h-[132px] flex-col justify-between border border-border bg-background p-5 transition-colors hover:bg-accent/15",
         className,
       )}
     >
@@ -73,7 +73,7 @@ export function ReportKpiCard({
         <p className="truncate font-mono text-2xl font-normal tracking-tight">
           {value}
         </p>
-        <div className="flex items-center gap-2 text-[11px] tabular-nums">
+        <div className="flex min-h-[20px] items-center gap-2 text-[11px] tabular-nums">
           {delta ? (
             <span className={cn("inline-flex items-center gap-1 font-mono", toneDeltaMap[tone])}>
               <DeltaIcon className="h-3.5 w-3.5" strokeWidth={1.75} />

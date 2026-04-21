@@ -42,7 +42,7 @@ export function CategoryRanking({
         <div className="h-px flex-1 bg-border" />
       </div>
 
-      <div className="border-t border-border">
+      <div className="overflow-hidden border border-border bg-background">
         {items.map((item, index) => {
           const Icon = item.icon;
           const ratio = Math.max(0, Math.min(1, item.amount / computedMax));
@@ -50,7 +50,7 @@ export function CategoryRanking({
           return (
             <div
               key={`${item.label}-${index}`}
-              className="grid gap-4 border-b border-border py-3 [grid-template-columns:minmax(0,1fr)_minmax(120px,1.3fr)_auto] last:border-b-0"
+              className="grid gap-4 border-b border-border px-5 py-4 [grid-template-columns:minmax(0,1fr)_minmax(120px,1.2fr)_auto] last:border-b-0"
             >
               <div className="min-w-0">
                 <div className="flex min-w-0 items-center gap-2">

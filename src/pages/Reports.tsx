@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useProjection } from "@/hooks/useProjection";
 import { formatCurrency } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import {
   aggregateTransactionsByCategory,
   buildCashflowSeries,
@@ -126,7 +127,7 @@ export function ReportsPage() {
 
   return (
     <div className="space-y-10">
-      <section className="flex flex-col gap-6 border-b border-border pb-8 lg:flex-row lg:items-end lg:justify-between">
+      <section className="flex flex-col gap-6 border-b border-border pb-8 xl:flex-row xl:items-end xl:justify-between">
         <div className="space-y-3">
           <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
             Relatórios e insights
@@ -141,7 +142,7 @@ export function ReportsPage() {
           </p>
         </div>
 
-        <div className="flex flex-col items-start gap-3 lg:items-end">
+        <div className="flex w-full flex-col gap-3 xl:max-w-[420px] xl:items-end">
           <PeriodSegmentedControl
             value={preset}
             options={reportPeriodOptions.map((option) => ({
@@ -150,9 +151,15 @@ export function ReportsPage() {
             }))}
             onValueChange={(value) => setPreset(value as ReportPeriodPreset)}
           />
-          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-            {accounts.length} contas - {categories.length} categorias
-          </p>
+          <div className="flex flex-wrap gap-2 xl:justify-end">
+            <SummaryChip label="Contas" value={`${accounts.length}`} />
+            <SummaryChip label="Categorias" value={`${categories.length}`} />
+            <SummaryChip
+              label="Intervalo"
+              value={period.label}
+              className="xl:max-w-[220px]"
+            />
+          </div>
         </div>
       </section>
 
@@ -206,7 +213,7 @@ export function ReportsPage() {
                 <div className="h-px flex-1 bg-border" />
               </div>
 
-              <div className="space-y-5 border border-border p-5">
+              <div className="space-y-5 border border-border bg-background p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-sm font-medium">
@@ -224,7 +231,7 @@ export function ReportsPage() {
                 </div>
 
                 {topCategory && (
-                  <div className="grid grid-cols-2 gap-px border border-border bg-transparent">
+                  <div className="grid grid-cols-2 gap-px overflow-hidden border border-border bg-background">
                     <MiniMetric
                       label="Participação"
                       value={formatPercent(topCategory.percentage)}
@@ -268,7 +275,31 @@ export function ReportsPage() {
 
 function MiniMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-background p-4">
+    <div className="min-h-[88px] bg-background p-4">
+      <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-1 truncate font-mono text-sm tabular-nums">{value}</p>
+    </div>
+  );
+}
+
+function SummaryChip({
+  label,
+  value,
+  className,
+}: {
+  label: string;
+  value: string;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex min-w-[132px] flex-1 flex-col justify-between border border-border bg-background px-4 py-3",
+        className,
+      )}
+    >
       <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
         {label}
       </p>

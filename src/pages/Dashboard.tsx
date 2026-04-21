@@ -198,10 +198,13 @@ function HeroBalance({
       </div>
 
       {accounts.length > 0 && (
-        <div className="flex divide-x divide-border overflow-hidden border border-border">
+        <div className="flex flex-wrap gap-px border border-border bg-background">
           {accounts.map((a) => (
-            <div key={a.id} className="min-w-[140px] bg-background px-5 py-3">
-              <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+            <div
+              key={a.id}
+              className="min-w-[160px] flex-1 basis-[180px] bg-background px-4 py-3"
+            >
+              <p className="truncate font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                 {a.name}
               </p>
               <p className="mt-1 font-mono text-sm tabular-nums">
