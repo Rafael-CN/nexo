@@ -1,5 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Account, Category, Goal, Transaction } from "@/types";
+import type {
+  Account,
+  Category,
+  Goal,
+  RecurrenceRule,
+  Transaction,
+} from "@/types";
 
 export const isTauri =
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -22,6 +28,13 @@ export const db = {
     invoke<void>("update_transaction", { txn }),
   deleteTransaction: (id: string) =>
     invoke<void>("delete_transaction", { id }),
+  getRecurrenceRules: () => invoke<RecurrenceRule[]>("get_recurrence_rules"),
+  addRecurrenceRule: (rule: RecurrenceRule) =>
+    invoke<void>("add_recurrence_rule", { rule }),
+  updateRecurrenceRule: (rule: RecurrenceRule) =>
+    invoke<void>("update_recurrence_rule", { rule }),
+  deleteRecurrenceRule: (id: string) =>
+    invoke<void>("delete_recurrence_rule", { id }),
   getGoals: () => invoke<Goal[]>("get_goals"),
   addGoal: (goal: Goal) => invoke<void>("add_goal", { goal }),
   updateGoal: (goal: Goal) => invoke<void>("update_goal", { goal }),

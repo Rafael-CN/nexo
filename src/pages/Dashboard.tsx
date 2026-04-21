@@ -11,6 +11,8 @@ import { StatCard } from "@/components/shared/StatCard";
 import { TransactionRow } from "@/components/shared/TransactionRow";
 import { Button } from "@/components/ui/button";
 import {
+  getTodayIso,
+  selectEffectiveAccountBalances,
   selectMonthFlow,
   selectTotalBalance,
   useFinanceStore,
@@ -27,6 +29,7 @@ export function DashboardPage() {
   const transactions = useFinanceStore(useShallow((s) => s.transactions));
   const goals = useFinanceStore(useShallow((s) => s.goals));
   const totalBalance = useFinanceStore(selectTotalBalance);
+  const accountBalances = useFinanceStore(selectEffectiveAccountBalances);
   const { allUpcoming } = useProjection();
 
   const upcoming = useMemo(
@@ -55,11 +58,14 @@ export function DashboardPage() {
   );
 
   const primaryGoal = useMemo(() => selectPrimaryGoal(goals), [goals]);
-  const liquidAccounts = accounts.filter((a) => a.type !== "credit");
+  const accountSummaries = accounts.map((account) => ({
+    ...account,
+    balance: accountBalances.get(account.id) ?? account.balance,
+  }));
 
   return (
     <div className="space-y-10">
-      <HeroBalance balance={totalBalance} accounts={liquidAccounts} />
+      <HeroBalance balance={totalBalance} accounts={accountSummaries} />
 
       <SectionDivider label="Fluxo do mes" />
 
@@ -120,8 +126,9 @@ function getMonthFlow(transactions: Transaction[], monthOffset: number) {
   const monthPrefix = `${target.getFullYear()}-${String(
     target.getMonth() + 1,
   ).padStart(2, "0")}`;
+  const todayIso = getTodayIso();
   const inMonth = transactions.filter(
-    (t) => t.date.startsWith(monthPrefix) && !t.isProjected,
+    (t) => t.date.startsWith(monthPrefix) && t.date <= todayIso,
   );
   const income = inMonth
     .filter((t) => t.type === "income")
@@ -175,15 +182,15 @@ function HeroBalance({
     <section className="flex flex-col gap-8 border-b border-border pb-10 md:flex-row md:items-end md:justify-between">
       <div className="space-y-3">
         <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-          Saldo consolidado
+          Saldo efetivo
         </p>
         <h1 className="font-mono text-5xl font-light tracking-tight md:text-6xl">
           {formatCurrency(balance)}
         </h1>
         <p className="font-mono text-xs text-muted-foreground">
-          atualizado agora
+          ate hoje
           <span className="px-2">-</span>
-          {accounts.length} contas liquidas
+          {accounts.length} contas
         </p>
       </div>
 
