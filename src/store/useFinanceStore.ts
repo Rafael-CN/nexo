@@ -1,8 +1,15 @@
 import { create } from "zustand";
-import type { Account, Category, Goal, RecurrenceRule, Transaction } from "@/types";
+import { format } from "date-fns";
+import type {
+  Account,
+  Category,
+  Goal,
+  RecurrenceRule,
+  Transaction,
+} from "@/types";
 import { db, isTauri } from "@/lib/db";
 
-interface FinanceState {
+export interface FinanceState {
   accounts: Account[];
   categories: Category[];
   transactions: Transaction[];
@@ -22,6 +29,12 @@ interface FinanceState {
   addTransaction: (txn: Transaction) => Promise<void>;
   removeTransaction: (id: string) => Promise<void>;
   updateTransaction: (id: string, patch: Partial<Transaction>) => Promise<void>;
+  addRecurrenceRule: (rule: RecurrenceRule) => Promise<void>;
+  removeRecurrenceRule: (id: string) => Promise<void>;
+  updateRecurrenceRule: (
+    id: string,
+    patch: Partial<RecurrenceRule>,
+  ) => Promise<void>;
 
   addGoal: (goal: Goal) => Promise<void>;
   removeGoal: (id: string) => Promise<void>;
@@ -45,17 +58,20 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
 
     try {
       if (isTauri) {
-        const [accounts, categories, transactions, goals] = await Promise.all([
-          db.getAccounts(),
-          db.getCategories(),
-          db.getTransactions(),
-          db.getGoals(),
-        ]);
+        const [accounts, categories, transactions, goals, recurrenceRules] =
+          await Promise.all([
+            db.getAccounts(),
+            db.getCategories(),
+            db.getTransactions(),
+            db.getGoals(),
+            db.getRecurrenceRules(),
+          ]);
         set({
           accounts,
           categories,
           transactions,
           goals,
+          recurrenceRules,
           isInitializing: false,
           initializeError: null,
           isLoaded: true,
@@ -152,6 +168,30 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     }));
   },
 
+  addRecurrenceRule: async (rule) => {
+    if (isTauri) await db.addRecurrenceRule(rule);
+    set((state) => ({ recurrenceRules: [...state.recurrenceRules, rule] }));
+  },
+
+  removeRecurrenceRule: async (id) => {
+    if (isTauri) await db.deleteRecurrenceRule(id);
+    set((state) => ({
+      recurrenceRules: state.recurrenceRules.filter((r) => r.id !== id),
+    }));
+  },
+
+  updateRecurrenceRule: async (id, patch) => {
+    const existing = get().recurrenceRules.find((r) => r.id === id);
+    if (!existing) return;
+    const merged = { ...existing, ...patch };
+    if (isTauri) await db.updateRecurrenceRule(merged);
+    set((state) => ({
+      recurrenceRules: state.recurrenceRules.map((r) =>
+        r.id === id ? merged : r,
+      ),
+    }));
+  },
+
   addGoal: async (goal) => {
     if (isTauri) await db.addGoal(goal);
     set((state) => ({ goals: [...state.goals, goal] }));
@@ -175,15 +215,56 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
 
 // ---------- Seletores nomeados ----------
 
+export const getTodayIso = () => format(new Date(), "yyyy-MM-dd");
+
+export function calculateAccountBalance(
+  account: Account,
+  transactions: Transaction[],
+  dateIso = getTodayIso(),
+) {
+  return transactions
+    .filter((t) => t.accountId === account.id && t.date <= dateIso)
+    .reduce((balance, t) => {
+      if (t.type === "income") return balance + t.amount;
+      if (t.type === "expense") return balance - t.amount;
+      return balance;
+    }, account.balance);
+}
+
+export const selectEffectiveAccountBalances = (s: FinanceState) =>
+  new Map(
+    s.accounts.map((account) => [
+      account.id,
+      calculateAccountBalance(account, s.transactions),
+    ]),
+  );
+
+export const selectEffectiveAccountBalance = (
+  s: FinanceState,
+  accountId: string,
+) => {
+  const account = s.accounts.find((a) => a.id === accountId);
+  if (!account) return 0;
+  return calculateAccountBalance(account, s.transactions);
+};
+
 export const selectTotalBalance = (s: FinanceState) =>
-  s.accounts
-    .filter((a) => a.type !== "credit")
-    .reduce((acc, a) => acc + a.balance, 0);
+  s.accounts.reduce(
+    (acc, account) => acc + calculateAccountBalance(account, s.transactions),
+    0,
+  );
 
 export const selectCreditOutstanding = (s: FinanceState) =>
   s.accounts
     .filter((a) => a.type === "credit")
-    .reduce((acc, a) => acc + Math.abs(Math.min(a.balance, 0)), 0);
+    .reduce(
+      (acc, account) =>
+        acc +
+        Math.abs(
+          Math.min(calculateAccountBalance(account, s.transactions), 0),
+        ),
+      0,
+    );
 
 export const selectAccountById = (s: FinanceState, id: string) =>
   s.accounts.find((a) => a.id === id);
@@ -192,7 +273,7 @@ export const selectCategoryById = (s: FinanceState, id: string) =>
   s.categories.find((c) => c.id === id);
 
 export const selectUpcomingTransactions = (s: FinanceState, limit = 6) => {
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = getTodayIso();
   return s.transactions
     .filter((t) => t.date >= todayIso)
     .sort((a, b) => a.date.localeCompare(b.date))
@@ -207,8 +288,9 @@ export const selectMonthFlow = (s: FinanceState) => {
   const y = now.getFullYear();
   const m = now.getMonth();
   const monthPrefix = `${y}-${String(m + 1).padStart(2, "0")}`;
+  const todayIso = getTodayIso();
   const inMonth = s.transactions.filter(
-    (t) => t.date.startsWith(monthPrefix) && !t.isProjected,
+    (t) => t.date.startsWith(monthPrefix) && t.date <= todayIso,
   );
   const income = inMonth
     .filter((t) => t.type === "income")

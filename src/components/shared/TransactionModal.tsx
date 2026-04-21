@@ -21,7 +21,12 @@ import {
 } from "@/components/ui/select";
 import { useFinanceStore } from "@/store/useFinanceStore";
 import { cn } from "@/lib/utils";
-import type { Transaction, TransactionType } from "@/types";
+import type {
+  RecurrenceFrequency,
+  RecurrenceRule,
+  Transaction,
+  TransactionType,
+} from "@/types";
 
 interface Props {
   open: boolean;
@@ -36,79 +41,146 @@ interface FormState {
   date: string;
   accountId: string;
   categoryId: string;
-  isProjected: boolean;
+  recurrenceFrequency: RecurrenceFrequency | "none";
+  recurrenceInterval: string;
+  recurrenceUntil: string;
 }
 
-function buildForm(t?: Transaction | null): FormState {
+const recurrenceOptions: {
+  value: FormState["recurrenceFrequency"];
+  label: string;
+}[] = [
+  { value: "none", label: "Sem repeticao" },
+  { value: "daily", label: "Diaria" },
+  { value: "weekly", label: "Semanal" },
+  { value: "monthly", label: "Mensal" },
+  { value: "yearly", label: "Anual" },
+];
+
+function buildForm(
+  transaction?: Transaction | null,
+  rule?: RecurrenceRule | null,
+): FormState {
   return {
-    type: t?.type === "income" ? "income" : "expense",
-    title: t?.title ?? "",
-    amount: t ? String(t.amount) : "",
-    date: t?.date ?? format(new Date(), "yyyy-MM-dd"),
-    accountId: t?.accountId ?? "",
-    categoryId: t?.categoryId ?? "",
-    isProjected: t?.isProjected ?? false,
+    type: transaction?.type === "income" ? "income" : "expense",
+    title: transaction?.title ?? "",
+    amount: transaction ? String(transaction.amount) : "",
+    date: transaction?.date ?? format(new Date(), "yyyy-MM-dd"),
+    accountId: transaction?.accountId ?? "",
+    categoryId: transaction?.categoryId ?? "",
+    recurrenceFrequency: rule?.frequency ?? "none",
+    recurrenceInterval: rule ? String(rule.interval) : "1",
+    recurrenceUntil: rule?.until ?? "",
   };
 }
 
 export function TransactionModal({ open, onOpenChange, transaction }: Props) {
   const accounts = useFinanceStore(useShallow((s) => s.accounts));
   const categories = useFinanceStore(useShallow((s) => s.categories));
+  const recurrenceRules = useFinanceStore(useShallow((s) => s.recurrenceRules));
   const addTransaction = useFinanceStore((s) => s.addTransaction);
   const updateTransaction = useFinanceStore((s) => s.updateTransaction);
   const removeTransaction = useFinanceStore((s) => s.removeTransaction);
+  const addRecurrenceRule = useFinanceStore((s) => s.addRecurrenceRule);
+  const updateRecurrenceRule = useFinanceStore((s) => s.updateRecurrenceRule);
+  const removeRecurrenceRule = useFinanceStore((s) => s.removeRecurrenceRule);
 
   const isEdit = !!transaction;
-  const [form, setForm] = useState<FormState>(() => buildForm(transaction));
+  const currentRule =
+    transaction?.recurrenceId
+      ? recurrenceRules.find((rule) => rule.id === transaction.recurrenceId)
+      : null;
+  const [form, setForm] = useState<FormState>(() =>
+    buildForm(transaction, currentRule),
+  );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
-      setForm(buildForm(transaction));
+      const rule =
+        transaction?.recurrenceId
+          ? recurrenceRules.find((r) => r.id === transaction.recurrenceId)
+          : null;
+      setForm(buildForm(transaction, rule));
       setError(null);
       setSaving(false);
     }
-  }, [open, transaction]);
+  }, [open, transaction, recurrenceRules]);
 
-  const filteredCategories = categories.filter((c) =>
-    form.type === "income" ? c.kind === "income" : c.kind === "expense",
+  const filteredCategories = categories.filter((category) =>
+    form.type === "income"
+      ? category.kind === "income"
+      : category.kind === "expense",
   );
 
   function handleTypeChange(type: TransactionType) {
     const catValid = categories.find(
-      (c) =>
-        c.id === form.categoryId &&
-        c.kind === (type === "income" ? "income" : "expense"),
+      (category) =>
+        category.id === form.categoryId &&
+        category.kind === (type === "income" ? "income" : "expense"),
     );
-    setForm((f) => ({
-      ...f,
+    setForm((current) => ({
+      ...current,
       type,
-      categoryId: catValid ? f.categoryId : "",
+      categoryId: catValid ? current.categoryId : "",
     }));
   }
 
   async function handleSave() {
     setError(null);
-    if (!form.title.trim()) return setError("Informe o título.");
+    if (!form.title.trim()) return setError("Informe o titulo.");
     const amount = parseFloat(form.amount.replace(",", "."));
-    if (!amount || amount <= 0) return setError("Valor inválido.");
+    if (!amount || amount <= 0) return setError("Valor invalido.");
     if (!form.accountId) return setError("Selecione uma conta.");
     if (!form.categoryId) return setError("Selecione uma categoria.");
     if (!form.date) return setError("Informe a data.");
 
-    const payload = {
+    const recurrenceInterval = Number.parseInt(form.recurrenceInterval, 10);
+    if (
+      form.recurrenceFrequency !== "none" &&
+      (!Number.isFinite(recurrenceInterval) || recurrenceInterval < 1)
+    ) {
+      return setError("Intervalo de recorrencia invalido.");
+    }
+
+    const todayIso = format(new Date(), "yyyy-MM-dd");
+    const payload: Omit<Transaction, "id"> = {
       type: form.type,
       title: form.title.trim(),
       amount,
       date: form.date,
       accountId: form.accountId,
       categoryId: form.categoryId,
-      isProjected: form.isProjected,
+      isProjected: form.date > todayIso,
+      recurrenceId: undefined,
     };
 
     try {
       setSaving(true);
+
+      if (form.recurrenceFrequency === "none") {
+        if (transaction?.recurrenceId) {
+          await removeRecurrenceRule(transaction.recurrenceId);
+        }
+      } else {
+        const recurrenceId = transaction?.recurrenceId ?? crypto.randomUUID();
+        const rule: RecurrenceRule = {
+          id: recurrenceId,
+          frequency: form.recurrenceFrequency,
+          interval: recurrenceInterval,
+          until: form.recurrenceUntil || undefined,
+        };
+
+        if (currentRule) {
+          await updateRecurrenceRule(currentRule.id, rule);
+        } else {
+          await addRecurrenceRule(rule);
+        }
+
+        payload.recurrenceId = recurrenceId;
+      }
+
       if (isEdit && transaction) {
         await updateTransaction(transaction.id, payload);
       } else {
@@ -126,6 +198,9 @@ export function TransactionModal({ open, onOpenChange, transaction }: Props) {
     if (!transaction) return;
     try {
       setSaving(true);
+      if (transaction.recurrenceId) {
+        await removeRecurrenceRule(transaction.recurrenceId);
+      }
       await removeTransaction(transaction.id);
       onOpenChange(false);
     } catch (err) {
@@ -140,12 +215,11 @@ export function TransactionModal({ open, onOpenChange, transaction }: Props) {
       <DialogContent className="max-w-md">
         <DialogHeader className="border-b border-border">
           <DialogTitle>
-            {isEdit ? "Editar transação" : "Nova transação"}
+            {isEdit ? "Editar transacao" : "Nova transacao"}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-5 px-6 py-5">
-          {/* Type toggle */}
           <div className="grid grid-cols-2 border border-border">
             <TypeButton
               label="Despesa"
@@ -160,21 +234,22 @@ export function TransactionModal({ open, onOpenChange, transaction }: Props) {
             />
           </div>
 
-          {/* Title */}
           <div className="space-y-1.5">
-            <Label htmlFor="txn-title">Título</Label>
+            <Label htmlFor="txn-title">Titulo</Label>
             <Input
               id="txn-title"
-              placeholder="Ex: Aluguel, Salário…"
+              placeholder="Ex: Aluguel, Salario..."
               value={form.title}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, title: e.target.value }))
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  title: event.target.value,
+                }))
               }
               autoFocus
             />
           </div>
 
-          {/* Amount + Date */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="txn-amount">Valor (R$)</Label>
@@ -186,8 +261,11 @@ export function TransactionModal({ open, onOpenChange, transaction }: Props) {
                 placeholder="0,00"
                 className="font-mono tabular-nums"
                 value={form.amount}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, amount: e.target.value }))
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    amount: event.target.value,
+                  }))
                 }
               />
             </div>
@@ -198,30 +276,32 @@ export function TransactionModal({ open, onOpenChange, transaction }: Props) {
                 type="date"
                 className="font-mono"
                 value={form.date}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, date: e.target.value }))
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    date: event.target.value,
+                  }))
                 }
               />
             </div>
           </div>
 
-          {/* Account + Category */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Conta</Label>
               <Select
                 value={form.accountId}
-                onValueChange={(v) =>
-                  setForm((f) => ({ ...f, accountId: v }))
+                onValueChange={(value) =>
+                  setForm((current) => ({ ...current, accountId: value }))
                 }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecionar" />
                 </SelectTrigger>
                 <SelectContent>
-                  {accounts.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>
-                      {a.name}
+                  {accounts.map((account) => (
+                    <SelectItem key={account.id} value={account.id}>
+                      {account.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -231,17 +311,17 @@ export function TransactionModal({ open, onOpenChange, transaction }: Props) {
               <Label>Categoria</Label>
               <Select
                 value={form.categoryId}
-                onValueChange={(v) =>
-                  setForm((f) => ({ ...f, categoryId: v }))
+                onValueChange={(value) =>
+                  setForm((current) => ({ ...current, categoryId: value }))
                 }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecionar" />
                 </SelectTrigger>
                 <SelectContent>
-                  {filteredCategories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
+                  {filteredCategories.map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -249,20 +329,68 @@ export function TransactionModal({ open, onOpenChange, transaction }: Props) {
             </div>
           </div>
 
-          {/* Projected toggle */}
-          <label className="flex cursor-pointer items-center gap-2.5">
-            <input
-              type="checkbox"
-              className="h-3.5 w-3.5 accent-foreground"
-              checked={form.isProjected}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, isProjected: e.target.checked }))
-              }
-            />
-            <span className="font-mono text-[11px] text-muted-foreground">
-              Lançamento projetado (não realizado)
-            </span>
-          </label>
+          <div className="grid grid-cols-[1fr_96px] gap-3">
+            <div className="space-y-1.5">
+              <Label>Recorrencia</Label>
+              <Select
+                value={form.recurrenceFrequency}
+                onValueChange={(value) =>
+                  setForm((current) => ({
+                    ...current,
+                    recurrenceFrequency:
+                      value as FormState["recurrenceFrequency"],
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {recurrenceOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="txn-recurrence-interval">Intervalo</Label>
+              <Input
+                id="txn-recurrence-interval"
+                type="number"
+                min="1"
+                step="1"
+                className="font-mono tabular-nums"
+                value={form.recurrenceInterval}
+                disabled={form.recurrenceFrequency === "none"}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    recurrenceInterval: event.target.value,
+                  }))
+                }
+              />
+            </div>
+          </div>
+
+          {form.recurrenceFrequency !== "none" && (
+            <div className="space-y-1.5">
+              <Label htmlFor="txn-recurrence-until">Repetir ate</Label>
+              <Input
+                id="txn-recurrence-until"
+                type="date"
+                className="font-mono"
+                value={form.recurrenceUntil}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    recurrenceUntil: event.target.value,
+                  }))
+                }
+              />
+            </div>
+          )}
 
           {error && (
             <p className="font-mono text-[11px] text-destructive">{error}</p>

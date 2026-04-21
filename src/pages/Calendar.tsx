@@ -19,16 +19,21 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/format";
-import { selectTotalBalance, useFinanceStore } from "@/store/useFinanceStore";
+import { useFinanceStore } from "@/store/useFinanceStore";
 import { useProjection } from "@/hooks/useProjection";
 import type { Transaction } from "@/types";
 
-const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
 
 export function CalendarPage() {
   const transactions = useFinanceStore(useShallow((s) => s.transactions));
-  const baseBalance = useFinanceStore(selectTotalBalance);
-  const { expanded, dailyBalances } = useProjection();
+  const {
+    expanded,
+    dailyBalances,
+    weeklyBalances,
+    monthlyBalances,
+    baseBalance,
+  } = useProjection();
 
   const today = startOfToday();
   const todayIso = formatISO(today, { representation: "date" });
@@ -42,13 +47,12 @@ export function CalendarPage() {
     return eachDayOfInterval({ start: gridStart, end: gridEnd });
   }, [viewMonth]);
 
-  // Merge store transactions + expanded recurring so future months show occurrences
   const byDate = useMemo(() => {
     const map = new Map<string, Transaction[]>();
-    for (const t of [...transactions, ...expanded]) {
-      const list = map.get(t.date) ?? [];
-      list.push(t);
-      map.set(t.date, list);
+    for (const transaction of [...transactions, ...expanded]) {
+      const list = map.get(transaction.date) ?? [];
+      list.push(transaction);
+      map.set(transaction.date, list);
     }
     return map;
   }, [transactions, expanded]);
@@ -57,78 +61,92 @@ export function CalendarPage() {
   const projectedCount = useMemo(
     () =>
       [...transactions, ...expanded].filter(
-        (t) => t.isProjected && t.date.startsWith(monthPrefix),
+        (transaction) =>
+          transaction.isProjected && transaction.date.startsWith(monthPrefix),
       ).length,
     [transactions, expanded, monthPrefix],
   );
 
   return (
     <div className="space-y-10">
-      <section className="flex flex-col gap-6 border-b border-border pb-8 md:flex-row md:items-end md:justify-between">
+      <section className="flex flex-col gap-6 border-b border-border pb-8 xl:flex-row xl:items-end xl:justify-between">
         <div className="space-y-3">
           <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            Projeção mensal
+            Projecao mensal
           </p>
           <h1 className="font-mono text-4xl font-light capitalize tracking-tight md:text-5xl">
             {format(viewMonth, "MMMM yyyy", { locale: ptBR })}
           </h1>
           <p className="font-mono text-xs text-muted-foreground">
-            {projectedCount} lançamentos projetados no período
+            {projectedCount} lancamentos projetados no periodo
           </p>
         </div>
 
-        <div className="flex items-center gap-1">
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-8 w-8 rounded-sm"
-            aria-label="Mês anterior"
-            onClick={() => setViewMonth((m) => subMonths(m, 1))}
-          >
-            <ChevronLeft className="h-3.5 w-3.5" strokeWidth={1.5} />
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className={cn(
-              "h-8 rounded-sm px-3 font-mono text-[11px] uppercase tracking-wider",
-              isCurrentMonth && "text-muted-foreground",
-            )}
-            onClick={() => setViewMonth(startOfMonth(startOfToday()))}
-          >
-            Hoje
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-8 w-8 rounded-sm"
-            aria-label="Próximo mês"
-            onClick={() => setViewMonth((m) => addMonths(m, 1))}
-          >
-            <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.5} />
-          </Button>
+        <div className="flex flex-col gap-3 md:flex-row md:items-center">
+          <div className="grid grid-cols-3 border border-border font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+            <ProjectionMetric label="Hoje" value={baseBalance} />
+            <ProjectionMetric
+              label="Semana"
+              value={weeklyBalances[0]?.balance ?? baseBalance}
+            />
+            <ProjectionMetric
+              label="Mes"
+              value={monthlyBalances[0]?.balance ?? baseBalance}
+            />
+          </div>
+
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 rounded-sm"
+              aria-label="Mes anterior"
+              onClick={() => setViewMonth((month) => subMonths(month, 1))}
+            >
+              <ChevronLeft className="h-3.5 w-3.5" strokeWidth={1.5} />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn(
+                "h-8 rounded-sm px-3 font-mono text-[11px] uppercase tracking-wider",
+                isCurrentMonth && "text-muted-foreground",
+              )}
+              onClick={() => setViewMonth(startOfMonth(startOfToday()))}
+            >
+              Hoje
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 rounded-sm"
+              aria-label="Proximo mes"
+              onClick={() => setViewMonth((month) => addMonths(month, 1))}
+            >
+              <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.5} />
+            </Button>
+          </div>
         </div>
       </section>
 
       <section>
         <div className="grid grid-cols-7 border border-border">
-          {WEEKDAYS.map((w) => (
+          {WEEKDAYS.map((weekday) => (
             <div
-              key={w}
+              key={weekday}
               className="border-b border-r border-border bg-muted/30 px-3 py-2 text-center font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground last:border-r-0"
             >
-              {w}
+              {weekday}
             </div>
           ))}
 
-          {days.map((day, i) => {
+          {days.map((day, index) => {
             const iso = formatISO(day, { representation: "date" });
             const items = byDate.get(iso) ?? [];
             const inMonth = isSameMonth(day, viewMonth);
             const dayIsToday = isToday(day);
             const isPast = iso < todayIso;
 
-            // Balance to display: today → base, future → projection, past → none
             const projectedBalance = dayIsToday
               ? baseBalance
               : isPast
@@ -140,8 +158,8 @@ export function CalendarPage() {
                 key={iso}
                 className={cn(
                   "relative min-h-[110px] border-b border-r border-border p-2 transition-colors",
-                  (i + 1) % 7 === 0 && "border-r-0",
-                  i >= days.length - 7 && "border-b-0",
+                  (index + 1) % 7 === 0 && "border-r-0",
+                  index >= days.length - 7 && "border-b-0",
                   !inMonth && "bg-muted/10",
                   dayIsToday && "bg-accent/40",
                 )}
@@ -164,27 +182,29 @@ export function CalendarPage() {
                 </div>
 
                 <div className="mt-1.5 space-y-0.5">
-                  {items.slice(0, 2).map((t) => (
+                  {items.slice(0, 2).map((transaction) => (
                     <div
-                      key={t.id}
+                      key={transaction.id}
                       className="flex items-center gap-1 text-[10px]"
                     >
                       <span
                         className={cn(
                           "h-1 w-1 shrink-0 rounded-full",
-                          t.type === "income" ? "bg-success" : "bg-destructive",
+                          transaction.type === "income"
+                            ? "bg-success"
+                            : "bg-destructive",
                         )}
                         aria-hidden
                       />
                       <span
                         className={cn(
                           "truncate leading-tight",
-                          t.isProjected
+                          transaction.isProjected
                             ? "text-muted-foreground/70"
                             : "text-foreground",
                         )}
                       >
-                        {t.title}
+                        {transaction.title}
                       </span>
                     </div>
                   ))}
@@ -218,20 +238,39 @@ export function CalendarPage() {
 
         <div className="mt-4 flex flex-wrap items-center gap-4 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
           <Legend color="bg-success" label="Entrada" />
-          <Legend color="bg-destructive" label="Saída" />
-          <span>·</span>
+          <Legend color="bg-destructive" label="Saida" />
+          <span>.</span>
           <span className="normal-case tracking-normal text-muted-foreground/70">
-            Valor no canto inferior = saldo líquido projetado no fim do dia
+            Valor no canto inferior = saldo projetado no fim do dia
           </span>
         </div>
       </section>
 
       {isCurrentMonth && (
-        <TodayDetail
-          date={today}
-          transactions={byDate.get(todayIso) ?? []}
-        />
+        <TodayDetail date={today} transactions={byDate.get(todayIso) ?? []} />
       )}
+    </div>
+  );
+}
+
+function ProjectionMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: number;
+}) {
+  return (
+    <div className="min-w-[104px] border-r border-border px-3 py-2 last:border-r-0">
+      <p>{label}</p>
+      <p
+        className={cn(
+          "mt-1 text-xs tabular-nums text-foreground",
+          value < 0 && "text-destructive",
+        )}
+      >
+        {formatCurrency(value, true)}
+      </p>
     </div>
   );
 }
@@ -252,37 +291,41 @@ function TodayDetail({
   date: Date;
   transactions: Transaction[];
 }) {
-  const todays = transactions.filter((t) => isSameDay(new Date(t.date), date));
+  const todays = transactions.filter((transaction) =>
+    isSameDay(new Date(transaction.date), date),
+  );
 
   return (
     <section className="space-y-3">
       <div className="flex items-center gap-3">
         <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-          Detalhe — {format(date, "EEEE, dd MMM", { locale: ptBR })}
+          Detalhe - {format(date, "EEEE, dd MMM", { locale: ptBR })}
         </p>
         <div className="h-px flex-1 bg-border" />
       </div>
 
       {todays.length === 0 ? (
         <p className="font-mono text-xs text-muted-foreground">
-          Sem movimentações hoje. Perfeito dia pra economizar.
+          Sem movimentacoes hoje.
         </p>
       ) : (
         <ul className="border-t border-border">
-          {todays.map((t) => (
+          {todays.map((transaction) => (
             <li
-              key={t.id}
+              key={transaction.id}
               className="flex items-center justify-between border-b border-border px-1 py-2.5 text-sm last:border-b-0"
             >
-              <span className="truncate">{t.title}</span>
+              <span className="truncate">{transaction.title}</span>
               <span
                 className={cn(
                   "font-mono tabular-nums",
-                  t.type === "income" ? "text-success" : "text-foreground",
+                  transaction.type === "income"
+                    ? "text-success"
+                    : "text-foreground",
                 )}
               >
-                {t.type === "income" ? "+" : "−"}
-                {formatCurrency(t.amount)}
+                {transaction.type === "income" ? "+" : "-"}
+                {formatCurrency(transaction.amount)}
               </span>
             </li>
           ))}

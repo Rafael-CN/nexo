@@ -182,7 +182,7 @@ export function AccountModal({ open, onOpenChange, account }: Props) {
 
           <div className="grid grid-cols-[1fr_96px] gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="account-balance">Saldo atual</Label>
+              <Label htmlFor="account-balance">Saldo base</Label>
               <Input
                 id="account-balance"
                 type="number"

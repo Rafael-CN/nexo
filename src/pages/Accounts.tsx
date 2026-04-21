@@ -6,7 +6,7 @@ import { CategoryModal } from "@/components/shared/CategoryModal";
 import { FinanceIcon } from "@/components/shared/IconPicker";
 import { formatCurrency } from "@/lib/format";
 import {
-  selectCreditOutstanding,
+  selectEffectiveAccountBalances,
   selectTotalBalance,
   useFinanceStore,
 } from "@/store/useFinanceStore";
@@ -25,7 +25,7 @@ export function AccountsPage() {
   const accounts = useFinanceStore((s) => s.accounts);
   const categories = useFinanceStore((s) => s.categories);
   const totalBalance = useFinanceStore(selectTotalBalance);
-  const creditOutstanding = useFinanceStore(selectCreditOutstanding);
+  const accountBalances = useFinanceStore(selectEffectiveAccountBalances);
 
   const [accountModalOpen, setAccountModalOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
@@ -65,19 +65,13 @@ export function AccountsPage() {
       <section className="flex flex-col gap-8 border-b border-border pb-10 md:flex-row md:items-end md:justify-between">
         <div className="space-y-3">
           <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            Saldo liquido
+            Saldo efetivo
           </p>
           <h1 className="font-mono text-5xl font-light tracking-tight md:text-6xl">
             {formatCurrency(totalBalance)}
           </h1>
           <p className="font-mono text-xs text-muted-foreground">
-            {accounts.filter((a) => a.type !== "credit").length} contas
-            liquidas
-            <span className="px-2">-</span>
-            credito em aberto{" "}
-            <span className="tabular-nums">
-              {formatCurrency(creditOutstanding)}
-            </span>
+            {accounts.length} contas cadastradas
           </p>
         </div>
 
@@ -104,6 +98,9 @@ export function AccountsPage() {
             <AccountCard
               key={account.id}
               account={account}
+              effectiveBalance={
+                accountBalances.get(account.id) ?? account.balance
+              }
               onEdit={() => openEditAccount(account)}
             />
           ))}
@@ -167,13 +164,15 @@ export function AccountsPage() {
 
 function AccountCard({
   account,
+  effectiveBalance,
   onEdit,
 }: {
   account: Account;
+  effectiveBalance: number;
   onEdit: () => void;
 }) {
   const meta = typeMeta[account.type];
-  const isNegative = account.balance < 0;
+  const isNegative = effectiveBalance < 0;
 
   return (
     <button
@@ -201,7 +200,7 @@ function AccountCard({
 
       <div className="space-y-1">
         <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-          {account.type === "credit" ? "Fatura em aberto" : "Saldo atual"}
+          Saldo efetivo
         </p>
         <p
           className={cn(
@@ -210,7 +209,7 @@ function AccountCard({
           )}
         >
           {isNegative && "-"}
-          {formatCurrency(Math.abs(account.balance))}
+          {formatCurrency(Math.abs(effectiveBalance))}
         </p>
       </div>
 
@@ -220,7 +219,7 @@ function AccountCard({
           {account.lastFour ? `.... ${account.lastFour}` : meta.label}
         </span>
         <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
-          Editar
+          Base {formatCurrency(account.balance, true)}
         </span>
       </div>
     </button>
