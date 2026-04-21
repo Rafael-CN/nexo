@@ -9,6 +9,7 @@ import { CalendarPage } from "@/pages/Calendar";
 import { AccountsPage } from "@/pages/Accounts";
 import { TransactionsPage } from "@/pages/Transactions";
 import { GoalsPage } from "@/pages/Goals";
+import { ReportsPage } from "@/pages/Reports";
 import { SettingsPage } from "@/pages/Settings";
 
 const router = createBrowserRouter([
@@ -21,6 +22,7 @@ const router = createBrowserRouter([
       { path: "contas", element: <AccountsPage /> },
       { path: "transacoes", element: <TransactionsPage /> },
       { path: "metas", element: <GoalsPage /> },
+      { path: "relatorios", element: <ReportsPage /> },
       { path: "configuracoes", element: <SettingsPage /> },
       { path: "*", element: <Navigate to="/" replace /> },
     ],

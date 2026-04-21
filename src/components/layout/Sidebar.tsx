@@ -2,6 +2,7 @@ import { NavLink } from "react-router-dom";
 import {
   ArrowLeftRight,
   CalendarDays,
+  ChartNoAxesCombined,
   LayoutDashboard,
   Moon,
   Settings,
@@ -26,6 +27,7 @@ const primary: Item[] = [
   { to: "/calendario", label: "Calendário", icon: CalendarDays, shortcut: "C" },
   { to: "/contas", label: "Contas", icon: Wallet, shortcut: "A" },
   { to: "/transacoes", label: "Transações", icon: ArrowLeftRight, shortcut: "T" },
+  { to: "/relatorios", label: "Relatórios", icon: ChartNoAxesCombined, shortcut: "R" },
 ];
 
 const secondary: Item[] = [
