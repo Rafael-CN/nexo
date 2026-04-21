@@ -37,19 +37,19 @@ export function DesktopTitleBar() {
       <div className="flex h-full items-center">
         <WindowButton
           label="Minimizar"
-          onClick={() => void withAppWindow((window) => window.minimize())}
+          onClick={() => void getCurrentWindow().minimize()}
         >
           <Minus className="h-3.5 w-3.5" strokeWidth={1.5} />
         </WindowButton>
         <WindowButton
           label="Maximizar"
-          onClick={() => void withAppWindow((window) => window.toggleMaximize())}
+          onClick={() => void getCurrentWindow().toggleMaximize()}
         >
           <Square className="h-3 w-3" strokeWidth={1.5} />
         </WindowButton>
         <WindowButton
           label="Fechar"
-          onClick={() => void withAppWindow((window) => window.close())}
+          onClick={() => void getCurrentWindow().close()}
           danger
         >
           <X className="h-3.5 w-3.5" strokeWidth={1.5} />
@@ -87,14 +87,4 @@ function WindowButton({
       {children}
     </Button>
   );
-}
-
-async function withAppWindow(
-  action: (window: ReturnType<typeof getCurrentWindow>) => Promise<void>,
-) {
-  try {
-    await action(getCurrentWindow());
-  } catch {
-    // Window controls are only available inside the Tauri runtime.
-  }
 }
