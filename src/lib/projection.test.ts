@@ -160,4 +160,33 @@ describe("computeDailyBalances", () => {
 
     expect(balances.get("2026-04-21")).toBe(150);
   });
+
+  it("accumulates expanded monthly recurrence in the future balance path", () => {
+    const recurring = expandRecurring(
+      [tx({ date: "2026-04-10", amount: 300, recurrenceId: "rent" })],
+      [rule({ id: "rent", frequency: "monthly" })],
+      35,
+    );
+
+    const balances = computeDailyBalances(2_000, recurring, 35);
+
+    expect(balances.get("2026-05-09")).toBe(2_000);
+    expect(balances.get("2026-05-10")).toBe(1_700);
+  });
+
+  it("keeps daily, weekly, and monthly checkpoints consistent on one projection path", () => {
+    const balances = computeDailyBalances(
+      1_000,
+      [
+        tx({ date: "2026-04-21", amount: 50, type: "expense" }),
+        tx({ date: "2026-04-27", amount: 400, type: "income" }),
+        tx({ date: "2026-05-20", amount: 250, type: "expense" }),
+      ],
+      31,
+    );
+
+    expect(balances.get("2026-04-21")).toBe(950);
+    expect(balances.get("2026-04-27")).toBe(1_350);
+    expect(balances.get("2026-05-20")).toBe(1_100);
+  });
 });
