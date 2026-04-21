@@ -3,7 +3,6 @@ import { useShallow } from "zustand/react/shallow";
 import {
   addDays,
   addMonths,
-  differenceInCalendarDays,
   eachDayOfInterval,
   format,
   formatISO,
@@ -21,10 +20,15 @@ import { Button } from "@/components/ui/button";
 import { TransactionModal } from "@/components/shared/TransactionModal";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/format";
-import { getTotalCurrentBalance } from "@/lib/balance";
+import {
+  isDateInRange,
+  normalizeDateRange,
+  summarizeSelectedRange,
+  type SelectedRangeSummary,
+} from "@/lib/calendarSelection";
 import { useFinanceStore } from "@/store/useFinanceStore";
 import { useProjection } from "@/hooks/useProjection";
-import type { Account, Transaction } from "@/types";
+import type { Transaction } from "@/types";
 
 const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
 
@@ -79,22 +83,22 @@ export function CalendarPage() {
   }, [allTransactions]);
 
   const selectedRange = useMemo(
-    () => normalizeRange(selection.start, selection.end),
+    () => normalizeDateRange(selection.start, selection.end),
     [selection],
   );
 
   const selectedSummary = useMemo(
     () =>
-      summarizeSelection(
-        selectedRange.start,
-        selectedRange.end,
+      summarizeSelectedRange({
+        start: selectedRange.start,
+        end: selectedRange.end,
         accounts,
-        transactions,
-        allTransactions,
+        effectiveTransactions: transactions,
+        timelineTransactions: allTransactions,
         dailyBalances,
         baseBalance,
         todayIso,
-      ),
+      }),
     [
       selectedRange,
       accounts,
@@ -402,17 +406,7 @@ function Legend({ color, label }: { color: string; label: string }) {
   );
 }
 
-type SelectionSummaryData = {
-  start: string;
-  end: string;
-  days: number;
-  income: number;
-  expense: number;
-  balance: number;
-  transactions: Transaction[];
-};
-
-function SelectionSummary({ summary }: { summary: SelectionSummaryData }) {
+function SelectionSummary({ summary }: { summary: SelectedRangeSummary }) {
   const title =
     summary.start === summary.end
       ? format(parseISO(summary.start), "dd MMM yyyy", { locale: ptBR })
@@ -525,54 +519,4 @@ function SelectionMetric({
       </p>
     </div>
   );
-}
-
-function normalizeRange(start: string, end: string) {
-  return start <= end ? { start, end } : { start: end, end: start };
-}
-
-function isDateInRange(date: string, start: string, end: string) {
-  return date >= start && date <= end;
-}
-
-function summarizeSelection(
-  start: string,
-  end: string,
-  accounts: Account[],
-  effectiveTransactions: Transaction[],
-  transactions: Transaction[],
-  dailyBalances: Map<string, number>,
-  baseBalance: number,
-  todayIso: string,
-): SelectionSummaryData {
-  const inRange = transactions
-    .filter(
-      (transaction) => transaction.date >= start && transaction.date <= end,
-    )
-    .sort((a, b) => a.date.localeCompare(b.date));
-  const income = inRange
-    .filter((transaction) => transaction.type === "income")
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
-  const expense = inRange
-    .filter((transaction) => transaction.type === "expense")
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
-  const balance =
-    end <= todayIso
-      ? getTotalCurrentBalance(
-          accounts,
-          effectiveTransactions,
-          new Date(`${end}T12:00:00`),
-        )
-      : dailyBalances.get(end) ?? baseBalance;
-  const days = differenceInCalendarDays(parseISO(end), parseISO(start)) + 1;
-
-  return {
-    start,
-    end,
-    days,
-    income,
-    expense,
-    balance,
-    transactions: inRange,
-  };
 }
