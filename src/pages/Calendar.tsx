@@ -3,12 +3,13 @@ import { useShallow } from "zustand/react/shallow";
 import {
   addDays,
   addMonths,
+  differenceInCalendarDays,
   eachDayOfInterval,
   format,
   formatISO,
-  isSameDay,
   isSameMonth,
   isToday,
+  parseISO,
   startOfMonth,
   startOfToday,
   startOfWeek,
@@ -17,15 +18,23 @@ import {
 import { ptBR } from "date-fns/locale";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TransactionModal } from "@/components/shared/TransactionModal";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/format";
+import { getTotalCurrentBalance } from "@/lib/balance";
 import { useFinanceStore } from "@/store/useFinanceStore";
 import { useProjection } from "@/hooks/useProjection";
-import type { Transaction } from "@/types";
+import type { Account, Transaction } from "@/types";
 
 const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
 
+type Selection = {
+  start: string;
+  end: string;
+};
+
 export function CalendarPage() {
+  const accounts = useFinanceStore(useShallow((s) => s.accounts));
   const transactions = useFinanceStore(useShallow((s) => s.transactions));
   const {
     expanded,
@@ -38,6 +47,13 @@ export function CalendarPage() {
   const today = startOfToday();
   const todayIso = formatISO(today, { representation: "date" });
   const [viewMonth, setViewMonth] = useState(() => startOfMonth(today));
+  const [selection, setSelection] = useState<Selection>(() => ({
+    start: todayIso,
+    end: todayIso,
+  }));
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [transactionDate, setTransactionDate] = useState(todayIso);
+  const [transactionModalOpen, setTransactionModalOpen] = useState(false);
 
   const isCurrentMonth = isSameMonth(today, viewMonth);
 
@@ -47,25 +63,87 @@ export function CalendarPage() {
     return eachDayOfInterval({ start: gridStart, end: gridEnd });
   }, [viewMonth]);
 
+  const allTransactions = useMemo(
+    () => [...transactions, ...expanded],
+    [transactions, expanded],
+  );
+
   const byDate = useMemo(() => {
     const map = new Map<string, Transaction[]>();
-    for (const transaction of [...transactions, ...expanded]) {
+    for (const transaction of allTransactions) {
       const list = map.get(transaction.date) ?? [];
       list.push(transaction);
       map.set(transaction.date, list);
     }
     return map;
-  }, [transactions, expanded]);
+  }, [allTransactions]);
+
+  const selectedRange = useMemo(
+    () => normalizeRange(selection.start, selection.end),
+    [selection],
+  );
+
+  const selectedSummary = useMemo(
+    () =>
+      summarizeSelection(
+        selectedRange.start,
+        selectedRange.end,
+        accounts,
+        transactions,
+        allTransactions,
+        dailyBalances,
+        baseBalance,
+        todayIso,
+      ),
+    [
+      selectedRange,
+      accounts,
+      transactions,
+      allTransactions,
+      dailyBalances,
+      baseBalance,
+      todayIso,
+    ],
+  );
 
   const monthPrefix = format(viewMonth, "yyyy-MM");
   const projectedCount = useMemo(
     () =>
-      [...transactions, ...expanded].filter(
+      allTransactions.filter(
         (transaction) =>
           transaction.isProjected && transaction.date.startsWith(monthPrefix),
       ).length,
-    [transactions, expanded, monthPrefix],
+    [allTransactions, monthPrefix],
   );
+
+  function beginSelection(iso: string) {
+    setSelection({ start: iso, end: iso });
+    setIsSelecting(true);
+  }
+
+  function extendSelectionFromAnchor(iso: string) {
+    setSelection((current) => ({ start: current.start, end: iso }));
+    setIsSelecting(false);
+  }
+
+  function extendSelection(iso: string) {
+    if (!isSelecting) return;
+    setSelection((current) => ({ ...current, end: iso }));
+  }
+
+  function finishSelection(iso?: string) {
+    if (iso) {
+      setSelection((current) => ({ ...current, end: iso }));
+    }
+    setIsSelecting(false);
+  }
+
+  function openTransactionModal(iso: string) {
+    setTransactionDate(iso);
+    setSelection({ start: iso, end: iso });
+    setIsSelecting(false);
+    setTransactionModalOpen(true);
+  }
 
   return (
     <div className="space-y-10">
@@ -83,8 +161,7 @@ export function CalendarPage() {
         </div>
 
         <div className="flex flex-col gap-3 md:flex-row md:items-center">
-          <div className="grid grid-cols-3 border border-border font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-            <ProjectionMetric label="Hoje" value={baseBalance} />
+          <div className="grid grid-cols-2 border border-border font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
             <ProjectionMetric
               label="Semana"
               value={weeklyBalances[0]?.balance ?? baseBalance}
@@ -130,7 +207,11 @@ export function CalendarPage() {
       </section>
 
       <section>
-        <div className="grid grid-cols-7 border border-border">
+        <div
+          className="grid select-none grid-cols-7 border border-border"
+          onPointerLeave={() => finishSelection()}
+          onPointerUp={() => finishSelection()}
+        >
           {WEEKDAYS.map((weekday) => (
             <div
               key={weekday}
@@ -145,37 +226,68 @@ export function CalendarPage() {
             const items = byDate.get(iso) ?? [];
             const inMonth = isSameMonth(day, viewMonth);
             const dayIsToday = isToday(day);
-            const isPast = iso < todayIso;
-
-            const projectedBalance = dayIsToday
-              ? baseBalance
-              : isPast
-                ? undefined
-                : dailyBalances.get(iso);
+            const selected = isDateInRange(
+              iso,
+              selectedRange.start,
+              selectedRange.end,
+            );
+            const rangeStart = iso === selectedRange.start;
+            const rangeEnd = iso === selectedRange.end;
 
             return (
-              <div
+              <button
                 key={iso}
+                type="button"
+                onPointerDown={(event) => {
+                  event.preventDefault();
+                  if (event.shiftKey) {
+                    extendSelectionFromAnchor(iso);
+                    return;
+                  }
+                  beginSelection(iso);
+                }}
+                onPointerEnter={() => extendSelection(iso)}
+                onPointerUp={() => finishSelection(iso)}
+                onClick={(event) => {
+                  if (event.shiftKey) {
+                    extendSelectionFromAnchor(iso);
+                    return;
+                  }
+                  setSelection({ start: iso, end: iso });
+                }}
+                onDoubleClick={(event) => {
+                  event.preventDefault();
+                  openTransactionModal(iso);
+                }}
                 className={cn(
-                  "relative min-h-[110px] border-b border-r border-border p-2 transition-colors",
+                  "relative min-h-[110px] border-b border-r border-border p-2 text-left transition-colors",
                   (index + 1) % 7 === 0 && "border-r-0",
                   index >= days.length - 7 && "border-b-0",
                   !inMonth && "bg-muted/10",
-                  dayIsToday && "bg-accent/40",
+                  dayIsToday && "bg-accent/30",
+                  selected && "bg-muted/70 text-foreground ring-1 ring-inset ring-foreground/15 hover:bg-muted/80",
+                  !selected && "hover:bg-accent/40",
                 )}
               >
                 <div className="flex items-center justify-between">
                   <span
                     className={cn(
                       "font-mono text-[11px] tabular-nums",
-                      !inMonth && "text-muted-foreground/40",
-                      dayIsToday && "font-semibold text-foreground",
+                      !inMonth && !selected && "text-muted-foreground/40",
+                      dayIsToday && "font-semibold",
                     )}
                   >
                     {format(day, "dd")}
                   </span>
                   {items.length > 0 && (
-                    <span className="font-mono text-[9px] text-muted-foreground/60">
+                    <span
+                      className={cn(
+                        "font-mono text-[9px]",
+                        selected
+                          ? "text-muted-foreground"
+                          : "text-muted-foreground/60",
+                      )}
+                    >
                       {items.length}
                     </span>
                   )}
@@ -199,9 +311,11 @@ export function CalendarPage() {
                       <span
                         className={cn(
                           "truncate leading-tight",
-                          transaction.isProjected
-                            ? "text-muted-foreground/70"
-                            : "text-foreground",
+                          selected
+                            ? "text-foreground"
+                            : transaction.isProjected
+                              ? "text-muted-foreground/70"
+                              : "text-foreground",
                         )}
                       >
                         {transaction.title}
@@ -209,29 +323,30 @@ export function CalendarPage() {
                     </div>
                   ))}
                   {items.length > 2 && (
-                    <p className="font-mono text-[9px] text-muted-foreground/60">
+                    <p
+                      className={cn(
+                        "font-mono text-[9px]",
+                        selected
+                          ? "text-muted-foreground"
+                          : "text-muted-foreground/60",
+                      )}
+                    >
                       +{items.length - 2}
                     </p>
                   )}
                 </div>
 
-                {projectedBalance !== undefined && (
-                  <div className="absolute bottom-1.5 left-2 right-2">
-                    <p
-                      className={cn(
-                        "font-mono text-[9px] tabular-nums",
-                        projectedBalance < 0
-                          ? "text-destructive"
-                          : dayIsToday
-                            ? "text-foreground/70"
-                            : "text-muted-foreground/60",
-                      )}
-                    >
-                      {formatCurrency(projectedBalance, true)}
-                    </p>
-                  </div>
+                {selected && (
+                  <span
+                    className={cn(
+                      "absolute bottom-1.5 h-px bg-foreground/30",
+                      rangeStart ? "left-2" : "left-0",
+                      rangeEnd ? "right-2" : "right-0",
+                    )}
+                    aria-hidden
+                  />
                 )}
-              </div>
+              </button>
             );
           })}
         </div>
@@ -241,14 +356,17 @@ export function CalendarPage() {
           <Legend color="bg-destructive" label="Saída" />
           <span>.</span>
           <span className="normal-case tracking-normal text-muted-foreground/70">
-            Valor no canto inferior = saldo projetado no fim do dia
+            Clique e arraste para selecionar um período
           </span>
         </div>
       </section>
 
-      {isCurrentMonth && (
-        <TodayDetail date={today} transactions={byDate.get(todayIso) ?? []} />
-      )}
+      <SelectionSummary summary={selectedSummary} />
+      <TransactionModal
+        open={transactionModalOpen}
+        onOpenChange={setTransactionModalOpen}
+        initialDate={transactionDate}
+      />
     </div>
   );
 }
@@ -284,38 +402,77 @@ function Legend({ color, label }: { color: string; label: string }) {
   );
 }
 
-function TodayDetail({
-  date,
-  transactions,
-}: {
-  date: Date;
+type SelectionSummaryData = {
+  start: string;
+  end: string;
+  days: number;
+  income: number;
+  expense: number;
+  balance: number;
   transactions: Transaction[];
-}) {
-  const todays = transactions.filter((transaction) =>
-    isSameDay(new Date(transaction.date), date),
-  );
+};
+
+function SelectionSummary({ summary }: { summary: SelectionSummaryData }) {
+  const title =
+    summary.start === summary.end
+      ? format(parseISO(summary.start), "dd MMM yyyy", { locale: ptBR })
+      : `${format(parseISO(summary.start), "dd MMM", {
+          locale: ptBR,
+        })} - ${format(parseISO(summary.end), "dd MMM yyyy", {
+          locale: ptBR,
+        })}`;
 
   return (
-    <section className="space-y-3">
+    <section className="space-y-4">
       <div className="flex items-center gap-3">
         <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-          Detalhe — {format(date, "EEEE, dd MMM", { locale: ptBR })}
+          Período selecionado
         </p>
         <div className="h-px flex-1 bg-border" />
       </div>
 
-      {todays.length === 0 ? (
-        <p className="font-mono text-xs text-muted-foreground">
-          Sem movimentações hoje.
-        </p>
-      ) : (
-        <ul className="border-t border-border">
-          {todays.map((transaction) => (
-            <li
+      <div className="grid grid-cols-1 gap-px overflow-hidden border border-border bg-border md:grid-cols-4">
+        <SelectionMetric
+          label={summary.days === 1 ? "Data" : `${summary.days} dias`}
+          value={title}
+        />
+        <SelectionMetric
+          label="Saldo ao final"
+          value={formatCurrency(summary.balance)}
+          negative={summary.balance < 0}
+        />
+        <SelectionMetric
+          label="Entradas"
+          value={`+${formatCurrency(summary.income)}`}
+          accent="success"
+        />
+        <SelectionMetric
+          label="Saídas"
+          value={`-${formatCurrency(summary.expense)}`}
+          accent="destructive"
+        />
+      </div>
+
+      <div className="border-t border-border">
+        {summary.transactions.length === 0 ? (
+          <p className="py-4 font-mono text-xs text-muted-foreground">
+            Nenhum lançamento nesse período.
+          </p>
+        ) : (
+          summary.transactions.slice(0, 8).map((transaction) => (
+            <div
               key={transaction.id}
-              className="flex items-center justify-between border-b border-border px-1 py-2.5 text-sm last:border-b-0"
+              className="flex items-center justify-between gap-4 border-b border-border py-2.5 text-sm"
             >
-              <span className="truncate">{transaction.title}</span>
+              <div className="min-w-0">
+                <p className="truncate">{transaction.title}</p>
+                <p className="font-mono text-[10px] text-muted-foreground">
+                  {format(parseISO(transaction.date), "dd MMM", {
+                    locale: ptBR,
+                  })}
+                  {transaction.isProjected && " · projetado"}
+                </p>
+              </div>
               <span
                 className={cn(
                   "font-mono tabular-nums",
@@ -327,10 +484,95 @@ function TodayDetail({
                 {transaction.type === "income" ? "+" : "-"}
                 {formatCurrency(transaction.amount)}
               </span>
-            </li>
-          ))}
-        </ul>
-      )}
+            </div>
+          ))
+        )}
+        {summary.transactions.length > 8 && (
+          <p className="py-3 font-mono text-[11px] text-muted-foreground">
+            +{summary.transactions.length - 8} lançamentos no período.
+          </p>
+        )}
+      </div>
     </section>
   );
+}
+
+function SelectionMetric({
+  label,
+  value,
+  negative,
+  accent,
+}: {
+  label: string;
+  value: string;
+  negative?: boolean;
+  accent?: "success" | "destructive";
+}) {
+  return (
+    <div className="bg-background p-4">
+      <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+        {label}
+      </p>
+      <p
+        className={cn(
+          "mt-2 truncate font-mono text-sm tabular-nums",
+          negative && "text-destructive",
+          accent === "success" && "text-success",
+          accent === "destructive" && "text-destructive",
+        )}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function normalizeRange(start: string, end: string) {
+  return start <= end ? { start, end } : { start: end, end: start };
+}
+
+function isDateInRange(date: string, start: string, end: string) {
+  return date >= start && date <= end;
+}
+
+function summarizeSelection(
+  start: string,
+  end: string,
+  accounts: Account[],
+  effectiveTransactions: Transaction[],
+  transactions: Transaction[],
+  dailyBalances: Map<string, number>,
+  baseBalance: number,
+  todayIso: string,
+): SelectionSummaryData {
+  const inRange = transactions
+    .filter(
+      (transaction) => transaction.date >= start && transaction.date <= end,
+    )
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const income = inRange
+    .filter((transaction) => transaction.type === "income")
+    .reduce((sum, transaction) => sum + transaction.amount, 0);
+  const expense = inRange
+    .filter((transaction) => transaction.type === "expense")
+    .reduce((sum, transaction) => sum + transaction.amount, 0);
+  const balance =
+    end <= todayIso
+      ? getTotalCurrentBalance(
+          accounts,
+          effectiveTransactions,
+          new Date(`${end}T12:00:00`),
+        )
+      : dailyBalances.get(end) ?? baseBalance;
+  const days = differenceInCalendarDays(parseISO(end), parseISO(start)) + 1;
+
+  return {
+    start,
+    end,
+    days,
+    income,
+    expense,
+    balance,
+    transactions: inRange,
+  };
 }

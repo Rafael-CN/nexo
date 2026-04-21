@@ -32,6 +32,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   transaction?: Transaction | null;
+  initialDate?: string;
 }
 
 interface FormState {
@@ -61,12 +62,13 @@ const recurrenceOptions: {
 function buildForm(
   transaction?: Transaction | null,
   rule?: RecurrenceRule | null,
+  initialDate?: string,
 ): FormState {
   return {
     type: transaction?.type === "income" ? "income" : "expense",
     title: transaction?.title ?? "",
     amount: transaction ? String(transaction.amount) : "",
-    date: transaction?.date ?? format(new Date(), "yyyy-MM-dd"),
+    date: transaction?.date ?? initialDate ?? format(new Date(), "yyyy-MM-dd"),
     accountId: transaction?.accountId ?? "",
     categoryId: transaction?.categoryId ?? "",
     recurrenceFrequency: rule?.frequency ?? "none",
@@ -76,7 +78,12 @@ function buildForm(
   };
 }
 
-export function TransactionModal({ open, onOpenChange, transaction }: Props) {
+export function TransactionModal({
+  open,
+  onOpenChange,
+  transaction,
+  initialDate,
+}: Props) {
   const accounts = useFinanceStore(useShallow((s) => s.accounts));
   const categories = useFinanceStore(useShallow((s) => s.categories));
   const recurrenceRules = useFinanceStore(useShallow((s) => s.recurrenceRules));
@@ -93,7 +100,7 @@ export function TransactionModal({ open, onOpenChange, transaction }: Props) {
       ? recurrenceRules.find((rule) => rule.id === transaction.recurrenceId)
       : null;
   const [form, setForm] = useState<FormState>(() =>
-    buildForm(transaction, currentRule),
+    buildForm(transaction, currentRule, initialDate),
   );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -104,11 +111,11 @@ export function TransactionModal({ open, onOpenChange, transaction }: Props) {
         transaction?.recurrenceId
           ? recurrenceRules.find((r) => r.id === transaction.recurrenceId)
           : null;
-      setForm(buildForm(transaction, rule));
+      setForm(buildForm(transaction, rule, initialDate));
       setError(null);
       setSaving(false);
     }
-  }, [open, transaction, recurrenceRules]);
+  }, [open, transaction, recurrenceRules, initialDate]);
 
   const filteredCategories = categories.filter((category) =>
     form.type === "income"
