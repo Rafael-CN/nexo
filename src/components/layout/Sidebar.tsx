@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/hooks/useTheme";
+import { getProfileInitials, type LocalProfile } from "@/lib/profile";
 import { cn } from "@/lib/utils";
 
 type Item = {
@@ -32,8 +33,11 @@ const secondary: Item[] = [
   { to: "/configuracoes", label: "Configurações", icon: Settings },
 ];
 
-export function Sidebar() {
+export function Sidebar({ profile }: { profile: LocalProfile | null }) {
   const { theme, toggle } = useTheme();
+  const profileName = profile?.name ?? "Usuário local";
+  const profileSubtext = profile ? "perfil local" : "sem perfil";
+  const initials = getProfileInitials(profileName);
 
   return (
     <aside className="flex h-full w-60 shrink-0 flex-col border-r border-border bg-background">
@@ -73,12 +77,12 @@ export function Sidebar() {
         <div className="flex items-center justify-between gap-2 px-4 py-3">
           <div className="flex min-w-0 items-center gap-2.5">
             <div className="grid h-7 w-7 shrink-0 place-items-center border border-border text-[11px] font-medium">
-              SS
+              {initials}
             </div>
             <div className="flex min-w-0 flex-col leading-tight">
-              <span className="truncate text-xs font-medium">Steve Souza</span>
+              <span className="truncate text-xs font-medium">{profileName}</span>
               <span className="truncate font-mono text-[10px] text-muted-foreground">
-                stecsouza26@gmail.com
+                {profileSubtext}
               </span>
             </div>
           </div>

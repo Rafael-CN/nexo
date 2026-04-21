@@ -110,7 +110,7 @@ export function GoalsPage() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 gap-px overflow-hidden border border-border bg-border md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-px overflow-hidden border border-border bg-transparent md:grid-cols-2">
               {sorted.map((goal) => (
                 <GoalCard
                   key={goal.id}

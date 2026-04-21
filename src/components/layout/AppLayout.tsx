@@ -5,7 +5,9 @@ import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Onboarding } from "@/components/shared/Onboarding";
 import { TransactionModal } from "@/components/shared/TransactionModal";
+import { getLocalProfile, type LocalProfile } from "@/lib/profile";
 import { useFinanceStore } from "@/store/useFinanceStore";
 
 export function AppLayout() {
@@ -13,7 +15,11 @@ export function AppLayout() {
   const isInitializing = useFinanceStore((s) => s.isInitializing);
   const initializeError = useFinanceStore((s) => s.initializeError);
   const isLoaded = useFinanceStore((s) => s.isLoaded);
+  const accounts = useFinanceStore((s) => s.accounts);
   const [transactionModalOpen, setTransactionModalOpen] = useState(false);
+  const [profile, setProfile] = useState<LocalProfile | null>(() =>
+    getLocalProfile(),
+  );
 
   useEffect(() => {
     void initialize();
@@ -31,10 +37,18 @@ export function AppLayout() {
     );
   }
 
+  if (accounts.length === 0) {
+    return (
+      <TooltipProvider delayDuration={120}>
+        <Onboarding onComplete={setProfile} />
+      </TooltipProvider>
+    );
+  }
+
   return (
     <TooltipProvider delayDuration={120}>
       <div className="flex h-full w-full overflow-hidden bg-background">
-        <Sidebar />
+        <Sidebar profile={profile} />
         <div className="flex h-full min-w-0 flex-1 flex-col">
           <Header onNewTransaction={() => setTransactionModalOpen(true)} />
           <main className="flex-1 overflow-y-auto">

@@ -94,7 +94,7 @@ export function IconPicker({
   disabled?: boolean;
 }) {
   return (
-    <div className="grid grid-cols-6 gap-px overflow-hidden border border-border bg-border">
+    <div className="grid grid-cols-6 gap-px overflow-hidden border border-border bg-transparent">
       {financeIconOptions.map((option) => {
         const Icon = option.icon;
         const active = value === option.value;

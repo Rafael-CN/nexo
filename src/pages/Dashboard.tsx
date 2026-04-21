@@ -72,7 +72,7 @@ export function DashboardPage() {
 
       <SectionDivider label="Fluxo do mês" />
 
-      <section className="grid grid-cols-1 gap-px overflow-hidden border border-border bg-border md:grid-cols-3">
+      <section className="grid grid-cols-1 gap-px overflow-hidden border border-border bg-transparent md:grid-cols-3">
         <div className="bg-background">
           <StatCard
             label="Entradas"

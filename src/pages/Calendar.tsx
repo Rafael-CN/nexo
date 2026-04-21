@@ -425,7 +425,7 @@ function SelectionSummary({ summary }: { summary: SelectedRangeSummary }) {
         <div className="h-px flex-1 bg-border" />
       </div>
 
-      <div className="grid grid-cols-1 gap-px overflow-hidden border border-border bg-border md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-px overflow-hidden border border-border bg-transparent md:grid-cols-4">
         <SelectionMetric
           label={summary.days === 1 ? "Data" : `${summary.days} dias`}
           value={title}
