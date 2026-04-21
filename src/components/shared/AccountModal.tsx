@@ -45,6 +45,9 @@ const accountTypes: { value: AccountType; label: string }[] = [
   { value: "investment", label: "Investimento" },
 ];
 
+const labelClass =
+  "text-[10px] uppercase tracking-[0.12em] text-muted-foreground";
+
 function buildForm(account?: Account | null): FormState {
   return {
     name: account?.name ?? "",
@@ -133,40 +136,46 @@ export function AccountModal({ open, onOpenChange, account }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader className="border-b border-border">
+      <DialogContent className="max-w-md overflow-hidden">
+        <DialogHeader className="border-b border-border px-6 py-5 pb-4">
           <DialogTitle>{isEdit ? "Editar conta" : "Nova conta"}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-5 px-6 py-5">
           <div className="space-y-1.5">
-            <Label htmlFor="account-name">Nome</Label>
+            <Label htmlFor="account-name" className={labelClass}>
+              Nome
+            </Label>
             <Input
               id="account-name"
               value={form.name}
               onChange={(event) => set("name", event.target.value)}
               placeholder="Ex: Conta Corrente"
               autoFocus
+              className="h-9 text-sm"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="account-institution">Instituição</Label>
+              <Label htmlFor="account-institution" className={labelClass}>
+                Instituição
+              </Label>
               <Input
                 id="account-institution"
                 value={form.institution}
                 onChange={(event) => set("institution", event.target.value)}
                 placeholder="Ex: Nubank"
+                className="h-9 text-sm"
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Tipo</Label>
+              <Label className={labelClass}>Tipo</Label>
               <Select
                 value={form.type}
                 onValueChange={(value) => set("type", value as AccountType)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-9 font-mono text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -182,22 +191,26 @@ export function AccountModal({ open, onOpenChange, account }: Props) {
 
           <div className="grid grid-cols-[1fr_96px] gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="account-balance">Saldo base</Label>
+              <Label htmlFor="account-balance" className={labelClass}>
+                Saldo base
+              </Label>
               <Input
                 id="account-balance"
                 type="number"
                 step="0.01"
-                className="font-mono tabular-nums"
+                className="h-9 font-mono tabular-nums"
                 value={form.balance}
                 onChange={(event) => set("balance", event.target.value)}
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="account-last-four">Final</Label>
+              <Label htmlFor="account-last-four" className={labelClass}>
+                Final
+              </Label>
               <Input
                 id="account-last-four"
                 maxLength={4}
-                className="font-mono"
+                className="h-9 font-mono"
                 value={form.lastFour}
                 onChange={(event) => set("lastFour", event.target.value)}
                 placeholder="1234"
@@ -207,7 +220,9 @@ export function AccountModal({ open, onOpenChange, account }: Props) {
 
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <Label htmlFor="account-color">Cor</Label>
+              <Label htmlFor="account-color" className={labelClass}>
+                Cor
+              </Label>
               <Input
                 id="account-color"
                 type="color"
@@ -217,7 +232,7 @@ export function AccountModal({ open, onOpenChange, account }: Props) {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Ícone</Label>
+              <Label className={labelClass}>Ícone</Label>
               <IconPicker
                 value={form.icon}
                 onChange={(value) => set("icon", value)}
@@ -253,12 +268,7 @@ export function AccountModal({ open, onOpenChange, account }: Props) {
           >
             Cancelar
           </Button>
-          <Button
-            size="sm"
-            className="rounded-sm text-xs"
-            onClick={handleSave}
-            disabled={saving}
-          >
+          <Button size="sm" className="rounded-sm text-xs" onClick={handleSave} disabled={saving}>
             Salvar
           </Button>
         </DialogFooter>

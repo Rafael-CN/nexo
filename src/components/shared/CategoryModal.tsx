@@ -34,6 +34,9 @@ interface FormState {
   icon: string;
 }
 
+const labelClass =
+  "text-[10px] uppercase tracking-[0.12em] text-muted-foreground";
+
 function buildForm(category?: Category | null): FormState {
   return {
     name: category?.name ?? "",
@@ -107,8 +110,8 @@ export function CategoryModal({ open, onOpenChange, category }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader className="border-b border-border">
+      <DialogContent className="max-w-md overflow-hidden">
+        <DialogHeader className="border-b border-border px-6 py-5 pb-4">
           <DialogTitle>
             {isEdit ? "Editar categoria" : "Nova categoria"}
           </DialogTitle>
@@ -116,24 +119,27 @@ export function CategoryModal({ open, onOpenChange, category }: Props) {
 
         <div className="space-y-5 px-6 py-5">
           <div className="space-y-1.5">
-            <Label htmlFor="category-name">Nome</Label>
+            <Label htmlFor="category-name" className={labelClass}>
+              Nome
+            </Label>
             <Input
               id="category-name"
               value={form.name}
               onChange={(event) => set("name", event.target.value)}
               placeholder="Ex: Alimentação"
               autoFocus
+              className="h-9 text-sm"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Tipo</Label>
+              <Label className={labelClass}>Tipo</Label>
               <Select
                 value={form.kind}
                 onValueChange={(value) => set("kind", value as CategoryKind)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-9 font-mono text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -143,7 +149,9 @@ export function CategoryModal({ open, onOpenChange, category }: Props) {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="category-color">Cor</Label>
+              <Label htmlFor="category-color" className={labelClass}>
+                Cor
+              </Label>
               <Input
                 id="category-color"
                 type="color"
@@ -155,7 +163,7 @@ export function CategoryModal({ open, onOpenChange, category }: Props) {
           </div>
 
           <div className="space-y-1.5">
-            <Label>Ícone</Label>
+            <Label className={labelClass}>Ícone</Label>
             <IconPicker
               value={form.icon}
               onChange={(value) => set("icon", value)}
@@ -190,12 +198,7 @@ export function CategoryModal({ open, onOpenChange, category }: Props) {
           >
             Cancelar
           </Button>
-          <Button
-            size="sm"
-            className="rounded-sm text-xs"
-            onClick={handleSave}
-            disabled={saving}
-          >
+          <Button size="sm" className="rounded-sm text-xs" onClick={handleSave} disabled={saving}>
             Salvar
           </Button>
         </DialogFooter>

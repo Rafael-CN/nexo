@@ -12,6 +12,7 @@ import {
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Goal } from "@/types";
+import type { ReactNode } from "react";
 
 export function GoalsPage() {
   const goals = useFinanceStore(useShallow((s) => s.goals));
@@ -33,14 +34,12 @@ export function GoalsPage() {
   const sorted = useMemo(
     () =>
       [...goals].sort((a, b) => {
-        if (a.deadline && b.deadline)
+        if (a.deadline && b.deadline) {
           return a.deadline.localeCompare(b.deadline);
+        }
         if (a.deadline) return -1;
         if (b.deadline) return 1;
-        return (
-          a.currentAmount / a.targetAmount -
-          b.currentAmount / b.targetAmount
-        );
+        return a.currentAmount / a.targetAmount - b.currentAmount / b.targetAmount;
       }),
     [goals],
   );
@@ -52,7 +51,7 @@ export function GoalsPage() {
 
   return (
     <div className="space-y-10">
-      <section className="flex flex-col gap-8 border-b border-border pb-10 md:flex-row md:items-end md:justify-between">
+      <section className="flex flex-col gap-6 border-b border-border pb-10 md:flex-row md:items-end md:justify-between">
         <div className="space-y-3">
           <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
             Metas financeiras ({summary.count})
@@ -71,11 +70,7 @@ export function GoalsPage() {
           </p>
         </div>
 
-        <Button
-          size="sm"
-          className="gap-1.5 rounded-sm text-xs"
-          onClick={openNew}
-        >
+        <Button size="sm" className="gap-1.5 rounded-sm text-xs" onClick={openNew}>
           <Plus className="h-3.5 w-3.5" strokeWidth={2} />
           Nova meta
         </Button>
@@ -90,24 +85,13 @@ export function GoalsPage() {
         </div>
 
         {sorted.length === 0 ? (
-          <div className="grid place-items-center gap-3 border border-dashed border-border py-12 text-center">
-            <Flag className="h-5 w-5 text-muted-foreground" strokeWidth={1.5} />
-            <p className="font-mono text-[11px] uppercase tracking-wider">
-              Nenhuma meta cadastrada
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Crie sua primeira meta financeira para começar.
-            </p>
-            <Button
-              size="sm"
-              variant="outline"
-              className="mt-1 gap-1.5 rounded-sm text-xs"
-              onClick={openNew}
-            >
-              <Plus className="h-3.5 w-3.5" strokeWidth={2} />
-              Nova meta
-            </Button>
-          </div>
+          <EmptyPanel
+            title="Nenhuma meta cadastrada"
+            description="Crie sua primeira meta financeira para começar."
+            actionLabel="Nova meta"
+            onAction={openNew}
+            icon={<Flag className="h-5 w-5 text-muted-foreground" strokeWidth={1.5} />}
+          />
         ) : (
           <>
             <div className="grid grid-cols-1 gap-px overflow-hidden border border-border bg-transparent md:grid-cols-2">
@@ -173,16 +157,15 @@ function GoalCard({
   }, [goal.deadline, monthsToGoal]);
 
   return (
-    <div className="group relative flex flex-col gap-5 bg-background p-5 transition-colors hover:bg-accent/30">
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-3">
-          <Flag
-            className="h-4 w-4 shrink-0 text-muted-foreground"
-            strokeWidth={1.5}
-          />
-          <div>
+    <div className="group relative flex min-h-[240px] flex-col gap-5 bg-background p-5 transition-colors hover:bg-accent/30">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <Flag className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.5} />
+          <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <p className="text-sm font-medium leading-tight">{goal.name}</p>
+              <p className="truncate text-sm font-medium leading-tight">
+                {goal.name}
+              </p>
               {goal.status === "paused" && (
                 <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60">
                   pausada
@@ -190,7 +173,7 @@ function GoalCard({
               )}
             </div>
             {goal.description && (
-              <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
+              <p className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">
                 {goal.description}
               </p>
             )}
@@ -264,15 +247,11 @@ function GoalCard({
 
         {monthsToGoal !== null && !deadlineInfo && (
           <div className="flex items-center gap-2">
-            <span
-              className="h-1.5 w-1.5 shrink-0 rounded-full bg-success"
-              aria-hidden
-            />
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-success" aria-hidden />
             <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
               Projeção ·{" "}
               <span className="normal-case tracking-normal">
-                {monthsToGoal} {monthsToGoal === 1 ? "mês" : "meses"} no ritmo
-                atual
+                {monthsToGoal} {monthsToGoal === 1 ? "mês" : "meses"} no ritmo atual
               </span>
             </p>
           </div>
@@ -337,6 +316,7 @@ function OverallProgress({ goals }: { goals: Goal[] }) {
             100,
             Math.round((goal.currentAmount / goal.targetAmount) * 100),
           );
+
           return (
             <div
               key={goal.id}
@@ -344,10 +324,7 @@ function OverallProgress({ goals }: { goals: Goal[] }) {
             >
               <p className="truncate text-sm">{goal.name}</p>
               <div className="h-px bg-border">
-                <div
-                  className="h-px bg-foreground"
-                  style={{ width: `${pct}%` }}
-                />
+                <div className="h-px bg-foreground" style={{ width: `${pct}%` }} />
               </div>
               <p className="text-right font-mono text-[11px] tabular-nums text-muted-foreground">
                 {pct}%
@@ -357,5 +334,40 @@ function OverallProgress({ goals }: { goals: Goal[] }) {
         })}
       </div>
     </section>
+  );
+}
+
+function EmptyPanel({
+  title,
+  description,
+  actionLabel,
+  onAction,
+  icon,
+}: {
+  title: string;
+  description: string;
+  actionLabel: string;
+  onAction: () => void;
+  icon: ReactNode;
+}) {
+  return (
+    <div className="grid min-h-[280px] place-items-center border border-dashed border-border bg-accent/10 px-6 py-14 text-center">
+      <div className="max-w-sm space-y-3">
+        <div className="mx-auto grid h-10 w-10 place-items-center border border-border bg-background">
+          {icon}
+        </div>
+        <p className="font-mono text-xs uppercase tracking-wider">{title}</p>
+        <p className="text-xs text-muted-foreground">{description}</p>
+        <Button
+          size="sm"
+          variant="outline"
+          className="mt-2 gap-1.5 rounded-sm text-xs"
+          onClick={onAction}
+        >
+          <Plus className="h-3.5 w-3.5" strokeWidth={2} />
+          {actionLabel}
+        </Button>
+      </div>
+    </div>
   );
 }

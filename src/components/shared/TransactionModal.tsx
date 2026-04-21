@@ -15,7 +15,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DatePicker } from "@/components/shared/DatePicker";
 import { CurrencyInput } from "@/components/shared/CurrencyInput";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useFinanceStore } from "@/store/useFinanceStore";
 import { cn } from "@/lib/utils";
 import type {
@@ -48,6 +54,9 @@ const recurrenceOptions: {
   { value: "monthly", label: "Mensal" },
   { value: "yearly", label: "Anual" },
 ];
+
+const labelClass =
+  "text-[10px] uppercase tracking-[0.12em] text-muted-foreground";
 
 export function TransactionModal({
   open,
@@ -329,8 +338,8 @@ export function TransactionModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader className="border-b border-border">
+      <DialogContent className="max-w-2xl overflow-hidden">
+        <DialogHeader className="border-b border-border px-6 py-5 pb-4">
           <DialogTitle className="text-sm font-medium tracking-tight">
             {isEdit ? "Editar transação" : "Nova transação"}
           </DialogTitle>
@@ -358,9 +367,7 @@ export function TransactionModal({
                 />
               </div>
               <div className="text-right">
-                <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-                  Conta
-                </p>
+                <p className={labelClass}>Conta</p>
                 <p className="mt-1 truncate text-xs text-foreground">
                   {selectedAccount?.name ?? "Selecionar"}
                 </p>
@@ -368,7 +375,7 @@ export function TransactionModal({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="txn-amount" className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+              <Label htmlFor="txn-amount" className={labelClass}>
                 Valor
               </Label>
               <CurrencyInput
@@ -386,53 +393,39 @@ export function TransactionModal({
 
           <div className="grid gap-3 md:grid-cols-[1.4fr_0.9fr]">
             <div className="space-y-1.5">
-              <Label
-                htmlFor="txn-title"
-                className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground"
-              >
+              <Label htmlFor="txn-title" className={labelClass}>
                 Título
               </Label>
               <Input
                 id="txn-title"
                 placeholder="Ex: Aluguel, salário..."
                 value={form.title}
-                onChange={(event) =>
-                  updateField("title", event.target.value)
-                }
-                className="text-sm"
+                onChange={(event) => updateField("title", event.target.value)}
+                className="h-9 text-sm"
                 autoFocus
               />
             </div>
             <div className="space-y-1.5">
-              <Label
-                htmlFor="txn-date"
-                className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground"
-              >
+              <Label htmlFor="txn-date" className={labelClass}>
                 Data
               </Label>
               <DatePicker
                 id="txn-date"
                 className="font-mono"
                 value={form.date}
-                onChange={(value) =>
-                  updateField("date", value)
-                }
+                onChange={(value) => updateField("date", value)}
               />
             </div>
           </div>
 
           <div className="grid gap-3 md:grid-cols-[0.95fr_1.05fr]">
             <div className="space-y-1.5">
-              <Label className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
-                Conta
-              </Label>
+              <Label className={labelClass}>Conta</Label>
               <Select
                 value={form.accountId}
-                onValueChange={(value) =>
-                  updateField("accountId", value)
-                }
+                onValueChange={(value) => updateField("accountId", value)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="font-mono text-xs">
                   <SelectValue placeholder="Selecionar" />
                 </SelectTrigger>
                 <SelectContent>
@@ -446,16 +439,12 @@ export function TransactionModal({
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
-                Categoria
-              </Label>
+              <Label className={labelClass}>Categoria</Label>
               <CategoryPicker
                 categories={categories}
                 type={form.type}
                 value={form.categoryId}
-                onChange={(value) =>
-                  updateField("categoryId", value)
-                }
+                onChange={(value) => updateField("categoryId", value)}
                 disabled={saving}
               />
               {selectedCategory && (
@@ -468,11 +457,7 @@ export function TransactionModal({
 
           <div className="grid grid-cols-[1fr_96px] gap-3">
             <div className="space-y-1.5">
-              <Label
-                className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground"
-              >
-                Recorrência
-              </Label>
+              <Label className={labelClass}>Recorrência</Label>
               <Select
                 value={form.recurrenceFrequency}
                 onValueChange={(value) =>
@@ -482,7 +467,7 @@ export function TransactionModal({
                   )
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger className="font-mono text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -495,10 +480,7 @@ export function TransactionModal({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label
-                htmlFor="txn-recurrence-interval"
-                className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground"
-              >
+              <Label htmlFor="txn-recurrence-interval" className={labelClass}>
                 Intervalo
               </Label>
               <Input
@@ -506,12 +488,10 @@ export function TransactionModal({
                 type="number"
                 min="1"
                 step="1"
-                className="font-mono tabular-nums"
+                className="h-9 font-mono tabular-nums"
                 value={form.recurrenceInterval}
                 disabled={form.recurrenceFrequency === "none"}
-                onChange={(event) =>
-                  updateField("recurrenceInterval", event.target.value)
-                }
+                onChange={(event) => updateField("recurrenceInterval", event.target.value)}
               />
             </div>
           </div>
@@ -540,19 +520,14 @@ export function TransactionModal({
 
               {!form.recurrenceNoEnd && (
                 <div className="space-y-1.5">
-                  <Label
-                    htmlFor="txn-recurrence-until"
-                    className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground"
-                  >
+                  <Label htmlFor="txn-recurrence-until" className={labelClass}>
                     Repetir até
                   </Label>
                   <DatePicker
                     id="txn-recurrence-until"
                     className="font-mono"
                     value={form.recurrenceUntil}
-                    onChange={(value) =>
-                      updateField("recurrenceUntil", value)
-                    }
+                    onChange={(value) => updateField("recurrenceUntil", value)}
                   />
                 </div>
               )}

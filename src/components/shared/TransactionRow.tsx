@@ -29,19 +29,26 @@ export function TransactionRow({ transaction, onClick }: TransactionRowProps) {
       onClick={onClick}
       onKeyDown={onClick ? (e) => e.key === "Enter" && onClick() : undefined}
       className={cn(
-        "group grid grid-cols-[80px_1fr_auto] items-center gap-4 border-b border-border px-1 py-3 transition-colors last:border-b-0 hover:bg-accent/40",
+        "group grid grid-cols-[88px_minmax(0,1fr)_auto] items-center gap-4 border-b border-border px-3 py-3 transition-colors last:border-b-0 hover:bg-accent/30",
         onClick && "cursor-pointer",
       )}
     >
-      <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-        {format(date, "dd MMM", { locale: ptBR })}
-      </span>
+      <div className="space-y-1">
+        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+          {format(date, "EEE", { locale: ptBR })}
+        </p>
+        <p className="font-mono text-xs uppercase tracking-wider text-foreground/80">
+          {format(date, "dd MMM", { locale: ptBR })}
+        </p>
+      </div>
 
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <p className="truncate text-sm font-medium">{transaction.title}</p>
+      <div className="min-w-0 space-y-1">
+        <div className="flex min-w-0 items-center gap-2">
+          <p className="truncate text-sm font-medium leading-tight">
+            {transaction.title}
+          </p>
           {isProjected && (
-            <span className="font-mono text-[10px] uppercase tracking-wider text-warning">
+            <span className="shrink-0 border border-warning/30 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-warning">
               projetada
             </span>
           )}
@@ -54,14 +61,14 @@ export function TransactionRow({ transaction, onClick }: TransactionRowProps) {
         </div>
         <p className="truncate font-mono text-[11px] text-muted-foreground">
           {acc?.name ?? "—"}
-          <span className="px-1.5">·</span>
+          <span className="px-1.5 text-muted-foreground/60">·</span>
           {cat?.name ?? "—"}
         </p>
       </div>
 
       <p
         className={cn(
-          "font-mono text-sm tabular-nums",
+          "min-w-[112px] text-right font-mono text-sm tabular-nums",
           isIncome ? "text-success" : "text-foreground",
         )}
       >

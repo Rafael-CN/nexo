@@ -41,6 +41,9 @@ const defaultRelevantCategoryIds = new Set([
   "cat-expense-subscriptions",
 ]);
 
+const labelClass =
+  "text-[10px] uppercase tracking-[0.12em] text-muted-foreground";
+
 export function Onboarding({ onComplete }: OnboardingProps) {
   const categories = useFinanceStore((s) => s.categories);
   const accounts = useFinanceStore((s) => s.accounts);
@@ -59,8 +62,8 @@ export function Onboarding({ onComplete }: OnboardingProps) {
   const [institution, setInstitution] = useState("");
   const [accountType, setAccountType] = useState<AccountType>("checking");
   const [balance, setBalance] = useState("0");
-  const [selectedCategoryIds, setSelectedCategoryIds] = useState(() =>
-    new Set<string>(),
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState(
+    () => new Set<string>(),
   );
   const [initializedSelection, setInitializedSelection] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -218,13 +221,16 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                 Perfil
               </p>
               <div className="mt-3 space-y-1.5">
-                <Label htmlFor="onboarding-name">Seu nome</Label>
+                <Label htmlFor="onboarding-name" className={labelClass}>
+                  Seu nome
+                </Label>
                 <Input
                   id="onboarding-name"
                   value={name}
                   onChange={(event) => setName(event.target.value)}
                   placeholder="Ex: Ana Souza"
                   autoFocus
+                  className="h-9 text-sm"
                 />
               </div>
             </div>
@@ -235,32 +241,38 @@ export function Onboarding({ onComplete }: OnboardingProps) {
               </p>
               <div className="mt-3 space-y-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="onboarding-account">Nome da conta</Label>
+                  <Label htmlFor="onboarding-account" className={labelClass}>
+                    Nome da conta
+                  </Label>
                   <Input
                     id="onboarding-account"
                     value={accountName}
                     onChange={(event) => setAccountName(event.target.value)}
+                    className="h-9 text-sm"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="onboarding-institution">Instituição</Label>
+                    <Label htmlFor="onboarding-institution" className={labelClass}>
+                      Instituição
+                    </Label>
                     <Input
                       id="onboarding-institution"
                       value={institution}
                       onChange={(event) => setInstitution(event.target.value)}
                       placeholder="Ex: Nubank"
+                      className="h-9 text-sm"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Tipo</Label>
+                    <Label className={labelClass}>Tipo</Label>
                     <Select
                       value={accountType}
                       onValueChange={(value) =>
                         setAccountType(value as AccountType)
                       }
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="h-9 font-mono text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -274,14 +286,16 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="onboarding-balance">Saldo inicial (R$)</Label>
+                  <Label htmlFor="onboarding-balance" className={labelClass}>
+                    Saldo inicial (R$)
+                  </Label>
                   <Input
                     id="onboarding-balance"
                     type="number"
                     step="0.01"
                     value={balance}
                     onChange={(event) => setBalance(event.target.value)}
-                    className="font-mono tabular-nums"
+                    className="h-9 font-mono tabular-nums"
                   />
                 </div>
               </div>
@@ -379,7 +393,7 @@ function CategoryPickerGroup({
               type="button"
               onClick={() => onToggle(category.id)}
               className={cn(
-                "flex min-h-[72px] items-center gap-3 bg-background p-3 text-left transition-colors hover:bg-accent/40",
+                "flex min-h-[80px] items-center gap-3 bg-background p-3 text-left transition-colors hover:bg-accent/40",
                 selected && "bg-muted/70 ring-1 ring-inset ring-foreground/15",
               )}
             >

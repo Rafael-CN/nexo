@@ -72,7 +72,7 @@ export function TransactionsPage() {
 
   return (
     <div className="space-y-10">
-      <section className="flex flex-col gap-8 border-b border-border pb-10 md:flex-row md:items-end md:justify-between">
+      <section className="flex flex-col gap-6 border-b border-border pb-10 md:flex-row md:items-end md:justify-between">
         <div className="space-y-3">
           <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
             Transações ({totals.count})
@@ -91,7 +91,7 @@ export function TransactionsPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant={filtersOpen || activeFilters ? "default" : "outline"}
             size="sm"
@@ -107,19 +107,14 @@ export function TransactionsPage() {
             className="gap-1.5 rounded-sm text-xs"
             onClick={() =>
               updateFilters({
-                sort:
-                  filters.sort === "date-desc" ? "date-asc" : "date-desc",
+                sort: filters.sort === "date-desc" ? "date-asc" : "date-desc",
               })
             }
           >
             <ArrowDownUp className="h-3.5 w-3.5" strokeWidth={1.5} />
             {filters.sort === "date-desc" ? "Recentes" : "Antigas"}
           </Button>
-          <Button
-            size="sm"
-            className="gap-1.5 rounded-sm text-xs"
-            onClick={openNew}
-          >
+          <Button size="sm" className="gap-1.5 rounded-sm text-xs" onClick={openNew}>
             <Plus className="h-3.5 w-3.5" strokeWidth={2} />
             Nova
           </Button>
@@ -127,7 +122,7 @@ export function TransactionsPage() {
       </section>
 
       {filtersOpen && (
-        <section className="grid grid-cols-1 gap-3 border-b border-border pb-5 md:grid-cols-[1.4fr_160px_160px_160px_160px_auto]">
+        <section className="grid grid-cols-1 gap-3 border-b border-border pb-5 md:grid-cols-[1.5fr_150px_150px_150px_150px_auto] md:items-end">
           <div className="relative">
             <Search
               className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
@@ -212,6 +207,7 @@ export function TransactionsPage() {
               (s, t) => s + (t.type === "income" ? t.amount : -t.amount),
               0,
             );
+
             return (
               <div key={date} className="space-y-3">
                 <div className="flex items-baseline gap-3">
@@ -224,7 +220,7 @@ export function TransactionsPage() {
                     {formatCurrency(Math.abs(dayTotal))}
                   </span>
                 </div>
-                <div className="border-t border-border">
+                <div className="border border-border bg-background">
                   {list.map((t) => (
                     <TransactionRow
                       key={t.id}
@@ -256,26 +252,28 @@ function EmptyTransactions({
   onNew: () => void;
 }) {
   return (
-    <div className="grid place-items-center border border-dashed border-border py-12 text-center">
-      <p className="font-mono text-xs uppercase tracking-wider">
-        {filtered ? "Nenhum resultado encontrado" : "Nenhuma transação"}
-      </p>
-      <p className="mt-1 text-xs text-muted-foreground">
-        {filtered
-          ? "Ajuste os filtros para ampliar a busca."
-          : "Cadastre sua primeira movimentação para começar."}
-      </p>
-      {!filtered && (
-        <Button
-          size="sm"
-          variant="outline"
-          className="mt-4 gap-1.5 rounded-sm text-xs"
-          onClick={onNew}
-        >
-          <Plus className="h-3.5 w-3.5" strokeWidth={2} />
-          Nova transação
-        </Button>
-      )}
+    <div className="grid min-h-[280px] place-items-center border border-dashed border-border bg-accent/10 px-6 py-14 text-center">
+      <div className="max-w-sm space-y-3">
+        <p className="font-mono text-xs uppercase tracking-wider">
+          {filtered ? "Nenhum resultado encontrado" : "Nenhuma transação"}
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {filtered
+            ? "Ajuste os filtros para ampliar a busca."
+            : "Cadastre sua primeira movimentação para começar."}
+        </p>
+        {!filtered && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="mt-4 gap-1.5 rounded-sm text-xs"
+            onClick={onNew}
+          >
+            <Plus className="h-3.5 w-3.5" strokeWidth={2} />
+            Nova transação
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

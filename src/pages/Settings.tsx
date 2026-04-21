@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Database, Moon, Sun, Upload } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { Button } from "@/components/ui/button";
@@ -5,15 +6,16 @@ import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
 import { isTauri } from "@/lib/db";
 
+const labelClass =
+  "font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground";
+
 export function SettingsPage() {
   const { theme, setTheme } = useTheme();
 
   return (
     <div className="mx-auto max-w-4xl space-y-10">
       <section className="border-b border-border pb-8">
-        <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-          Nexo / configurações
-        </p>
+        <p className={labelClass}>Nexo / configurações</p>
         <h1 className="mt-3 font-mono text-4xl font-light tracking-tight md:text-5xl">
           Preferências
         </h1>
@@ -139,7 +141,7 @@ export function SettingsPage() {
               if (isTauri) await invoke("reset_database");
               window.location.reload();
             }}
-            className="inline-flex items-center gap-1.5 border border-red-500 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-red-500 transition-colors hover:bg-red-500/10"
+            className="inline-flex h-9 items-center gap-1.5 border border-red-500 px-3 font-mono text-[11px] uppercase tracking-wider text-red-500 transition-colors hover:bg-red-500/10"
           >
             <Database className="h-3.5 w-3.5" strokeWidth={1.5} />
             Resetar banco de dados
@@ -148,10 +150,7 @@ export function SettingsPage() {
       </SettingsSection>
 
       <SettingsSection label="Sobre">
-        <SettingRow
-          label="Aplicativo"
-          description="Nexo — finanças pessoais"
-        >
+        <SettingRow label="Aplicativo" description="Nexo — finanças pessoais">
           <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
             v0.1.0
           </span>
@@ -174,14 +173,12 @@ function SettingsSection({
   children,
 }: {
   label: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <section className="space-y-0">
       <div className="mb-3 flex items-center gap-3">
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-          {label}
-        </p>
+        <p className={labelClass}>{label}</p>
         <div className="h-px flex-1 bg-border" />
       </div>
       <div className="border-t border-border">{children}</div>
@@ -196,7 +193,7 @@ function SettingRow({
 }: {
   label: string;
   description?: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <div className="flex items-center justify-between gap-8 border-b border-border py-4">
@@ -221,7 +218,7 @@ function ThemeButton({
 }: {
   active: boolean;
   onClick: () => void;
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
 }) {
   return (
@@ -229,7 +226,7 @@ function ThemeButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex items-center gap-1.5 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider transition-colors",
+        "flex h-9 items-center gap-1.5 px-3 font-mono text-[11px] uppercase tracking-wider transition-colors",
         active
           ? "bg-foreground text-background"
           : "bg-background text-muted-foreground hover:bg-accent hover:text-foreground",

@@ -40,6 +40,9 @@ interface FormState {
   paused: boolean;
 }
 
+const labelClass =
+  "text-[10px] uppercase tracking-[0.12em] text-muted-foreground";
+
 function buildForm(g?: Goal | null): FormState {
   return {
     name: g?.name ?? "",
@@ -48,9 +51,7 @@ function buildForm(g?: Goal | null): FormState {
     currentAmount: g ? String(g.currentAmount) : "0",
     deadline: g?.deadline ?? "",
     accountId: g?.accountId ?? "",
-    monthlyContribution: g?.monthlyContribution
-      ? String(g.monthlyContribution)
-      : "",
+    monthlyContribution: g?.monthlyContribution ? String(g.monthlyContribution) : "",
     paused: g?.status === "paused",
   };
 }
@@ -132,56 +133,66 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader className="border-b border-border">
+      <DialogContent className="max-w-md overflow-hidden">
+        <DialogHeader className="border-b border-border px-6 py-5 pb-4">
           <DialogTitle>{isEdit ? "Editar meta" : "Nova meta"}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-5 px-6 py-5">
           <div className="space-y-1.5">
-            <Label htmlFor="goal-name">Nome</Label>
+            <Label htmlFor="goal-name" className={labelClass}>
+              Nome
+            </Label>
             <Input
               id="goal-name"
               placeholder="Ex: Viagem, entrada do imóvel..."
               value={form.name}
               onChange={(e) => set("name", e.target.value)}
               autoFocus
+              className="h-9 text-sm"
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="goal-desc">Descrição (opcional)</Label>
+            <Label htmlFor="goal-desc" className={labelClass}>
+              Descrição (opcional)
+            </Label>
             <Input
               id="goal-desc"
               placeholder="Ex: 6 meses de despesas fixas"
               value={form.description}
               onChange={(e) => set("description", e.target.value)}
+              className="h-9 text-sm"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="goal-target">Meta (R$)</Label>
+              <Label htmlFor="goal-target" className={labelClass}>
+                Meta (R$)
+              </Label>
               <Input
                 id="goal-target"
                 type="number"
                 min="1"
                 step="100"
                 placeholder="0,00"
-                className="font-mono tabular-nums"
+                className="h-9 font-mono tabular-nums"
                 value={form.targetAmount}
                 onChange={(e) => set("targetAmount", e.target.value)}
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="goal-current">Acumulado (R$)</Label>
+              <Label htmlFor="goal-current" className={labelClass}>
+                Acumulado (R$)
+              </Label>
               <Input
                 id="goal-current"
                 type="number"
                 min="0"
                 step="100"
                 placeholder="0,00"
-                className="font-mono tabular-nums"
+                className="h-9 font-mono tabular-nums"
                 value={form.currentAmount}
                 onChange={(e) => set("currentAmount", e.target.value)}
               />
@@ -190,7 +201,9 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="goal-deadline">Prazo (opcional)</Label>
+              <Label htmlFor="goal-deadline" className={labelClass}>
+                Prazo (opcional)
+              </Label>
               <DatePicker
                 id="goal-deadline"
                 className="font-mono"
@@ -199,12 +212,12 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Conta vinculada</Label>
+              <Label className={labelClass}>Conta vinculada</Label>
               <Select
                 value={form.accountId}
                 onValueChange={(v) => set("accountId", v === "_none" ? "" : v)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-9 font-mono text-xs">
                   <SelectValue placeholder="Nenhuma" />
                 </SelectTrigger>
                 <SelectContent>
@@ -220,14 +233,16 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="goal-contrib">Contribuição mensal (R$)</Label>
+            <Label htmlFor="goal-contrib" className={labelClass}>
+              Contribuição mensal (R$)
+            </Label>
             <Input
               id="goal-contrib"
               type="number"
               min="0"
               step="50"
               placeholder="0,00 — usado para projetar prazo"
-              className="font-mono tabular-nums"
+              className="h-9 font-mono tabular-nums"
               value={form.monthlyContribution}
               onChange={(e) => set("monthlyContribution", e.target.value)}
             />
@@ -275,12 +290,7 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
           >
             Cancelar
           </Button>
-          <Button
-            size="sm"
-            className="rounded-sm text-xs"
-            onClick={handleSave}
-            disabled={saving}
-          >
+          <Button size="sm" className="rounded-sm text-xs" onClick={handleSave} disabled={saving}>
             Salvar
           </Button>
         </DialogFooter>
