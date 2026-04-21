@@ -2,23 +2,28 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { ReactNode } from "react";
 import { Minus, Square, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import nexoIcon from "@/assets/nexo-icon.png";
+import nexoMarkDark from "@/assets/nexo-mark-dark.png";
+import nexoMarkLight from "@/assets/nexo-mark-light.png";
 
 export function DesktopTitleBar() {
   return (
-    <div
-      data-tauri-drag-region
-      className="flex h-9 shrink-0 select-none items-center border-b border-border bg-background"
-    >
+    <div className="flex h-9 shrink-0 select-none items-center border-b border-border bg-background">
       <div
         data-tauri-drag-region
         className="flex min-w-0 flex-1 items-center gap-2 px-3"
       >
         <img
-          src={nexoIcon}
+          src={nexoMarkLight}
           alt=""
           aria-hidden
-          className="h-4 w-4 rounded-[4px]"
+          className="h-4 w-4 rounded-[4px] dark:hidden"
+          draggable={false}
+        />
+        <img
+          src={nexoMarkDark}
+          alt=""
+          aria-hidden
+          className="hidden h-4 w-4 rounded-[4px] dark:block"
           draggable={false}
         />
         <span className="truncate font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-foreground">
@@ -69,9 +74,12 @@ function WindowButton({
     <Button
       aria-label={label}
       className={
-        danger ? "hover:bg-destructive hover:text-destructive-foreground" : undefined
+        danger
+          ? "h-9 w-11 rounded-none hover:bg-destructive hover:text-destructive-foreground"
+          : "h-9 w-11 rounded-none"
       }
       onClick={onClick}
+      onPointerDown={(event) => event.stopPropagation()}
       size="icon"
       type="button"
       variant="ghost"
