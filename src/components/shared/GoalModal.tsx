@@ -47,7 +47,9 @@ function buildForm(g?: Goal | null): FormState {
     currentAmount: g ? String(g.currentAmount) : "0",
     deadline: g?.deadline ?? "",
     accountId: g?.accountId ?? "",
-    monthlyContribution: g?.monthlyContribution ? String(g.monthlyContribution) : "",
+    monthlyContribution: g?.monthlyContribution
+      ? String(g.monthlyContribution)
+      : "",
     paused: g?.status === "paused",
   };
 }
@@ -135,19 +137,17 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
         </DialogHeader>
 
         <div className="space-y-5 px-6 py-5">
-          {/* Name */}
           <div className="space-y-1.5">
             <Label htmlFor="goal-name">Nome</Label>
             <Input
               id="goal-name"
-              placeholder="Ex: Viagem, entrada do imovel..."
+              placeholder="Ex: Viagem, entrada do imóvel..."
               value={form.name}
               onChange={(e) => set("name", e.target.value)}
               autoFocus
             />
           </div>
 
-          {/* Description */}
           <div className="space-y-1.5">
             <Label htmlFor="goal-desc">Descrição (opcional)</Label>
             <Input
@@ -158,7 +158,6 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
             />
           </div>
 
-          {/* Target + Current */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="goal-target">Meta (R$)</Label>
@@ -188,7 +187,6 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
             </div>
           </div>
 
-          {/* Deadline + Account */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="goal-deadline">Prazo (opcional)</Label>
@@ -221,7 +219,6 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
             </div>
           </div>
 
-          {/* Monthly contribution */}
           <div className="space-y-1.5">
             <Label htmlFor="goal-contrib">Contribuição mensal (R$)</Label>
             <Input
@@ -236,7 +233,6 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
             />
           </div>
 
-          {/* Paused toggle */}
           <label className="flex cursor-pointer items-center gap-2.5">
             <input
               type="checkbox"

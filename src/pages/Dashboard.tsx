@@ -70,7 +70,7 @@ export function DashboardPage() {
     <div className="space-y-10">
       <HeroBalance balance={totalBalance} accounts={accountSummaries} />
 
-      <SectionDivider label="Fluxo do mes" />
+      <SectionDivider label="Fluxo do mês" />
 
       <section className="grid grid-cols-1 gap-px overflow-hidden border border-border bg-border md:grid-cols-3">
         <div className="bg-background">
@@ -88,7 +88,7 @@ export function DashboardPage() {
         </div>
         <div className="bg-background">
           <StatCard
-            label="Saidas"
+            label="Saídas"
             value={formatCurrency(monthFlow.expense)}
             delta={buildMonthlyDelta(
               monthFlow.expense,
@@ -101,8 +101,8 @@ export function DashboardPage() {
         </div>
         <div className="bg-background">
           <StatCard
-            label="Proximos 14 dias"
-            value={`${upcoming14Count} lancamentos`}
+            label="Próximos 14 dias"
+            value={`${upcoming14Count} lançamentos`}
             icon={CalendarClock}
             accent="warning"
           />
@@ -157,7 +157,7 @@ function buildMonthlyDelta(
   const sign = change >= 0 ? "+" : "-";
 
   return {
-    value: `${sign}${formatted}% vs mes anterior`,
+    value: `${sign}${formatted}% vs mês anterior`,
     positive: kind === "income" ? change >= 0 : change <= 0,
   };
 }
@@ -191,7 +191,7 @@ function HeroBalance({
           {formatCurrency(balance)}
         </h1>
         <p className="font-mono text-xs text-muted-foreground">
-          ate hoje
+          até hoje
           <span className="px-2">-</span>
           {accounts.length} contas
         </p>
@@ -232,7 +232,7 @@ function UpcomingLedger({ transactions }: { transactions: Transaction[] }) {
       <div className="flex items-baseline justify-between">
         <div className="flex items-center gap-3">
           <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-            Proximos lancamentos
+            Próximos lançamentos
           </p>
           <div className="h-px w-12 bg-border" />
         </div>
@@ -308,7 +308,10 @@ function GoalPanel({ goal }: { goal: Goal }) {
         {(goal.deadline || monthsToGoal !== null || progress >= 100) && (
           <div className="space-y-2 border-t border-border pt-4">
             <div className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden />
+              <span
+                className="h-1.5 w-1.5 rounded-full bg-success"
+                aria-hidden
+              />
               <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                 Status
               </p>
@@ -319,7 +322,7 @@ function GoalPanel({ goal }: { goal: Goal }) {
               <p className="text-xs leading-relaxed">
                 No ritmo cadastrado, faltam{" "}
                 <span className="font-mono tabular-nums">
-                  {monthsToGoal} {monthsToGoal === 1 ? "mes" : "meses"}
+                  {monthsToGoal} {monthsToGoal === 1 ? "mês" : "meses"}
                 </span>
                 .
               </p>
@@ -358,7 +361,7 @@ function EmptyState() {
         Nada por aqui ainda
       </p>
       <p className="mt-1 text-xs text-muted-foreground">
-        Cadastre uma transacao para comecar.
+        Cadastre uma transação para começar.
       </p>
     </div>
   );

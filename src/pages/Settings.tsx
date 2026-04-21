@@ -1,8 +1,8 @@
 import { Moon, Sun, Upload } from "lucide-react";
+import { invoke } from "@tauri-apps/api/core";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
-import { invoke } from "@tauri-apps/api/core";
 import { isTauri } from "@/lib/db";
 
 export function SettingsPage() {
@@ -22,7 +22,6 @@ export function SettingsPage() {
         </p>
       </section>
 
-      {/* Aparência */}
       <SettingsSection label="Aparência">
         <SettingRow
           label="Tema"
@@ -48,7 +47,6 @@ export function SettingsPage() {
         </SettingRow>
       </SettingsSection>
 
-      {/* Formato */}
       <SettingsSection label="Formato">
         <SettingRow
           label="Moeda"
@@ -88,7 +86,6 @@ export function SettingsPage() {
         </SettingRow>
       </SettingsSection>
 
-      {/* Sincronização */}
       <SettingsSection label="Sincronização">
         <SettingRow
           label="Importar extrato"
@@ -124,7 +121,6 @@ export function SettingsPage() {
         </SettingRow>
       </SettingsSection>
 
-      {/* Desenvolvimento */}
       <SettingsSection label="Desenvolvimento">
         <SettingRow
           label="Resetar banco de dados"
@@ -133,7 +129,13 @@ export function SettingsPage() {
           <button
             type="button"
             onClick={async () => {
-              if (!window.confirm("Apaga todos os dados e reinicia o app. Irreversível. Confirmar?")) return;
+              if (
+                !window.confirm(
+                  "Apaga todos os dados e reinicia o app. Irreversível. Confirmar?",
+                )
+              ) {
+                return;
+              }
               if (isTauri) await invoke("reset_database");
               window.location.reload();
             }}
@@ -144,9 +146,11 @@ export function SettingsPage() {
         </SettingRow>
       </SettingsSection>
 
-      {/* Sobre */}
       <SettingsSection label="Sobre">
-        <SettingRow label="Aplicativo" description="Financeiro — finanças pessoais">
+        <SettingRow
+          label="Aplicativo"
+          description="Financeiro — finanças pessoais"
+        >
           <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
             v0.1.0
           </span>

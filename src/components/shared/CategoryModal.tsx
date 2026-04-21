@@ -121,7 +121,7 @@ export function CategoryModal({ open, onOpenChange, category }: Props) {
               id="category-name"
               value={form.name}
               onChange={(event) => set("name", event.target.value)}
-              placeholder="Ex: Alimentacao"
+              placeholder="Ex: Alimentação"
               autoFocus
             />
           </div>
@@ -155,7 +155,7 @@ export function CategoryModal({ open, onOpenChange, category }: Props) {
           </div>
 
           <div className="space-y-1.5">
-            <Label>Icone</Label>
+            <Label>Ícone</Label>
             <IconPicker
               value={form.icon}
               onChange={(value) => set("icon", value)}

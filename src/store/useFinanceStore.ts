@@ -99,7 +99,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
           ? error.message
           : typeof error === "string"
             ? error
-            : "Nao foi possivel carregar seus dados financeiros.";
+            : "Não foi possível carregar seus dados financeiros.";
 
       set({
         isInitializing: false,

@@ -1,4 +1,4 @@
-use crate::db::DbState;
+use crate::db::{seed_default_categories, DbState};
 use crate::models::{Account, Category, Goal, RecurrenceRule, Transaction};
 use rusqlite::Connection;
 use tauri::State;
@@ -129,7 +129,7 @@ pub fn delete_account(state: State<DbState>, id: String) -> CmdResult<()> {
         )
         .map_err(e)?;
     if txn_count > 0 {
-        return Err("Nao e possivel excluir uma conta com transacoes vinculadas.".into());
+        return Err("Não é possível excluir uma conta com transações vinculadas.".into());
     }
     let goal_count: i64 = conn
         .query_row(
@@ -139,7 +139,7 @@ pub fn delete_account(state: State<DbState>, id: String) -> CmdResult<()> {
         )
         .map_err(e)?;
     if goal_count > 0 {
-        return Err("Nao e possivel excluir uma conta com metas vinculadas.".into());
+        return Err("Não é possível excluir uma conta com metas vinculadas.".into());
     }
     conn.execute("DELETE FROM accounts WHERE id=?1", [id])
         .map_err(e)?;
@@ -194,7 +194,7 @@ pub fn delete_category(state: State<DbState>, id: String) -> CmdResult<()> {
         )
         .map_err(e)?;
     if count > 0 {
-        return Err("Nao e possivel excluir uma categoria com transacoes vinculadas.".into());
+        return Err("Não é possível excluir uma categoria com transações vinculadas.".into());
     }
     conn.execute("DELETE FROM categories WHERE id=?1", [id])
         .map_err(e)?;
@@ -257,7 +257,7 @@ pub fn delete_recurrence_rule(state: State<DbState>, id: String) -> CmdResult<()
         )
         .map_err(e)?;
     if count > 0 {
-        return Err("Nao e possivel excluir uma recorrencia com transacoes vinculadas.".into());
+        return Err("Não é possível excluir uma recorrência com transações vinculadas.".into());
     }
 
     conn.execute("DELETE FROM recurrence_rules WHERE id=?1", [id])
@@ -445,21 +445,22 @@ pub fn reset_database(state: State<DbState>) -> CmdResult<()> {
         "DELETE FROM goals; DELETE FROM transactions; DELETE FROM recurrence_rules; DELETE FROM accounts; DELETE FROM categories;",
     )
     .map_err(e)?;
+    seed_default_categories(&conn).map_err(e)?;
     Ok(())
 }
 
 fn validate_transaction_refs(conn: &Connection, txn: &Transaction) -> CmdResult<()> {
     if !account_exists(conn, &txn.account_id)? {
-        return Err("Conta da transacao nao foi encontrada.".into());
+        return Err("Conta da transação não foi encontrada.".into());
     }
 
     if !category_exists(conn, &txn.category_id)? {
-        return Err("Categoria da transacao nao foi encontrada.".into());
+        return Err("Categoria da transação não foi encontrada.".into());
     }
 
     if let Some(recurrence_id) = &txn.recurrence_id {
         if !recurrence_rule_exists(conn, recurrence_id)? {
-            return Err("Recorrencia da transacao nao foi encontrada.".into());
+            return Err("Recorrência da transação não foi encontrada.".into());
         }
     }
 
@@ -469,7 +470,7 @@ fn validate_transaction_refs(conn: &Connection, txn: &Transaction) -> CmdResult<
 fn validate_goal_refs(conn: &Connection, goal: &Goal) -> CmdResult<()> {
     if let Some(account_id) = &goal.account_id {
         if !account_exists(conn, account_id)? {
-            return Err("Conta da meta nao foi encontrada.".into());
+            return Err("Conta da meta não foi encontrada.".into());
         }
     }
 

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
-import { format, parseISO, differenceInMonths } from "date-fns";
+import { differenceInMonths, format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Flag, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -112,7 +112,11 @@ export function GoalsPage() {
           <>
             <div className="grid grid-cols-1 gap-px overflow-hidden border border-border bg-border md:grid-cols-2">
               {sorted.map((goal) => (
-                <GoalCard key={goal.id} goal={goal} onEdit={() => openEdit(goal)} />
+                <GoalCard
+                  key={goal.id}
+                  goal={goal}
+                  onEdit={() => openEdit(goal)}
+                />
               ))}
             </div>
 
@@ -131,11 +135,7 @@ export function GoalsPage() {
 
       {sorted.length > 0 && <OverallProgress goals={sorted} />}
 
-      <GoalModal
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        goal={editing}
-      />
+      <GoalModal open={modalOpen} onOpenChange={setModalOpen} goal={editing} />
     </div>
   );
 }

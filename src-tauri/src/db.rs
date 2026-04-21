@@ -10,7 +10,120 @@ pub fn open(app_data_dir: PathBuf) -> Result<Connection> {
     let mut conn = Connection::open(db_path)?;
     conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")?;
     migrate_schema(&mut conn)?;
+    seed_default_categories(&conn)?;
     Ok(conn)
+}
+
+pub fn seed_default_categories(conn: &Connection) -> Result<()> {
+    let count: i64 = conn.query_row("SELECT COUNT(*) FROM categories", [], |row| row.get(0))?;
+    if count > 0 {
+        return Ok(());
+    }
+
+    let categories = [
+        (
+            "cat-income-salary",
+            "Salário",
+            "#16A34A",
+            "briefcase",
+            "income",
+        ),
+        (
+            "cat-income-freelance",
+            "Freelance",
+            "#22C55E",
+            "wallet",
+            "income",
+        ),
+        (
+            "cat-income-investments",
+            "Investimentos",
+            "#0EA5E9",
+            "trending-up",
+            "income",
+        ),
+        (
+            "cat-income-refund",
+            "Reembolso",
+            "#14B8A6",
+            "refresh-cw",
+            "income",
+        ),
+        (
+            "cat-expense-food",
+            "Alimentação",
+            "#F97316",
+            "utensils",
+            "expense",
+        ),
+        (
+            "cat-expense-market",
+            "Mercado",
+            "#EAB308",
+            "shopping-cart",
+            "expense",
+        ),
+        (
+            "cat-expense-transport",
+            "Transporte",
+            "#3B82F6",
+            "car",
+            "expense",
+        ),
+        (
+            "cat-expense-fuel",
+            "Combustível",
+            "#6366F1",
+            "fuel",
+            "expense",
+        ),
+        ("cat-expense-home", "Moradia", "#8B5CF6", "home", "expense"),
+        (
+            "cat-expense-health",
+            "Saúde",
+            "#EF4444",
+            "heart-pulse",
+            "expense",
+        ),
+        (
+            "cat-expense-education",
+            "Educação",
+            "#06B6D4",
+            "book-open",
+            "expense",
+        ),
+        (
+            "cat-expense-leisure",
+            "Lazer",
+            "#EC4899",
+            "gamepad-2",
+            "expense",
+        ),
+        (
+            "cat-expense-subscriptions",
+            "Assinaturas",
+            "#64748B",
+            "repeat",
+            "expense",
+        ),
+        (
+            "cat-expense-taxes",
+            "Impostos",
+            "#71717A",
+            "receipt",
+            "expense",
+        ),
+    ];
+
+    for (id, name, color, icon, kind) in categories {
+        conn.execute(
+            "INSERT OR IGNORE INTO categories (id, name, color, icon, kind)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            rusqlite::params![id, name, color, icon, kind],
+        )?;
+    }
+
+    Ok(())
 }
 
 fn migrate_schema(conn: &mut Connection) -> Result<()> {

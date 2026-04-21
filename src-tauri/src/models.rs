@@ -77,17 +77,17 @@ impl Account {
     pub fn validate(&self) -> Result<(), String> {
         validate_required("ID da conta", &self.id)?;
         validate_required("Nome da conta", &self.name)?;
-        validate_required("Instituicao da conta", &self.institution)?;
+        validate_required("Instituição da conta", &self.institution)?;
         validate_required("Cor da conta", &self.color)?;
         validate_enum("Tipo da conta", &self.account_type, ACCOUNT_TYPES)?;
         validate_finite("Saldo da conta", self.balance)?;
 
         if let Some(last_four) = &self.last_four {
-            validate_optional_text("Ultimos digitos da conta", last_four)?;
+            validate_optional_text("Últimos dígitos da conta", last_four)?;
         }
 
         if let Some(icon) = &self.icon {
-            validate_optional_text("Icone da conta", icon)?;
+            validate_optional_text("Ícone da conta", icon)?;
         }
 
         Ok(())
@@ -99,7 +99,7 @@ impl Category {
         validate_required("ID da categoria", &self.id)?;
         validate_required("Nome da categoria", &self.name)?;
         validate_required("Cor da categoria", &self.color)?;
-        validate_required("Icone da categoria", &self.icon)?;
+        validate_required("Ícone da categoria", &self.icon)?;
         validate_enum("Tipo da categoria", &self.kind, CATEGORY_KINDS)?;
         Ok(())
     }
@@ -107,20 +107,20 @@ impl Category {
 
 impl Transaction {
     pub fn validate(&self) -> Result<(), String> {
-        validate_required("ID da transacao", &self.id)?;
-        validate_required("Titulo da transacao", &self.title)?;
-        validate_required("Conta da transacao", &self.account_id)?;
-        validate_required("Categoria da transacao", &self.category_id)?;
+        validate_required("ID da transação", &self.id)?;
+        validate_required("Título da transação", &self.title)?;
+        validate_required("Conta da transação", &self.account_id)?;
+        validate_required("Categoria da transação", &self.category_id)?;
         validate_enum(
-            "Tipo da transacao",
+            "Tipo da transação",
             &self.transaction_type,
             TRANSACTION_TYPES,
         )?;
-        validate_positive("Valor da transacao", self.amount)?;
-        validate_date("Data da transacao", &self.date)?;
+        validate_positive("Valor da transação", self.amount)?;
+        validate_date("Data da transação", &self.date)?;
 
         if let Some(recurrence_id) = &self.recurrence_id {
-            validate_optional_text("Recorrencia da transacao", recurrence_id)?;
+            validate_optional_text("Recorrência da transação", recurrence_id)?;
         }
 
         Ok(())
@@ -144,7 +144,7 @@ impl Goal {
         }
 
         if let Some(monthly_contribution) = self.monthly_contribution {
-            validate_non_negative("Contribuicao mensal da meta", monthly_contribution)?;
+            validate_non_negative("Contribuição mensal da meta", monthly_contribution)?;
         }
 
         Ok(())
@@ -153,19 +153,19 @@ impl Goal {
 
 impl RecurrenceRule {
     pub fn validate(&self) -> Result<(), String> {
-        validate_required("ID da recorrencia", &self.id)?;
+        validate_required("ID da recorrência", &self.id)?;
         validate_enum(
-            "Frequencia da recorrencia",
+            "Frequência da recorrência",
             &self.frequency,
             RECURRENCE_FREQUENCIES,
         )?;
 
         if self.interval <= 0 {
-            return Err("Intervalo da recorrencia deve ser maior que zero.".into());
+            return Err("Intervalo da recorrência deve ser maior que zero.".into());
         }
 
         if let Some(until) = &self.until {
-            validate_date("Data final da recorrencia", until)?;
+            validate_date("Data final da recorrência", until)?;
         }
 
         Ok(())
@@ -174,28 +174,28 @@ impl RecurrenceRule {
 
 fn validate_required(field: &str, value: &str) -> Result<(), String> {
     if value.trim().is_empty() {
-        return Err(format!("{field} e obrigatorio."));
+        return Err(format!("{field} é obrigatório."));
     }
     Ok(())
 }
 
 fn validate_optional_text(field: &str, value: &str) -> Result<(), String> {
     if value.trim().is_empty() {
-        return Err(format!("{field} nao pode ficar em branco."));
+        return Err(format!("{field} não pode ficar em branco."));
     }
     Ok(())
 }
 
 fn validate_enum(field: &str, value: &str, allowed: &[&str]) -> Result<(), String> {
     if !allowed.contains(&value) {
-        return Err(format!("{field} invalido."));
+        return Err(format!("{field} inválido."));
     }
     Ok(())
 }
 
 fn validate_finite(field: &str, value: f64) -> Result<(), String> {
     if !value.is_finite() {
-        return Err(format!("{field} deve ser um numero valido."));
+        return Err(format!("{field} deve ser um número válido."));
     }
     Ok(())
 }
@@ -211,7 +211,7 @@ fn validate_positive(field: &str, value: f64) -> Result<(), String> {
 fn validate_non_negative(field: &str, value: f64) -> Result<(), String> {
     validate_finite(field, value)?;
     if value < 0.0 {
-        return Err(format!("{field} nao pode ser negativo."));
+        return Err(format!("{field} não pode ser negativo."));
     }
     Ok(())
 }

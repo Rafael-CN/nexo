@@ -43,6 +43,7 @@ interface FormState {
   categoryId: string;
   recurrenceFrequency: RecurrenceFrequency | "none";
   recurrenceInterval: string;
+  recurrenceNoEnd: boolean;
   recurrenceUntil: string;
 }
 
@@ -50,8 +51,8 @@ const recurrenceOptions: {
   value: FormState["recurrenceFrequency"];
   label: string;
 }[] = [
-  { value: "none", label: "Sem repeticao" },
-  { value: "daily", label: "Diaria" },
+  { value: "none", label: "Sem repetição" },
+  { value: "daily", label: "Diária" },
   { value: "weekly", label: "Semanal" },
   { value: "monthly", label: "Mensal" },
   { value: "yearly", label: "Anual" },
@@ -70,6 +71,7 @@ function buildForm(
     categoryId: transaction?.categoryId ?? "",
     recurrenceFrequency: rule?.frequency ?? "none",
     recurrenceInterval: rule ? String(rule.interval) : "1",
+    recurrenceNoEnd: !rule?.until,
     recurrenceUntil: rule?.until ?? "",
   };
 }
@@ -129,9 +131,9 @@ export function TransactionModal({ open, onOpenChange, transaction }: Props) {
 
   async function handleSave() {
     setError(null);
-    if (!form.title.trim()) return setError("Informe o titulo.");
+    if (!form.title.trim()) return setError("Informe o título.");
     const amount = parseFloat(form.amount.replace(",", "."));
-    if (!amount || amount <= 0) return setError("Valor invalido.");
+    if (!amount || amount <= 0) return setError("Valor inválido.");
     if (!form.accountId) return setError("Selecione uma conta.");
     if (!form.categoryId) return setError("Selecione uma categoria.");
     if (!form.date) return setError("Informe a data.");
@@ -141,7 +143,15 @@ export function TransactionModal({ open, onOpenChange, transaction }: Props) {
       form.recurrenceFrequency !== "none" &&
       (!Number.isFinite(recurrenceInterval) || recurrenceInterval < 1)
     ) {
-      return setError("Intervalo de recorrencia invalido.");
+      return setError("Intervalo de recorrência inválido.");
+    }
+
+    if (
+      form.recurrenceFrequency !== "none" &&
+      !form.recurrenceNoEnd &&
+      !form.recurrenceUntil
+    ) {
+      return setError("Informe a data final ou marque recorrência sem fim.");
     }
 
     const todayIso = format(new Date(), "yyyy-MM-dd");
@@ -169,7 +179,7 @@ export function TransactionModal({ open, onOpenChange, transaction }: Props) {
           id: recurrenceId,
           frequency: form.recurrenceFrequency,
           interval: recurrenceInterval,
-          until: form.recurrenceUntil || undefined,
+          until: form.recurrenceNoEnd ? undefined : form.recurrenceUntil,
         };
 
         if (currentRule) {
@@ -220,7 +230,7 @@ export function TransactionModal({ open, onOpenChange, transaction }: Props) {
       <DialogContent className="max-w-md">
         <DialogHeader className="border-b border-border">
           <DialogTitle>
-            {isEdit ? "Editar transacao" : "Nova transacao"}
+            {isEdit ? "Editar transação" : "Nova transação"}
           </DialogTitle>
         </DialogHeader>
 
@@ -240,10 +250,10 @@ export function TransactionModal({ open, onOpenChange, transaction }: Props) {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="txn-title">Titulo</Label>
+            <Label htmlFor="txn-title">Título</Label>
             <Input
               id="txn-title"
-              placeholder="Ex: Aluguel, Salario..."
+              placeholder="Ex: Aluguel, Salário..."
               value={form.title}
               onChange={(event) =>
                 setForm((current) => ({
@@ -336,7 +346,7 @@ export function TransactionModal({ open, onOpenChange, transaction }: Props) {
 
           <div className="grid grid-cols-[1fr_96px] gap-3">
             <div className="space-y-1.5">
-              <Label>Recorrencia</Label>
+              <Label>Recorrência</Label>
               <Select
                 value={form.recurrenceFrequency}
                 onValueChange={(value) =>
@@ -380,20 +390,44 @@ export function TransactionModal({ open, onOpenChange, transaction }: Props) {
           </div>
 
           {form.recurrenceFrequency !== "none" && (
-            <div className="space-y-1.5">
-              <Label htmlFor="txn-recurrence-until">Repetir ate</Label>
-              <Input
-                id="txn-recurrence-until"
-                type="date"
-                className="font-mono"
-                value={form.recurrenceUntil}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    recurrenceUntil: event.target.value,
-                  }))
-                }
-              />
+            <div className="space-y-3">
+              <label className="flex cursor-pointer items-center gap-2.5">
+                <input
+                  type="checkbox"
+                  className="h-3.5 w-3.5 accent-foreground"
+                  checked={form.recurrenceNoEnd}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      recurrenceNoEnd: event.target.checked,
+                      recurrenceUntil: event.target.checked
+                        ? ""
+                        : current.recurrenceUntil,
+                    }))
+                  }
+                />
+                <span className="font-mono text-[11px] text-muted-foreground">
+                  Repetir sem data limite
+                </span>
+              </label>
+
+              {!form.recurrenceNoEnd && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="txn-recurrence-until">Repetir até</Label>
+                  <Input
+                    id="txn-recurrence-until"
+                    type="date"
+                    className="font-mono"
+                    value={form.recurrenceUntil}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        recurrenceUntil: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              )}
             </div>
           )}
 

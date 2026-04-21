@@ -6,17 +6,14 @@ import { CategoryModal } from "@/components/shared/CategoryModal";
 import { FinanceIcon } from "@/components/shared/IconPicker";
 import { getCurrentAccountBalances } from "@/lib/balance";
 import { formatCurrency } from "@/lib/format";
-import {
-  selectTotalBalance,
-  useFinanceStore,
-} from "@/store/useFinanceStore";
+import { selectTotalBalance, useFinanceStore } from "@/store/useFinanceStore";
 import type { Account, AccountType, Category } from "@/types";
 import { cn } from "@/lib/utils";
 
 const typeMeta: Record<AccountType, { label: string; fallbackIcon: string }> = {
   checking: { label: "Corrente", fallbackIcon: "wallet" },
-  savings: { label: "Poupanca", fallbackIcon: "piggy-bank" },
-  credit: { label: "Credito", fallbackIcon: "credit-card" },
+  savings: { label: "Poupança", fallbackIcon: "piggy-bank" },
+  credit: { label: "Crédito", fallbackIcon: "credit-card" },
   cash: { label: "Dinheiro", fallbackIcon: "banknote" },
   investment: { label: "Investimento", fallbackIcon: "trending-up" },
 };
@@ -102,9 +99,7 @@ export function AccountsPage() {
             <AccountCard
               key={account.id}
               account={account}
-              effectiveBalance={
-                accountBalances.get(account.id) ?? account.balance
-              }
+              effectiveBalance={accountBalances.get(account.id) ?? account.balance}
               onEdit={() => openEditAccount(account)}
             />
           ))}
@@ -219,7 +214,10 @@ function AccountCard({
 
       <div className="flex items-center justify-between border-t border-border pt-3">
         <span className="flex items-center gap-2 font-mono text-[11px] tracking-wider text-muted-foreground">
-          <FinanceIcon name={account.icon ?? meta.fallbackIcon} className="h-3.5 w-3.5" />
+          <FinanceIcon
+            name={account.icon ?? meta.fallbackIcon}
+            className="h-3.5 w-3.5"
+          />
           {account.lastFour ? `.... ${account.lastFour}` : meta.label}
         </span>
         <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">

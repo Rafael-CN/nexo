@@ -1,17 +1,17 @@
 import { NavLink } from "react-router-dom";
 import {
-  LayoutDashboard,
-  CalendarDays,
-  Wallet,
   ArrowLeftRight,
-  Target,
-  Settings,
+  CalendarDays,
+  LayoutDashboard,
   Moon,
+  Settings,
   Sun,
+  Target,
+  Wallet,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/hooks/useTheme";
+import { cn } from "@/lib/utils";
 
 type Item = {
   to: string;

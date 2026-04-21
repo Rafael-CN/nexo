@@ -25,9 +25,7 @@ export function Header({ onNewTransaction }: HeaderProps) {
   return (
     <header className="sticky top-0 z-20 flex h-12 items-center gap-4 border-b border-border bg-background px-6">
       <div className="flex min-w-0 flex-1 items-baseline gap-3">
-        <h1 className="truncate text-sm font-medium tracking-tight">
-          {title}
-        </h1>
+        <h1 className="truncate text-sm font-medium tracking-tight">{title}</h1>
         <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
           {today}
         </span>
@@ -45,7 +43,7 @@ export function Header({ onNewTransaction }: HeaderProps) {
             className="h-8 w-64 rounded-sm border border-border bg-background pl-8 pr-3 font-mono text-xs outline-none transition focus:border-foreground/40"
           />
           <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 font-mono text-[10px] text-muted-foreground">
-            ⌘K
+            Ctrl K
           </span>
         </div>
 

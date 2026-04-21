@@ -39,8 +39,8 @@ interface FormState {
 
 const accountTypes: { value: AccountType; label: string }[] = [
   { value: "checking", label: "Corrente" },
-  { value: "savings", label: "Poupanca" },
-  { value: "credit", label: "Credito" },
+  { value: "savings", label: "Poupança" },
+  { value: "credit", label: "Crédito" },
   { value: "cash", label: "Dinheiro" },
   { value: "investment", label: "Investimento" },
 ];
@@ -87,10 +87,10 @@ export function AccountModal({ open, onOpenChange, account }: Props) {
   async function handleSave() {
     setError(null);
     if (!form.name.trim()) return setError("Informe o nome da conta.");
-    if (!form.institution.trim()) return setError("Informe a instituicao.");
+    if (!form.institution.trim()) return setError("Informe a instituição.");
 
     const balance = parseAmount(form.balance);
-    if (!Number.isFinite(balance)) return setError("Saldo invalido.");
+    if (!Number.isFinite(balance)) return setError("Saldo inválido.");
 
     const payload: Account = {
       id: account?.id ?? crypto.randomUUID(),
@@ -152,7 +152,7 @@ export function AccountModal({ open, onOpenChange, account }: Props) {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="account-institution">Instituicao</Label>
+              <Label htmlFor="account-institution">Instituição</Label>
               <Input
                 id="account-institution"
                 value={form.institution}
@@ -217,7 +217,7 @@ export function AccountModal({ open, onOpenChange, account }: Props) {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Icone</Label>
+              <Label>Ícone</Label>
               <IconPicker
                 value={form.icon}
                 onChange={(value) => set("icon", value)}

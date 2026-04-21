@@ -72,13 +72,13 @@ export function CalendarPage() {
       <section className="flex flex-col gap-6 border-b border-border pb-8 xl:flex-row xl:items-end xl:justify-between">
         <div className="space-y-3">
           <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            Projecao mensal
+            Projeção mensal
           </p>
           <h1 className="font-mono text-4xl font-light capitalize tracking-tight md:text-5xl">
             {format(viewMonth, "MMMM yyyy", { locale: ptBR })}
           </h1>
           <p className="font-mono text-xs text-muted-foreground">
-            {projectedCount} lancamentos projetados no periodo
+            {projectedCount} lançamentos projetados no período
           </p>
         </div>
 
@@ -90,7 +90,7 @@ export function CalendarPage() {
               value={weeklyBalances[0]?.balance ?? baseBalance}
             />
             <ProjectionMetric
-              label="Mes"
+              label="Mês"
               value={monthlyBalances[0]?.balance ?? baseBalance}
             />
           </div>
@@ -100,7 +100,7 @@ export function CalendarPage() {
               variant="outline"
               size="icon"
               className="h-8 w-8 rounded-sm"
-              aria-label="Mes anterior"
+              aria-label="Mês anterior"
               onClick={() => setViewMonth((month) => subMonths(month, 1))}
             >
               <ChevronLeft className="h-3.5 w-3.5" strokeWidth={1.5} />
@@ -120,7 +120,7 @@ export function CalendarPage() {
               variant="outline"
               size="icon"
               className="h-8 w-8 rounded-sm"
-              aria-label="Proximo mes"
+              aria-label="Próximo mês"
               onClick={() => setViewMonth((month) => addMonths(month, 1))}
             >
               <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.5} />
@@ -238,7 +238,7 @@ export function CalendarPage() {
 
         <div className="mt-4 flex flex-wrap items-center gap-4 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
           <Legend color="bg-success" label="Entrada" />
-          <Legend color="bg-destructive" label="Saida" />
+          <Legend color="bg-destructive" label="Saída" />
           <span>.</span>
           <span className="normal-case tracking-normal text-muted-foreground/70">
             Valor no canto inferior = saldo projetado no fim do dia
@@ -299,14 +299,14 @@ function TodayDetail({
     <section className="space-y-3">
       <div className="flex items-center gap-3">
         <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-          Detalhe - {format(date, "EEEE, dd MMM", { locale: ptBR })}
+          Detalhe — {format(date, "EEEE, dd MMM", { locale: ptBR })}
         </p>
         <div className="h-px flex-1 bg-border" />
       </div>
 
       {todays.length === 0 ? (
         <p className="font-mono text-xs text-muted-foreground">
-          Sem movimentacoes hoje.
+          Sem movimentações hoje.
         </p>
       ) : (
         <ul className="border-t border-border">

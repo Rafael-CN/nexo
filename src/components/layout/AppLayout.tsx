@@ -80,12 +80,12 @@ function StartupState({ error, isRetrying, onRetry }: StartupStateProps) {
           financeiro /v1
         </p>
         <h1 className="mt-2 text-xl font-medium tracking-tight">
-          {error ? "Nao foi possivel iniciar" : "Carregando seu painel"}
+          {error ? "Não foi possível iniciar" : "Carregando seu painel"}
         </h1>
         <p className="mt-3 max-w-sm text-sm leading-6 text-muted-foreground">
           {error
             ? error
-            : "Preparando contas, categorias, transacoes e metas."}
+            : "Preparando contas, categorias, transações e metas."}
         </p>
 
         {error ? (
