@@ -1,39 +1,15 @@
 import { NavLink } from "react-router-dom";
-import {
-  ArrowLeftRight,
-  CalendarDays,
-  ChartNoAxesCombined,
-  LayoutDashboard,
-  Moon,
-  Settings,
-  Sun,
-  Target,
-  Wallet,
-} from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/hooks/useTheme";
+import { appRoutes } from "@/lib/navigation";
 import { getProfileInitials, type LocalProfile } from "@/lib/profile";
 import { cn } from "@/lib/utils";
 
-type Item = {
-  to: string;
-  label: string;
-  icon: typeof LayoutDashboard;
-  shortcut?: string;
-};
+type Item = (typeof appRoutes)[number];
 
-const primary: Item[] = [
-  { to: "/", label: "Visão Geral", icon: LayoutDashboard, shortcut: "G" },
-  { to: "/calendario", label: "Calendário", icon: CalendarDays, shortcut: "C" },
-  { to: "/contas", label: "Contas", icon: Wallet, shortcut: "A" },
-  { to: "/transacoes", label: "Transações", icon: ArrowLeftRight, shortcut: "T" },
-  { to: "/relatorios", label: "Relatórios", icon: ChartNoAxesCombined, shortcut: "R" },
-];
-
-const secondary: Item[] = [
-  { to: "/metas", label: "Metas", icon: Target },
-  { to: "/configuracoes", label: "Configurações", icon: Settings },
-];
+const primary: Item[] = appRoutes.slice(0, 5);
+const secondary: Item[] = appRoutes.slice(5);
 
 export function Sidebar({ profile }: { profile: LocalProfile | null }) {
   const { theme, toggle } = useTheme();
@@ -61,7 +37,7 @@ export function Sidebar({ profile }: { profile: LocalProfile | null }) {
         </p>
         <ul className="space-y-px">
           {primary.map((item) => (
-            <SidebarItem key={item.to} item={item} />
+            <SidebarItem key={item.path} item={item} />
           ))}
         </ul>
 
@@ -70,7 +46,7 @@ export function Sidebar({ profile }: { profile: LocalProfile | null }) {
         </p>
         <ul className="space-y-px">
           {secondary.map((item) => (
-            <SidebarItem key={item.to} item={item} />
+            <SidebarItem key={item.path} item={item} />
           ))}
         </ul>
       </nav>
@@ -114,8 +90,8 @@ function SidebarItem({ item }: { item: Item }) {
   return (
     <li>
       <NavLink
-        to={item.to}
-        end={item.to === "/"}
+        to={item.path}
+        end={item.path === "/"}
         className={({ isActive }) =>
           cn(
             "group flex items-center gap-2.5 rounded-sm px-2 py-1.5 text-sm transition-colors",
@@ -127,11 +103,9 @@ function SidebarItem({ item }: { item: Item }) {
       >
         <Icon className="h-4 w-4 shrink-0" strokeWidth={1.5} />
         <span className="flex-1 truncate">{item.label}</span>
-        {item.shortcut && (
-          <span className="font-mono text-[10px] text-muted-foreground/60 group-hover:text-muted-foreground">
-            {item.shortcut}
-          </span>
-        )}
+        <span className="inline-flex h-4 min-w-4 items-center justify-center border border-border px-1 font-mono text-[10px] text-muted-foreground/70 group-hover:text-muted-foreground">
+          {item.shortcut}
+        </span>
       </NavLink>
     </li>
   );

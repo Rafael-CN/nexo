@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router-dom";
 import { AlertCircle, Loader2, RefreshCw, WalletCards } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
+import { CommandPalette } from "./CommandPalette";
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Onboarding } from "@/components/shared/Onboarding";
 import { TransactionModal } from "@/components/shared/TransactionModal";
+import { useDesktopShortcuts } from "@/hooks/useDesktopShortcuts";
+import { appRoutes } from "@/lib/navigation";
 import { getLocalProfile, type LocalProfile } from "@/lib/profile";
 import { useFinanceStore } from "@/store/useFinanceStore";
 
@@ -16,14 +19,31 @@ export function AppLayout() {
   const initializeError = useFinanceStore((s) => s.initializeError);
   const isLoaded = useFinanceStore((s) => s.isLoaded);
   const accounts = useFinanceStore((s) => s.accounts);
+  const navigate = useNavigate();
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [transactionModalOpen, setTransactionModalOpen] = useState(false);
   const [profile, setProfile] = useState<LocalProfile | null>(() =>
     getLocalProfile(),
   );
+  const openCommandPalette = () => setCommandPaletteOpen(true);
+  const openNewTransaction = () => {
+    setCommandPaletteOpen(false);
+    setTransactionModalOpen(true);
+  };
 
   useEffect(() => {
     void initialize();
   }, [initialize]);
+
+  useDesktopShortcuts({
+    enabled: isLoaded && accounts.length > 0,
+    onOpenPalette: openCommandPalette,
+    onOpenNewTransaction: openNewTransaction,
+    onNavigateToIndex: (index) => {
+      const route = appRoutes[index];
+      if (route) navigate(route.path);
+    },
+  });
 
   if (!isLoaded) {
     return (
@@ -50,7 +70,10 @@ export function AppLayout() {
       <div className="flex h-full w-full overflow-hidden bg-background">
         <Sidebar profile={profile} />
         <div className="flex h-full min-w-0 flex-1 flex-col">
-          <Header onNewTransaction={() => setTransactionModalOpen(true)} />
+          <Header
+            onOpenCommandPalette={openCommandPalette}
+            onNewTransaction={openNewTransaction}
+          />
           <main className="flex-1 overflow-y-auto">
             <div className="mx-auto w-full max-w-[1400px] px-8 py-8 animate-fade-in">
               <Outlet />
@@ -58,6 +81,11 @@ export function AppLayout() {
           </main>
         </div>
       </div>
+      <CommandPalette
+        open={commandPaletteOpen}
+        onOpenChange={setCommandPaletteOpen}
+        onNewTransaction={openNewTransaction}
+      />
       <TransactionModal
         open={transactionModalOpen}
         onOpenChange={setTransactionModalOpen}
