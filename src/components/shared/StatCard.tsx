@@ -25,7 +25,7 @@ export function StatCard({
   accent = "neutral",
 }: StatCardProps) {
   return (
-    <div className="group flex flex-col gap-4 border border-border p-5 transition-colors hover:bg-accent/30">
+    <div className="group flex h-full min-h-[108px] flex-col justify-between gap-4 border border-border p-5 transition-colors hover:bg-accent/30">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span
@@ -44,7 +44,7 @@ export function StatCard({
         )}
       </div>
 
-      <div className="space-y-1.5">
+      <div className="min-h-[52px] space-y-1.5">
         <p className="truncate font-mono text-2xl font-normal tracking-tight">
           {value}
         </p>

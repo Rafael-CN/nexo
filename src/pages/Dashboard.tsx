@@ -228,8 +228,8 @@ function SectionDivider({ label }: { label: string }) {
 
 function UpcomingLedger({ transactions }: { transactions: Transaction[] }) {
   return (
-    <div className="space-y-4">
-      <div className="flex items-baseline justify-between">
+    <div className="flex h-full flex-col gap-4">
+      <div className="flex h-7 items-center justify-between">
         <div className="flex items-center gap-3">
           <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
             Próximos lançamentos
@@ -249,7 +249,7 @@ function UpcomingLedger({ transactions }: { transactions: Transaction[] }) {
       {transactions.length === 0 ? (
         <EmptyState />
       ) : (
-        <div className="border-t border-border">
+        <div className="flex-1 border-t border-border">
           {transactions.map((t) => (
             <TransactionRow key={t.id} transaction={t} />
           ))}
@@ -271,15 +271,15 @@ function GoalPanel({ goal }: { goal: Goal }) {
       : null;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
+    <div className="flex h-full flex-col gap-4">
+      <div className="flex h-7 items-center gap-3">
         <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
           Meta principal
         </p>
         <div className="h-px flex-1 bg-border" />
       </div>
 
-      <div className="space-y-5 border border-border p-5">
+      <div className="flex flex-1 flex-col gap-5 border border-border p-5">
         <div className="space-y-1">
           <p className="text-sm font-medium leading-tight">{goal.name}</p>
           <p className="font-mono text-3xl font-light tabular-nums tracking-tight">
@@ -334,17 +334,19 @@ function GoalPanel({ goal }: { goal: Goal }) {
           </div>
         )}
 
-        <Button
-          asChild
-          variant="outline"
-          size="sm"
-          className="w-full gap-1.5 rounded-sm text-xs"
-        >
-          <Link to="/metas">
-            <Target className="h-3.5 w-3.5" strokeWidth={1.5} />
-            Ajustar meta
-          </Link>
-        </Button>
+        <div className="mt-auto">
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="w-full gap-1.5 rounded-sm text-xs"
+          >
+            <Link to="/metas">
+              <Target className="h-3.5 w-3.5" strokeWidth={1.5} />
+              Ajustar meta
+            </Link>
+          </Button>
+        </div>
       </div>
     </div>
   );

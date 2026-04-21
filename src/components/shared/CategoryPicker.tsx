@@ -146,7 +146,7 @@ export function CategoryPicker({
           }}
           onKeyDown={handleKeyDown}
           placeholder="Selecionar"
-          className="h-10 pr-10 pl-9"
+          className="h-9 py-2 pl-9 pr-10"
         />
         <button
           type="button"

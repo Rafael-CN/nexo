@@ -1,6 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { ReactNode } from "react";
-import { Minus, Square, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import nexoMarkDark from "@/assets/nexo-mark-dark.png";
 import nexoMarkLight from "@/assets/nexo-mark-light.png";
@@ -39,23 +38,44 @@ export function DesktopTitleBar() {
           label="Minimizar"
           onClick={() => void getCurrentWindow().minimize()}
         >
-          <Minus className="h-3.5 w-3.5" strokeWidth={1.7} />
+          <WindowGlyph type="minimize" />
         </WindowButton>
         <WindowButton
           label="Maximizar"
           onClick={() => void getCurrentWindow().toggleMaximize()}
         >
-          <Square className="h-3.5 w-3.5" strokeWidth={1.7} />
+          <WindowGlyph type="maximize" />
         </WindowButton>
         <WindowButton
           label="Fechar"
           onClick={() => void getCurrentWindow().close()}
           danger
         >
-          <X className="h-3.5 w-3.5" strokeWidth={1.7} />
+          <WindowGlyph type="close" />
         </WindowButton>
       </div>
     </div>
+  );
+}
+
+function WindowGlyph({ type }: { type: "minimize" | "maximize" | "close" }) {
+  const glyphs = {
+    minimize: "\uE921",
+    maximize: "\uE922",
+    close: "\uE8BB",
+  };
+
+  return (
+    <span
+      aria-hidden
+      className="grid h-4 w-4 place-items-center text-[10px] leading-none"
+      style={{
+        fontFamily:
+          '"Segoe MDL2 Assets", "Segoe Fluent Icons", system-ui, sans-serif',
+      }}
+    >
+      {glyphs[type]}
+    </span>
   );
 }
 
@@ -84,9 +104,7 @@ function WindowButton({
       type="button"
       variant="ghost"
     >
-      <span className="grid h-4 w-4 place-items-center [&_svg]:h-3.5 [&_svg]:w-3.5">
-        {children}
-      </span>
+      <span className="grid h-4 w-4 place-items-center">{children}</span>
     </Button>
   );
 }
