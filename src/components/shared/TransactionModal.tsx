@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
-import { format } from "date-fns";
-import { Trash2 } from "lucide-react";
+import { format, isValid, parseISO } from "date-fns";
+import { Copy, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/shared/DatePicker";
 import {
   Select,
   SelectContent,
@@ -86,6 +87,7 @@ export function TransactionModal({
 }: Props) {
   const accounts = useFinanceStore(useShallow((s) => s.accounts));
   const categories = useFinanceStore(useShallow((s) => s.categories));
+  const transactions = useFinanceStore(useShallow((s) => s.transactions));
   const recurrenceRules = useFinanceStore(useShallow((s) => s.recurrenceRules));
   const addTransaction = useFinanceStore((s) => s.addTransaction);
   const updateTransaction = useFinanceStore((s) => s.updateTransaction);
@@ -138,12 +140,8 @@ export function TransactionModal({
 
   async function handleSave() {
     setError(null);
-    if (!form.title.trim()) return setError("Informe o título.");
-    const amount = parseFloat(form.amount.replace(",", "."));
-    if (!amount || amount <= 0) return setError("Valor inválido.");
-    if (!form.accountId) return setError("Selecione uma conta.");
-    if (!form.categoryId) return setError("Selecione uma categoria.");
-    if (!form.date) return setError("Informe a data.");
+    const amount = validateBaseForm();
+    if (amount === null) return;
 
     const recurrenceInterval = Number.parseInt(form.recurrenceInterval, 10);
     if (
@@ -161,6 +159,14 @@ export function TransactionModal({
       return setError("Informe a data final ou marque recorrência sem fim.");
     }
 
+    if (
+      form.recurrenceFrequency !== "none" &&
+      !form.recurrenceNoEnd &&
+      form.recurrenceUntil < form.date
+    ) {
+      return setError("A data final da recorrência deve ser igual ou posterior à data da transação.");
+    }
+
     const todayIso = format(new Date(), "yyyy-MM-dd");
     const payload: Omit<Transaction, "id"> = {
       type: form.type,
@@ -173,13 +179,19 @@ export function TransactionModal({
       recurrenceId: undefined,
     };
 
+    let createdRecurrenceId: string | undefined;
+
     try {
       setSaving(true);
 
       let recurrenceToRemove: string | undefined;
+      let shouldRemoveUnusedRule = false;
 
       if (form.recurrenceFrequency === "none") {
         recurrenceToRemove = transaction?.recurrenceId;
+        shouldRemoveUnusedRule = recurrenceToRemove
+          ? countOtherTransactionsUsingRule(recurrenceToRemove) === 0
+          : false;
       } else {
         const recurrenceId = transaction?.recurrenceId ?? crypto.randomUUID();
         const rule: RecurrenceRule = {
@@ -193,6 +205,7 @@ export function TransactionModal({
           await updateRecurrenceRule(currentRule.id, rule);
         } else {
           await addRecurrenceRule(rule);
+          createdRecurrenceId = recurrenceId;
         }
 
         payload.recurrenceId = recurrenceId;
@@ -204,10 +217,40 @@ export function TransactionModal({
         await addTransaction({ id: crypto.randomUUID(), ...payload });
       }
 
-      if (recurrenceToRemove) {
+      if (recurrenceToRemove && shouldRemoveUnusedRule) {
         await removeRecurrenceRule(recurrenceToRemove);
       }
 
+      onOpenChange(false);
+    } catch (err) {
+      if (createdRecurrenceId) {
+        await removeRecurrenceRule(createdRecurrenceId).catch(() => undefined);
+      }
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDuplicate() {
+    setError(null);
+    const amount = validateBaseForm();
+    if (amount === null) return;
+
+    const todayIso = format(new Date(), "yyyy-MM-dd");
+    try {
+      setSaving(true);
+      await addTransaction({
+        id: crypto.randomUUID(),
+        type: form.type,
+        title: form.title.trim(),
+        amount,
+        date: form.date,
+        accountId: form.accountId,
+        categoryId: form.categoryId,
+        isProjected: form.date > todayIso,
+        recurrenceId: undefined,
+      });
       onOpenChange(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -220,9 +263,13 @@ export function TransactionModal({
     if (!transaction) return;
     try {
       setSaving(true);
+      const recurrenceId = transaction.recurrenceId;
+      const shouldRemoveUnusedRule = recurrenceId
+        ? countOtherTransactionsUsingRule(recurrenceId) === 0
+        : false;
       await removeTransaction(transaction.id);
-      if (transaction.recurrenceId) {
-        await removeRecurrenceRule(transaction.recurrenceId);
+      if (recurrenceId && shouldRemoveUnusedRule) {
+        await removeRecurrenceRule(recurrenceId);
       }
       onOpenChange(false);
     } catch (err) {
@@ -230,6 +277,37 @@ export function TransactionModal({
     } finally {
       setSaving(false);
     }
+  }
+
+  function validateBaseForm() {
+    if (!form.title.trim()) {
+      setError("Informe o título.");
+      return null;
+    }
+    const amount = parseFloat(form.amount.replace(",", "."));
+    if (!amount || amount <= 0) {
+      setError("Valor inválido.");
+      return null;
+    }
+    if (!form.accountId) {
+      setError("Selecione uma conta.");
+      return null;
+    }
+    if (!form.categoryId) {
+      setError("Selecione uma categoria.");
+      return null;
+    }
+    if (!form.date || !isValid(parseISO(form.date))) {
+      setError("Informe uma data válida.");
+      return null;
+    }
+    return amount;
+  }
+
+  function countOtherTransactionsUsingRule(recurrenceId: string) {
+    return transactions.filter(
+      (txn) => txn.recurrenceId === recurrenceId && txn.id !== transaction?.id,
+    ).length;
   }
 
   return (
@@ -293,15 +371,14 @@ export function TransactionModal({
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="txn-date">Data</Label>
-              <Input
+              <DatePicker
                 id="txn-date"
-                type="date"
                 className="font-mono"
                 value={form.date}
-                onChange={(event) =>
+                onChange={(value) =>
                   setForm((current) => ({
                     ...current,
-                    date: event.target.value,
+                    date: value,
                   }))
                 }
               />
@@ -421,15 +498,14 @@ export function TransactionModal({
               {!form.recurrenceNoEnd && (
                 <div className="space-y-1.5">
                   <Label htmlFor="txn-recurrence-until">Repetir até</Label>
-                  <Input
+                  <DatePicker
                     id="txn-recurrence-until"
-                    type="date"
                     className="font-mono"
                     value={form.recurrenceUntil}
-                    onChange={(event) =>
+                    onChange={(value) =>
                       setForm((current) => ({
                         ...current,
-                        recurrenceUntil: event.target.value,
+                        recurrenceUntil: value,
                       }))
                     }
                   />
@@ -445,16 +521,28 @@ export function TransactionModal({
 
         <DialogFooter>
           {isEdit && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="mr-auto gap-1.5 rounded-sm text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
-              onClick={handleDelete}
-              disabled={saving}
-            >
-              <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
-              Excluir
-            </Button>
+            <div className="mr-auto flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5 rounded-sm text-xs"
+                onClick={handleDuplicate}
+                disabled={saving}
+              >
+                <Copy className="h-3.5 w-3.5" strokeWidth={1.5} />
+                Duplicar
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5 rounded-sm text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                onClick={handleDelete}
+                disabled={saving}
+              >
+                <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+                Excluir
+              </Button>
+            </div>
           )}
           <Button
             variant="outline"

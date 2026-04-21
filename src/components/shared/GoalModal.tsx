@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/shared/DatePicker";
 import {
   Select,
   SelectContent,
@@ -190,12 +191,11 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="goal-deadline">Prazo (opcional)</Label>
-              <Input
+              <DatePicker
                 id="goal-deadline"
-                type="date"
                 className="font-mono"
                 value={form.deadline}
-                onChange={(e) => set("deadline", e.target.value)}
+                onChange={(value) => set("deadline", value)}
               />
             </div>
             <div className="space-y-1.5">

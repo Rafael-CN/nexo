@@ -20,6 +20,7 @@ export function TransactionRow({ transaction, onClick }: TransactionRowProps) {
 
   const isIncome = transaction.type === "income";
   const date = parseISO(transaction.date);
+  const isProjected = transaction.date > format(new Date(), "yyyy-MM-dd");
 
   return (
     <div
@@ -39,7 +40,7 @@ export function TransactionRow({ transaction, onClick }: TransactionRowProps) {
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <p className="truncate text-sm font-medium">{transaction.title}</p>
-          {transaction.isProjected && (
+          {isProjected && (
             <span className="font-mono text-[10px] uppercase tracking-wider text-warning">
               projetada
             </span>
