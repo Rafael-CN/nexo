@@ -75,7 +75,6 @@ export function Sidebar({ profile }: { profile: LocalProfile | null }) {
             variant="ghost"
             size="icon"
             onClick={toggle}
-            className="h-7 w-7"
             aria-label={
               theme === "dark" ? "Ativar modo claro" : "Ativar modo escuro"
             }
@@ -101,7 +100,7 @@ function SidebarItem({ item }: { item: Item }) {
         end={item.path === "/"}
         className={({ isActive }) =>
           cn(
-            "group flex items-center gap-2.5 rounded-sm px-2 py-1.5 text-sm transition-colors",
+            "group flex min-h-8 items-center gap-2.5 rounded-sm px-2 text-sm transition-colors ui-focus-ring-inset",
             isActive
               ? "bg-accent font-medium text-foreground"
               : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",

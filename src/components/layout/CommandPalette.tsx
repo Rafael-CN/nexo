@@ -218,7 +218,7 @@ export function CommandPalette({
               }}
               onKeyDown={handleKeyDown}
               placeholder="Buscar rota ou ação"
-              className="h-10 border-0 bg-transparent pl-9 pr-3 font-mono text-xs focus-visible:ring-0"
+              className="h-9 border-0 bg-transparent pl-9 pr-3 font-mono text-xs ui-focus-ring-inset"
             />
           </div>
         </DialogHeader>
@@ -255,7 +255,7 @@ export function CommandPalette({
                           onClick={() => runAction(index)}
                           onMouseEnter={() => setSelectedIndex(index)}
                           className={cn(
-                            "flex w-full items-center gap-3 rounded-sm border border-transparent px-3 py-2 text-left transition-colors",
+                            "flex w-full items-center gap-3 rounded-sm border border-transparent px-3 py-2 text-left transition-colors ui-focus-ring-inset",
                             active
                               ? "border-border bg-accent text-foreground"
                               : "hover:border-border hover:bg-accent/60",

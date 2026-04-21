@@ -109,7 +109,7 @@ export function IconPicker({
                 disabled={disabled}
                 onClick={() => onChange(option.value)}
                 className={cn(
-                  "grid h-10 place-items-center bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50",
+                  "grid h-9 place-items-center bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground ui-focus-ring-inset disabled:pointer-events-none disabled:opacity-50",
                   active &&
                     "bg-foreground text-background hover:bg-foreground hover:text-background",
                 )}

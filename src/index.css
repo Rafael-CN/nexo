@@ -125,6 +125,15 @@
   .text-balance {
     text-wrap: balance;
   }
+
+  .ui-focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background;
+  }
+
+  .ui-focus-ring-inset {
+    @apply focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring;
+  }
+
   /* Helper para números financeiros */
   .tabular-mono {
     font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco,

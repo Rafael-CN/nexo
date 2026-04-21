@@ -124,7 +124,7 @@ export function DatePicker({
             if (event.key === "ArrowDown") setOpen(true);
           }}
           className={cn(
-            "flex h-9 w-full border border-border bg-transparent py-1 pl-8 pr-8 font-mono text-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+            "flex h-9 w-full border border-border bg-transparent py-1 pl-8 pr-8 font-mono text-sm transition-colors placeholder:text-muted-foreground/60 ui-focus-ring disabled:cursor-not-allowed disabled:opacity-50",
             className,
           )}
         />
@@ -132,7 +132,7 @@ export function DatePicker({
           <button
             type="button"
             aria-label="Limpar data"
-            className="absolute right-2 top-1/2 grid h-5 w-5 -translate-y-1/2 place-items-center text-muted-foreground transition-colors hover:text-foreground"
+            className="absolute right-1 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center text-muted-foreground transition-colors hover:text-foreground ui-focus-ring-inset"
             onClick={clearDate}
           >
             <X className="h-3.5 w-3.5" strokeWidth={1.5} />
@@ -147,7 +147,6 @@ export function DatePicker({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-7 w-7"
               onClick={() => setViewMonth((month) => subMonths(month, 1))}
             >
               <ChevronLeft className="h-3.5 w-3.5" strokeWidth={1.5} />
@@ -159,7 +158,6 @@ export function DatePicker({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-7 w-7"
               onClick={() => setViewMonth((month) => addMonths(month, 1))}
             >
               <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.5} />
@@ -184,7 +182,7 @@ export function DatePicker({
                   type="button"
                   onClick={() => selectDate(day)}
                   className={cn(
-                    "grid h-8 place-items-center bg-background font-mono text-[11px] tabular-nums transition-colors hover:bg-accent",
+                    "grid h-8 place-items-center bg-background font-mono text-[11px] tabular-nums transition-colors hover:bg-accent ui-focus-ring-inset",
                     !inMonth && "text-muted-foreground/35",
                     isToday(day) && "font-semibold text-foreground",
                     active &&
@@ -202,7 +200,7 @@ export function DatePicker({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-7 px-2 font-mono text-[10px] uppercase tracking-wider"
+              className="px-2 font-mono text-[10px] uppercase tracking-wider"
               onClick={() => selectDate(new Date())}
             >
               Hoje
