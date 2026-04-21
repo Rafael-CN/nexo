@@ -16,12 +16,17 @@ export function Header({ onOpenCommandPalette, onNewTransaction }: HeaderProps) 
   const today = format(new Date(), "dd MMM yyyy", { locale: ptBR });
 
   return (
-    <header className="sticky top-0 z-20 flex h-12 items-center gap-4 border-b border-border bg-background px-6">
-      <div className="flex min-w-0 flex-1 items-baseline gap-3">
-        <h1 className="truncate text-sm font-medium tracking-tight">{title}</h1>
-        <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-          {today}
-        </span>
+    <header className="sticky top-0 z-20 flex min-h-14 items-center gap-4 border-b border-border bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/85">
+      <div className="flex min-w-0 flex-1 flex-col justify-center">
+        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+          Nexo
+        </p>
+        <div className="flex min-w-0 items-baseline gap-3">
+          <h1 className="truncate text-sm font-medium tracking-tight">{title}</h1>
+          <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+            {today}
+          </span>
+        </div>
       </div>
 
       <div className="hidden items-center gap-2 md:flex">

@@ -9,10 +9,10 @@ export function SettingsPage() {
   const { theme, setTheme } = useTheme();
 
   return (
-    <div className="space-y-10">
+    <div className="mx-auto max-w-4xl space-y-10">
       <section className="border-b border-border pb-8">
         <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-          Configurações
+          Nexo / configurações
         </p>
         <h1 className="mt-3 font-mono text-4xl font-light tracking-tight md:text-5xl">
           Preferências
@@ -150,7 +150,7 @@ export function SettingsPage() {
       <SettingsSection label="Sobre">
         <SettingRow
           label="Aplicativo"
-          description="Financeiro — finanças pessoais"
+          description="Nexo — finanças pessoais"
         >
           <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
             v0.1.0

@@ -18,17 +18,24 @@ export function Sidebar({ profile }: { profile: LocalProfile | null }) {
   const initials = getProfileInitials(profileName);
 
   return (
-    <aside className="flex h-full w-60 shrink-0 flex-col border-r border-border bg-background">
-      <div className="flex items-center justify-between px-5 pb-5 pt-6">
-        <div className="flex items-baseline gap-1.5">
-          <span className="font-mono text-[15px] font-medium tracking-tight">
-            financeiro
-          </span>
-          <span className="font-mono text-[11px] text-muted-foreground">
-            /v1
-          </span>
+    <aside className="flex h-full w-64 shrink-0 flex-col border-r border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/90">
+      <div className="border-b border-border px-5 pb-4 pt-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Nexo
+            </p>
+            <div className="mt-1 flex items-baseline gap-1.5">
+              <span className="font-mono text-[15px] font-medium tracking-tight">
+                financeiro
+              </span>
+              <span className="font-mono text-[11px] text-muted-foreground">
+                shell
+              </span>
+            </div>
+          </div>
+          <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-success" aria-hidden />
         </div>
-        <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden />
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-2">

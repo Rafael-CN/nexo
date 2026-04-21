@@ -197,13 +197,13 @@ export function Onboarding({ onComplete }: OnboardingProps) {
   return (
     <div className="min-h-full overflow-y-auto bg-background px-6 py-8">
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-5xl flex-col justify-center">
-        <div className="mb-8 flex items-center gap-3">
+        <div className="mb-8 flex items-center gap-3 border-b border-border pb-5">
           <div className="grid h-10 w-10 place-items-center border border-border bg-accent/40">
             <Sparkles className="h-4 w-4 text-muted-foreground" strokeWidth={1.7} />
           </div>
           <div>
             <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              Financeiro / início
+              Nexo / início
             </p>
             <h1 className="mt-1 text-2xl font-medium tracking-tight">
               Vamos preparar seu painel
@@ -327,8 +327,8 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                 Categorias relevantes
               </p>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                Escolha o que faz sentido agora. Você pode criar, editar ou apagar
-                categorias depois.
+                Escolha o que faz sentido agora. Você pode criar, editar ou
+                apagar categorias depois.
               </p>
             </div>
 
