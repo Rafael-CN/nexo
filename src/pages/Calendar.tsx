@@ -459,8 +459,8 @@ function SelectionSummary({ summary }: { summary: SelectedRangeSummary }) {
               className="flex items-center justify-between gap-4 border-b border-border py-2.5 text-sm"
             >
               <div className="min-w-0">
-                <p className="truncate">{transaction.title}</p>
-                <p className="font-mono text-[10px] text-muted-foreground">
+                <p className="selectable-text truncate">{transaction.title}</p>
+                <p className="selectable-text font-mono text-[10px] text-muted-foreground">
                   {format(parseISO(transaction.date), "dd MMM", {
                     locale: ptBR,
                   })}
@@ -469,7 +469,7 @@ function SelectionSummary({ summary }: { summary: SelectedRangeSummary }) {
               </div>
               <span
                 className={cn(
-                  "font-mono tabular-nums",
+                  "selectable-text font-mono tabular-nums",
                   transaction.type === "income"
                     ? "text-success"
                     : "text-foreground",
@@ -509,7 +509,7 @@ function SelectionMetric({
       </p>
       <p
         className={cn(
-          "mt-2 truncate font-mono text-sm tabular-nums",
+          "selectable-text mt-2 truncate font-mono text-sm tabular-nums",
           negative && "text-destructive",
           accent === "success" && "text-success",
           accent === "destructive" && "text-destructive",

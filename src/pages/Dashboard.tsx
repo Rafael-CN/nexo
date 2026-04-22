@@ -187,7 +187,7 @@ function HeroBalance({
         <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
           Saldo efetivo
         </p>
-        <h1 className="font-mono text-5xl font-light tracking-tight md:text-6xl">
+        <h1 className="selectable-text font-mono text-5xl font-light tracking-tight md:text-6xl">
           {formatCurrency(balance)}
         </h1>
         <p className="font-mono text-xs text-muted-foreground">
@@ -204,10 +204,10 @@ function HeroBalance({
               key={a.id}
               className="min-w-[160px] flex-1 basis-[180px] bg-background px-4 py-3"
             >
-              <p className="truncate font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+              <p className="selectable-text truncate font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                 {a.name}
               </p>
-              <p className="mt-1 font-mono text-sm tabular-nums">
+              <p className="selectable-text mt-1 font-mono text-sm tabular-nums">
                 {formatCurrency(a.balance)}
               </p>
             </div>
@@ -284,11 +284,11 @@ function GoalPanel({ goal }: { goal: Goal }) {
 
       <div className="flex flex-1 flex-col gap-5 border border-border p-5">
         <div className="space-y-1">
-          <p className="text-sm font-medium leading-tight">{goal.name}</p>
-          <p className="font-mono text-3xl font-light tabular-nums tracking-tight">
+          <p className="selectable-text text-sm font-medium leading-tight">{goal.name}</p>
+          <p className="selectable-text font-mono text-3xl font-light tabular-nums tracking-tight">
             {formatCurrency(goal.currentAmount)}
           </p>
-          <p className="font-mono text-[11px] text-muted-foreground">
+          <p className="selectable-text font-mono text-[11px] text-muted-foreground">
             meta {formatCurrency(goal.targetAmount)}
           </p>
         </div>
@@ -301,8 +301,8 @@ function GoalPanel({ goal }: { goal: Goal }) {
             />
           </div>
           <div className="flex items-baseline justify-between font-mono text-[11px]">
-            <span className="tabular-nums">{progress}% atingido</span>
-            <span className="tabular-nums text-muted-foreground">
+            <span className="selectable-text tabular-nums">{progress}% atingido</span>
+            <span className="selectable-text tabular-nums text-muted-foreground">
               faltam {formatCurrency(remaining)}
             </span>
           </div>

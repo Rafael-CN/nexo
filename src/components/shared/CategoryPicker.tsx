@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type MutableRefObject,
+} from "react";
 import { Check, ChevronDown, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -12,6 +19,9 @@ interface Props {
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  inputRef?: MutableRefObject<HTMLInputElement | null>;
+  onForwardTab?: () => void;
+  onBackwardTab?: () => void;
 }
 
 export function CategoryPicker({
@@ -20,9 +30,12 @@ export function CategoryPicker({
   value,
   onChange,
   disabled,
+  inputRef,
+  onForwardTab,
+  onBackwardTab,
 }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const internalInputRef = useRef<HTMLInputElement | null>(null);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
@@ -58,7 +71,7 @@ export function CategoryPicker({
     if (disabled) return;
     setOpen(true);
     setQuery(selected?.name ?? "");
-    requestAnimationFrame(() => inputRef.current?.select());
+    requestAnimationFrame(() => internalInputRef.current?.select());
   }
 
   function closePicker() {
@@ -72,8 +85,26 @@ export function CategoryPicker({
     setOpen(false);
   }
 
+  function setInputNode(node: HTMLInputElement | null) {
+    internalInputRef.current = node;
+    if (inputRef) {
+      inputRef.current = node;
+    }
+  }
+
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (disabled) return;
+
+    if (event.key === "Tab") {
+      event.preventDefault();
+      closePicker();
+      if (event.shiftKey) {
+        onBackwardTab?.();
+      } else {
+        onForwardTab?.();
+      }
+      return;
+    }
 
     if (!open && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
       event.preventDefault();
@@ -134,7 +165,7 @@ export function CategoryPicker({
           strokeWidth={1.5}
         />
         <Input
-          ref={inputRef}
+          ref={setInputNode}
           value={preview}
           readOnly={!open}
           disabled={disabled}

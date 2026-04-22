@@ -56,12 +56,12 @@ export function GoalsPage() {
           <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
             Metas financeiras ({summary.count})
           </p>
-          <h1 className="font-mono text-5xl font-light tracking-tight md:text-6xl">
+          <h1 className="selectable-text font-mono text-5xl font-light tracking-tight md:text-6xl">
             {formatCurrency(summary.totalCurrent)}
           </h1>
           <p className="font-mono text-xs text-muted-foreground">
             de{" "}
-            <span className="tabular-nums">
+            <span className="selectable-text tabular-nums">
               {formatCurrency(summary.totalTarget)}
             </span>{" "}
             total
@@ -163,7 +163,7 @@ function GoalCard({
           <Flag className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.5} />
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <p className="truncate text-sm font-medium leading-tight">
+              <p className="selectable-text truncate text-sm font-medium leading-tight">
                 {goal.name}
               </p>
               {goal.status === "paused" && (
@@ -173,7 +173,7 @@ function GoalCard({
               )}
             </div>
             {goal.description && (
-              <p className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">
+              <p className="selectable-text mt-0.5 truncate font-mono text-[11px] text-muted-foreground">
                 {goal.description}
               </p>
             )}
@@ -193,10 +193,10 @@ function GoalCard({
         <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
           Acumulado
         </p>
-        <p className="font-mono text-2xl font-normal tabular-nums tracking-tight">
+        <p className="selectable-text font-mono text-2xl font-normal tabular-nums tracking-tight">
           {formatCurrency(goal.currentAmount)}
         </p>
-        <p className="font-mono text-[11px] text-muted-foreground">
+        <p className="selectable-text font-mono text-[11px] text-muted-foreground">
           meta {formatCurrency(goal.targetAmount)}
         </p>
       </div>
@@ -212,10 +212,10 @@ function GoalCard({
           />
         </div>
         <div className="flex items-baseline justify-between font-mono text-[11px]">
-          <span className="tabular-nums text-muted-foreground">
+          <span className="selectable-text tabular-nums text-muted-foreground">
             {progress}% atingido
           </span>
-          <span className="tabular-nums text-muted-foreground">
+          <span className="selectable-text tabular-nums text-muted-foreground">
             faltam {formatCurrency(remaining)}
           </span>
         </div>
@@ -258,7 +258,7 @@ function GoalCard({
         )}
 
         {deadlineInfo && monthsToGoal !== null && (
-          <p className="font-mono text-[10px] text-muted-foreground">
+          <p className="selectable-text font-mono text-[10px] text-muted-foreground">
             {deadlineInfo.tight ? (
               <span className="text-destructive">
                 Contribuição insuficiente — precisaria de{" "}
@@ -277,7 +277,7 @@ function GoalCard({
         )}
 
         {account && (
-          <p className="font-mono text-[10px] text-muted-foreground">
+          <p className="selectable-text font-mono text-[10px] text-muted-foreground">
             Conta vinculada · {account.name}
           </p>
         )}
@@ -322,11 +322,11 @@ function OverallProgress({ goals }: { goals: Goal[] }) {
               key={goal.id}
               className="grid items-center gap-4 border-b border-border py-3 [grid-template-columns:1fr_120px_60px]"
             >
-              <p className="truncate text-sm">{goal.name}</p>
+              <p className="selectable-text truncate text-sm">{goal.name}</p>
               <div className="h-px bg-border">
                 <div className="h-px bg-foreground" style={{ width: `${pct}%` }} />
               </div>
-              <p className="text-right font-mono text-[11px] tabular-nums text-muted-foreground">
+              <p className="selectable-text text-right font-mono text-[11px] tabular-nums text-muted-foreground">
                 {pct}%
               </p>
             </div>

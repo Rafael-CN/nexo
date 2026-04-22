@@ -52,13 +52,13 @@ export function StatCard({
       </div>
 
       <div className="min-h-[52px] space-y-1.5">
-        <p className="truncate font-mono text-2xl font-normal tracking-tight">
+        <p className="selectable-text truncate font-mono text-2xl font-normal tracking-tight">
           {value}
         </p>
         {delta && (
           <p
             className={cn(
-              "font-mono text-[11px] tabular-nums",
+              "selectable-text font-mono text-[11px] tabular-nums",
               delta.positive
                 ? "text-success"
                 : "text-destructive",

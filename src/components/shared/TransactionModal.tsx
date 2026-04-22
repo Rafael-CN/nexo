@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { format, isValid, parseISO } from "date-fns";
 import { Copy, Trash2 } from "lucide-react";
@@ -97,6 +97,16 @@ export function TransactionModal({
   );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const amountRef = useRef<HTMLInputElement>(null);
+  const dateInputRef = useRef<HTMLInputElement>(null);
+  const accountTriggerRef = useRef<HTMLButtonElement>(null);
+  const categoryInputRef = useRef<HTMLInputElement>(null);
+  const recurrenceTriggerRef = useRef<HTMLButtonElement>(null);
+  const intervalRef = useRef<HTMLInputElement>(null);
+  const shouldOpenAccountOnFocusRef = useRef(false);
+  const [accountSelectOpen, setAccountSelectOpen] = useState(false);
+  const shouldOpenRecurrenceOnFocusRef = useRef(false);
+  const [recurrenceSelectOpen, setRecurrenceSelectOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -111,6 +121,13 @@ export function TransactionModal({
     );
     setError(null);
     setSaving(false);
+
+    const frame = window.requestAnimationFrame(() => {
+      amountRef.current?.focus();
+      amountRef.current?.select();
+    });
+
+    return () => window.cancelAnimationFrame(frame);
   }, [open, transaction, currentRule, initialDate, defaultAccountId]);
 
   function updateField<K extends keyof TransactionModalFormState>(
@@ -319,6 +336,165 @@ export function TransactionModal({
     ).length;
   }
 
+  function handleModalKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if ((event.ctrlKey || event.metaKey) && event.key === "Tab") {
+      event.preventDefault();
+      handleTypeChange(form.type === "expense" ? "income" : "expense");
+      return;
+    }
+
+    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+      event.preventDefault();
+      if (!saving) {
+        void saveTransaction(false);
+      }
+      return;
+    }
+
+    if (
+      event.key === "Tab" &&
+      !event.shiftKey &&
+      accountSelectOpen
+    ) {
+      event.preventDefault();
+      setAccountSelectOpen(false);
+      window.requestAnimationFrame(() => {
+        categoryInputRef.current?.focus();
+        categoryInputRef.current?.select();
+      });
+      return;
+    }
+
+    if (
+      event.key === "Tab" &&
+      event.shiftKey &&
+      accountSelectOpen
+    ) {
+      event.preventDefault();
+      setAccountSelectOpen(false);
+      window.requestAnimationFrame(() => {
+        dateInputRef.current?.focus();
+        dateInputRef.current?.select();
+      });
+      return;
+    }
+
+    if (
+      event.key === "Tab" &&
+      !event.shiftKey &&
+      recurrenceSelectOpen
+    ) {
+      event.preventDefault();
+      setRecurrenceSelectOpen(false);
+      window.requestAnimationFrame(() => {
+        intervalRef.current?.focus();
+        intervalRef.current?.select();
+      });
+      return;
+    }
+
+    if (
+      event.key === "Tab" &&
+      event.shiftKey &&
+      recurrenceSelectOpen
+    ) {
+      event.preventDefault();
+      setRecurrenceSelectOpen(false);
+      window.requestAnimationFrame(() => {
+        categoryInputRef.current?.focus();
+        categoryInputRef.current?.select();
+      });
+      return;
+    }
+
+    if (
+      event.key === "Tab" &&
+      !event.shiftKey &&
+      event.target instanceof HTMLElement &&
+      event.target.id === "txn-date"
+    ) {
+      event.preventDefault();
+      shouldOpenAccountOnFocusRef.current = true;
+      window.requestAnimationFrame(() => {
+        accountTriggerRef.current?.focus();
+      });
+      return;
+    }
+
+    if (
+      event.key === "Tab" &&
+      event.shiftKey &&
+      event.target instanceof HTMLElement &&
+      event.target.id === "txn-title"
+    ) {
+      event.preventDefault();
+      amountRef.current?.focus();
+      amountRef.current?.select();
+      return;
+    }
+
+    if (
+      event.key === "Tab" &&
+      event.shiftKey &&
+      event.target instanceof HTMLElement &&
+      event.target.id === "txn-date"
+    ) {
+      event.preventDefault();
+      document.getElementById("txn-title")?.focus();
+      return;
+    }
+  }
+
+  function moveFromAccountToCategory(event: KeyboardEvent<HTMLElement>) {
+    if (event.key !== "Tab") return;
+
+    event.preventDefault();
+    setAccountSelectOpen(false);
+    if (event.shiftKey) {
+      window.requestAnimationFrame(() => {
+        dateInputRef.current?.focus();
+        dateInputRef.current?.select();
+      });
+    } else {
+      window.requestAnimationFrame(() => {
+        categoryInputRef.current?.focus();
+        categoryInputRef.current?.select();
+      });
+    }
+  }
+
+  function moveFromRecurrence(event: KeyboardEvent<HTMLElement>) {
+    if (event.key !== "Tab") return;
+
+    event.preventDefault();
+    setRecurrenceSelectOpen(false);
+    if (event.shiftKey) {
+      window.requestAnimationFrame(() => {
+        categoryInputRef.current?.focus();
+        categoryInputRef.current?.select();
+      });
+    } else {
+      window.requestAnimationFrame(() => {
+        intervalRef.current?.focus();
+        intervalRef.current?.select();
+      });
+    }
+  }
+
+  function focusAccountSelect() {
+    shouldOpenAccountOnFocusRef.current = true;
+    window.requestAnimationFrame(() => {
+      accountTriggerRef.current?.focus();
+    });
+  }
+
+  function focusRecurrenceSelect() {
+    shouldOpenRecurrenceOnFocusRef.current = true;
+    window.requestAnimationFrame(() => {
+      recurrenceTriggerRef.current?.focus();
+    });
+  }
+
   const selectedAccount = accounts.find((account) => account.id === form.accountId);
   const selectedCategory = categories.find((category) => category.id === form.categoryId);
 
@@ -338,7 +514,7 @@ export function TransactionModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl overflow-hidden">
+      <DialogContent className="max-w-2xl overflow-hidden" onKeyDown={handleModalKeyDown}>
         <DialogHeader className="border-b border-border px-6 py-5 pb-4">
           <DialogTitle className="text-sm font-medium tracking-tight">
             {isEdit ? "Editar transação" : "Nova transação"}
@@ -353,18 +529,23 @@ export function TransactionModal({
         <div className="space-y-5 px-6 py-5">
           <div className={cn("space-y-4 border p-4", accentClasses)}>
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="inline-flex border border-border bg-background">
-                <TypeButton
-                  label="Despesa"
-                  active={form.type === "expense"}
-                  onClick={() => handleTypeChange("expense")}
-                  className="border-r border-border"
-                />
-                <TypeButton
-                  label="Receita"
-                  active={form.type === "income"}
-                  onClick={() => handleTypeChange("income")}
-                />
+              <div className="flex items-center gap-2">
+                <div className="inline-flex border border-border bg-background">
+                  <TypeButton
+                    label="Despesa"
+                    active={form.type === "expense"}
+                    onClick={() => handleTypeChange("expense")}
+                    className="border-r border-border"
+                  />
+                  <TypeButton
+                    label="Receita"
+                    active={form.type === "income"}
+                    onClick={() => handleTypeChange("income")}
+                  />
+                </div>
+                <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                  Ctrl Tab
+                </span>
               </div>
               <div className="text-right">
                 <p className={labelClass}>Conta</p>
@@ -379,6 +560,7 @@ export function TransactionModal({
                 Valor
               </Label>
               <CurrencyInput
+                ref={amountRef}
                 id="txn-amount"
                 placeholder="R$ 0,00"
                 className={cn(
@@ -402,7 +584,6 @@ export function TransactionModal({
                 value={form.title}
                 onChange={(event) => updateField("title", event.target.value)}
                 className="h-9 text-sm"
-                autoFocus
               />
             </div>
             <div className="space-y-1.5">
@@ -411,6 +592,7 @@ export function TransactionModal({
               </Label>
               <DatePicker
                 id="txn-date"
+                inputRef={dateInputRef}
                 className="font-mono"
                 value={form.date}
                 onChange={(value) => updateField("date", value)}
@@ -422,13 +604,26 @@ export function TransactionModal({
             <div className="space-y-1.5">
               <Label className={labelClass}>Conta</Label>
               <Select
+                open={accountSelectOpen}
+                onOpenChange={setAccountSelectOpen}
                 value={form.accountId}
                 onValueChange={(value) => updateField("accountId", value)}
               >
-                <SelectTrigger className="font-mono text-xs">
+                <SelectTrigger
+                  ref={accountTriggerRef}
+                  className="font-mono text-xs"
+                  onKeyDown={moveFromAccountToCategory}
+                  onFocus={() => {
+                    if (!shouldOpenAccountOnFocusRef.current) return;
+                    shouldOpenAccountOnFocusRef.current = false;
+                    window.requestAnimationFrame(() => {
+                      setAccountSelectOpen(true);
+                    });
+                  }}
+                >
                   <SelectValue placeholder="Selecionar" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent onKeyDown={moveFromAccountToCategory}>
                   {accounts.map((account) => (
                     <SelectItem key={account.id} value={account.id}>
                       {account.name}
@@ -441,11 +636,14 @@ export function TransactionModal({
             <div className="space-y-1.5">
               <Label className={labelClass}>Categoria</Label>
               <CategoryPicker
+                inputRef={categoryInputRef}
                 categories={categories}
                 type={form.type}
                 value={form.categoryId}
                 onChange={(value) => updateField("categoryId", value)}
                 disabled={saving}
+                onBackwardTab={focusAccountSelect}
+                onForwardTab={focusRecurrenceSelect}
               />
               {selectedCategory && (
                 <p className="font-mono text-[10px] text-muted-foreground">
@@ -459,6 +657,8 @@ export function TransactionModal({
             <div className="space-y-1.5">
               <Label className={labelClass}>Recorrência</Label>
               <Select
+                open={recurrenceSelectOpen}
+                onOpenChange={setRecurrenceSelectOpen}
                 value={form.recurrenceFrequency}
                 onValueChange={(value) =>
                   updateField(
@@ -467,10 +667,21 @@ export function TransactionModal({
                   )
                 }
               >
-                <SelectTrigger className="font-mono text-xs">
+                <SelectTrigger
+                  ref={recurrenceTriggerRef}
+                  className="font-mono text-xs"
+                  onKeyDown={moveFromRecurrence}
+                  onFocus={() => {
+                    if (!shouldOpenRecurrenceOnFocusRef.current) return;
+                    shouldOpenRecurrenceOnFocusRef.current = false;
+                    window.requestAnimationFrame(() => {
+                      setRecurrenceSelectOpen(true);
+                    });
+                  }}
+                >
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent onKeyDown={moveFromRecurrence}>
                   {recurrenceOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
@@ -484,6 +695,7 @@ export function TransactionModal({
                 Intervalo
               </Label>
               <Input
+                ref={intervalRef}
                 id="txn-recurrence-interval"
                 type="number"
                 min="1"
@@ -575,24 +787,16 @@ export function TransactionModal({
           >
             Cancelar
           </Button>
-          {!isEdit && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="rounded-sm text-xs"
-              onClick={() => saveTransaction(true)}
-              disabled={saving}
-            >
-              Salvar e novo
-            </Button>
-          )}
           <Button
             size="sm"
-            className="rounded-sm text-xs"
+            className="gap-2 rounded-sm text-xs"
             onClick={() => saveTransaction(false)}
             disabled={saving}
           >
             Salvar
+            <span className="font-mono text-[10px] uppercase opacity-60">
+              Ctrl Enter
+            </span>
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -614,6 +818,7 @@ function TypeButton({
   return (
     <button
       type="button"
+      tabIndex={-1}
       onClick={onClick}
       aria-pressed={active}
       className={cn(

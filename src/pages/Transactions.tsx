@@ -77,15 +77,15 @@ export function TransactionsPage() {
           <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
             Transações ({totals.count})
           </p>
-          <h1 className="font-mono text-4xl font-light tracking-tight md:text-5xl">
+          <h1 className="selectable-text font-mono text-4xl font-light tracking-tight md:text-5xl">
             {formatCurrency(totals.net)}
           </h1>
           <p className="font-mono text-xs text-muted-foreground">
-            <span className="text-success">
+            <span className="selectable-text text-success">
               +{formatCurrency(totals.income)}
             </span>
             <span className="px-2">·</span>
-            <span className="text-destructive">
+            <span className="selectable-text text-destructive">
               −{formatCurrency(totals.expense)}
             </span>
           </p>
@@ -215,7 +215,7 @@ export function TransactionsPage() {
                     {format(parsed, "EEE, dd MMM yyyy", { locale: ptBR })}
                   </p>
                   <div className="h-px flex-1 bg-border" />
-                  <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+                  <span className="selectable-text font-mono text-[11px] tabular-nums text-muted-foreground">
                     {dayTotal >= 0 ? "+" : "−"}
                     {formatCurrency(Math.abs(dayTotal))}
                   </span>

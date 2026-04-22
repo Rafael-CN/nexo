@@ -60,15 +60,15 @@ export function InsightList({
 
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                  <p className="text-sm font-medium">{item.title}</p>
+                  <p className="selectable-text text-sm font-medium">{item.title}</p>
                   {item.meta ? (
-                    <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                    <p className="selectable-text font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
                       {item.meta}
                     </p>
                   ) : null}
                 </div>
                 {item.description ? (
-                  <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
+                  <p className="selectable-text mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
                     {item.description}
                   </p>
                 ) : null}

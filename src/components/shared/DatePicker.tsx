@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type Ref } from "react";
 import {
   addMonths,
   eachDayOfInterval,
@@ -30,6 +30,7 @@ interface DatePickerProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  inputRef?: Ref<HTMLInputElement>;
   "aria-label"?: string;
 }
 
@@ -40,6 +41,7 @@ export function DatePicker({
   placeholder = "dd/mm/aaaa",
   disabled,
   className,
+  inputRef,
   "aria-label": ariaLabel,
 }: DatePickerProps) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -117,12 +119,18 @@ export function DatePicker({
           disabled={disabled}
           placeholder={placeholder}
           aria-label={ariaLabel}
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
           onFocus={() => setOpen(true)}
           onChange={(event) => handleTextChange(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Escape") setOpen(false);
             if (event.key === "ArrowDown") setOpen(true);
+            if (event.key === "Tab") setOpen(false);
           }}
+          ref={inputRef}
           className={cn(
             "flex h-9 w-full border border-border bg-transparent py-1 pl-8 pr-8 font-mono text-sm transition-colors placeholder:text-muted-foreground/60 ui-focus-ring disabled:cursor-not-allowed disabled:opacity-50",
             className,
@@ -131,6 +139,7 @@ export function DatePicker({
         {value && !disabled && (
           <button
             type="button"
+            tabIndex={-1}
             aria-label="Limpar data"
             className="absolute right-1 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center text-muted-foreground transition-colors hover:text-foreground ui-focus-ring-inset"
             onClick={clearDate}

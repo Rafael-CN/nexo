@@ -57,7 +57,7 @@ export function CategoryRanking({
                   {Icon && (
                     <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={1.5} />
                   )}
-                  <p className="truncate text-sm">{item.label}</p>
+                  <p className="selectable-text truncate text-sm">{item.label}</p>
                 </div>
                 <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                   #{index + 1}
@@ -73,12 +73,12 @@ export function CategoryRanking({
                     />
                   </div>
                   {item.share !== undefined ? (
-                    <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                    <span className="selectable-text font-mono text-[10px] tabular-nums text-muted-foreground">
                       {item.share.toFixed(1)}%
                     </span>
                   ) : null}
                 </div>
-                <p className="font-mono text-[11px] tabular-nums text-muted-foreground">
+                <p className="selectable-text font-mono text-[11px] tabular-nums text-muted-foreground">
                   {item.value}
                 </p>
               </div>

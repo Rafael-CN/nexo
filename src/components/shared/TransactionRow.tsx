@@ -44,7 +44,7 @@ export function TransactionRow({ transaction, onClick }: TransactionRowProps) {
 
       <div className="min-w-0 space-y-1">
         <div className="flex min-w-0 items-center gap-2">
-          <p className="truncate text-sm font-medium leading-tight">
+          <p className="selectable-text truncate text-sm font-medium leading-tight">
             {transaction.title}
           </p>
           {isProjected && (
@@ -59,7 +59,7 @@ export function TransactionRow({ transaction, onClick }: TransactionRowProps) {
             />
           )}
         </div>
-        <p className="truncate font-mono text-[11px] text-muted-foreground">
+        <p className="selectable-text truncate font-mono text-[11px] text-muted-foreground">
           {acc?.name ?? "—"}
           <span className="px-1.5 text-muted-foreground/60">·</span>
           {cat?.name ?? "—"}
@@ -68,7 +68,7 @@ export function TransactionRow({ transaction, onClick }: TransactionRowProps) {
 
       <p
         className={cn(
-          "min-w-[112px] text-right font-mono text-sm tabular-nums",
+          "selectable-text min-w-[112px] text-right font-mono text-sm tabular-nums",
           isIncome ? "text-success" : "text-foreground",
         )}
       >

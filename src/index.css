@@ -94,6 +94,43 @@
     font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1, "cv11" 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  input,
+  textarea,
+  [contenteditable="true"],
+  .selectable-text,
+  .selectable-text * {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  .selectable-text::selection,
+  .selectable-text *::selection,
+  input::selection,
+  textarea::selection {
+    background: hsl(var(--foreground) / 0.18);
+    color: hsl(var(--foreground));
+  }
+
+  :focus,
+  :focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  textarea:-webkit-autofill,
+  textarea:-webkit-autofill:hover,
+  textarea:-webkit-autofill:focus {
+    -webkit-text-fill-color: hsl(var(--foreground));
+    caret-color: hsl(var(--foreground));
+    transition: background-color 9999s ease-out;
+    box-shadow: 0 0 0 1000px hsl(var(--background)) inset !important;
   }
 
   /* Números: mono com slashed-zero e tabular */
@@ -139,11 +176,11 @@
   }
 
   .ui-focus-ring {
-    @apply focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background;
+    @apply focus-visible:outline-none;
   }
 
   .ui-focus-ring-inset {
-    @apply focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring;
+    @apply focus-visible:outline-none;
   }
 
   /* Helper para números financeiros */

@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ColorPicker } from "@/components/shared/ColorPicker";
 import { IconPicker } from "@/components/shared/IconPicker";
 import {
   Select,
@@ -136,7 +137,7 @@ export function AccountModal({ open, onOpenChange, account }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md overflow-hidden">
+      <DialogContent className="max-w-md overflow-visible">
         <DialogHeader className="border-b border-border px-6 py-5 pb-4">
           <DialogTitle>{isEdit ? "Editar conta" : "Nova conta"}</DialogTitle>
         </DialogHeader>
@@ -223,12 +224,12 @@ export function AccountModal({ open, onOpenChange, account }: Props) {
               <Label htmlFor="account-color" className={labelClass}>
                 Cor
               </Label>
-              <Input
+              <ColorPicker
                 id="account-color"
-                type="color"
                 value={form.color}
-                onChange={(event) => set("color", event.target.value)}
-                className="h-9 p-1"
+                onChange={(value) => set("color", value)}
+                disabled={saving}
+                className="w-full"
               />
             </div>
             <div className="space-y-1.5">

@@ -70,17 +70,17 @@ export function ReportKpiCard({
       </div>
 
       <div className="space-y-1.5">
-        <p className="truncate font-mono text-2xl font-normal tracking-tight">
+        <p className="selectable-text truncate font-mono text-2xl font-normal tracking-tight">
           {value}
         </p>
         <div className="flex min-h-[20px] items-center gap-2 text-[11px] tabular-nums">
           {delta ? (
-            <span className={cn("inline-flex items-center gap-1 font-mono", toneDeltaMap[tone])}>
+            <span className={cn("selectable-text inline-flex items-center gap-1 font-mono", toneDeltaMap[tone])}>
               <DeltaIcon className="h-3.5 w-3.5" strokeWidth={1.75} />
               {delta.value}
             </span>
           ) : (
-            <span className="font-mono text-muted-foreground">
+            <span className="selectable-text font-mono text-muted-foreground">
               {note ?? " "}
             </span>
           )}

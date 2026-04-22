@@ -68,7 +68,7 @@ export function AccountsPage() {
           <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
             Saldo efetivo
           </p>
-          <h1 className="font-mono text-5xl font-light tracking-tight md:text-6xl">
+          <h1 className="selectable-text font-mono text-5xl font-light tracking-tight md:text-6xl">
             {formatCurrency(totalBalance)}
           </h1>
           <p className="font-mono text-xs text-muted-foreground">
@@ -193,8 +193,8 @@ function AccountCard({
             className="h-4 w-4 shrink-0 text-muted-foreground"
           />
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium">{account.name}</p>
-            <p className="truncate font-mono text-[11px] text-muted-foreground">
+            <p className="selectable-text truncate text-sm font-medium">{account.name}</p>
+            <p className="selectable-text truncate font-mono text-[11px] text-muted-foreground">
               {account.institution}
             </p>
           </div>
@@ -210,7 +210,7 @@ function AccountCard({
         </p>
         <p
           className={cn(
-            "font-mono text-2xl font-normal tabular-nums tracking-tight",
+            "selectable-text font-mono text-2xl font-normal tabular-nums tracking-tight",
             isNegative && "text-destructive",
           )}
         >
@@ -227,7 +227,7 @@ function AccountCard({
           />
           {account.lastFour ? `.... ${account.lastFour}` : meta.label}
         </span>
-        <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
+        <span className="selectable-text font-mono text-[10px] uppercase tracking-wider text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
           Base {formatCurrency(account.balance, true)}
         </span>
       </div>
@@ -273,7 +273,7 @@ function CategoryGroup({
                   className="h-4 w-4 text-background mix-blend-luminosity"
                 />
               </span>
-              <span className="truncate text-sm">{category.name}</span>
+              <span className="selectable-text truncate text-sm">{category.name}</span>
             </span>
             <FinanceIcon
               name={category.icon}
