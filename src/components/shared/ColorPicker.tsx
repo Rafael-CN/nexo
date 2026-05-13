@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, Palette } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { PickerPopover } from "@/components/shared/pickerPopover";
 
 const quickColors = [
   { value: "#111827", label: "Grafite" },
@@ -110,31 +111,6 @@ export function ColorPicker({
     }
   }, [current, open]);
 
-  useEffect(() => {
-    if (!open) return;
-
-    const handlePointerDown = (event: PointerEvent) => {
-      if (rootRef.current?.contains(event.target as Node)) return;
-      setOpen(false);
-      setDraft(current);
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setOpen(false);
-        setDraft(current);
-      }
-    };
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [current, open]);
-
   function closePicker() {
     setOpen(false);
     setDraft(current);
@@ -190,7 +166,14 @@ export function ColorPicker({
       </button>
 
       {open && (
-        <div className="absolute left-0 top-[calc(100%+6px)] z-50 w-full min-w-72 border border-border bg-background p-3 text-foreground shadow-xl">
+        <PickerPopover
+          anchorRef={rootRef}
+          open={open}
+          onClose={closePicker}
+          preferredWidth={288}
+          preferredHeight={348}
+          className="p-3"
+        >
           <div className="flex items-center justify-between gap-3">
             <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
               Paleta
@@ -207,6 +190,7 @@ export function ColorPicker({
                 <button
                   key={color.value}
                   type="button"
+                  tabIndex={-1}
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => {
                     onChange(color.value);
@@ -261,6 +245,9 @@ export function ColorPicker({
                       setDraft(current);
                     }
                   }
+                  if (event.key === "Tab") {
+                    setOpen(false);
+                  }
                   if (event.key === "Escape") {
                     event.preventDefault();
                     closePicker();
@@ -276,7 +263,7 @@ export function ColorPicker({
               />
             </div>
           </div>
-        </div>
+        </PickerPopover>
       )}
     </div>
   );

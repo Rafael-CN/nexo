@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NumberInput } from "@/components/ui/number-input";
 import { ColorPicker } from "@/components/shared/ColorPicker";
 import { IconPicker } from "@/components/shared/IconPicker";
 import {
@@ -195,10 +196,8 @@ export function AccountModal({ open, onOpenChange, account }: Props) {
               <Label htmlFor="account-balance" className={labelClass}>
                 Saldo base
               </Label>
-              <Input
+              <NumberInput
                 id="account-balance"
-                type="number"
-                step="0.01"
                 className="h-9 font-mono tabular-nums"
                 value={form.balance}
                 onChange={(event) => set("balance", event.target.value)}

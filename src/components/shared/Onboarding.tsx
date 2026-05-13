@@ -3,6 +3,7 @@ import { Check, Landmark, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NumberInput } from "@/components/ui/number-input";
 import {
   Select,
   SelectContent,
@@ -289,10 +290,8 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                   <Label htmlFor="onboarding-balance" className={labelClass}>
                     Saldo inicial (R$)
                   </Label>
-                  <Input
+                  <NumberInput
                     id="onboarding-balance"
-                    type="number"
-                    step="0.01"
                     value={balance}
                     onChange={(event) => setBalance(event.target.value)}
                     className="h-9 font-mono tabular-nums"

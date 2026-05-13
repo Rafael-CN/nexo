@@ -11,6 +11,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { NumberInput } from "@/components/ui/number-input";
 import { DatePicker } from "@/components/shared/DatePicker";
 import {
   Select,
@@ -171,11 +173,8 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
               <Label htmlFor="goal-target" className={labelClass}>
                 Meta (R$)
               </Label>
-              <Input
+              <NumberInput
                 id="goal-target"
-                type="number"
-                min="1"
-                step="100"
                 placeholder="0,00"
                 className="h-9 font-mono tabular-nums"
                 value={form.targetAmount}
@@ -186,11 +185,8 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
               <Label htmlFor="goal-current" className={labelClass}>
                 Acumulado (R$)
               </Label>
-              <Input
+              <NumberInput
                 id="goal-current"
-                type="number"
-                min="0"
-                step="100"
                 placeholder="0,00"
                 className="h-9 font-mono tabular-nums"
                 value={form.currentAmount}
@@ -236,11 +232,8 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
             <Label htmlFor="goal-contrib" className={labelClass}>
               Contribuição mensal (R$)
             </Label>
-            <Input
+            <NumberInput
               id="goal-contrib"
-              type="number"
-              min="0"
-              step="50"
               placeholder="0,00 — usado para projetar prazo"
               className="h-9 font-mono tabular-nums"
               value={form.monthlyContribution}
@@ -248,17 +241,12 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
             />
           </div>
 
-          <label className="flex cursor-pointer items-center gap-2.5">
-            <input
-              type="checkbox"
-              className="h-3.5 w-3.5 accent-foreground"
-              checked={form.paused}
-              onChange={(e) => set("paused", e.target.checked)}
-            />
-            <span className="font-mono text-[11px] text-muted-foreground">
-              Meta pausada (excluída dos totais)
-            </span>
-          </label>
+          <Checkbox
+            checked={form.paused}
+            onCheckedChange={(checked) => set("paused", checked)}
+          >
+            Meta pausada (excluída dos totais)
+          </Checkbox>
 
           {error && (
             <p className="font-mono text-[11px] text-destructive">{error}</p>

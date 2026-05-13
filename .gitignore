@@ -24,3 +24,8 @@ src-tauri/gen/
 # Logs
 *.log
 npm-debug.log*
+
+# Local AI tooling
+.claude/
+.codex/
+.codex-agent-worktrees/

@@ -48,11 +48,14 @@ export function Header({ onOpenCommandPalette, onNewTransaction }: HeaderProps) 
 
         <Button
           size="sm"
-          className="gap-1.5 rounded-sm text-xs"
+          className="gap-2 rounded-sm text-xs"
           onClick={onNewTransaction}
         >
           <Plus className="h-3.5 w-3.5" strokeWidth={2} />
-          Nova transação
+          <span>Nova transação</span>
+          <span className="font-mono text-[10px] uppercase text-muted-foreground">
+            Ctrl/Cmd N
+          </span>
         </Button>
       </div>
     </header>

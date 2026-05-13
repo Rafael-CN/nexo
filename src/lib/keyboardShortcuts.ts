@@ -94,3 +94,7 @@ export function isGlobalShortcutEvent(event: KeyboardEvent) {
     "mod+7",
   ].some((shortcut) => matchesShortcutBinding(event, shortcut));
 }
+
+export function isEscapeKeyEvent(event: KeyboardEvent) {
+  return !event.defaultPrevented && !event.repeat && event.key === "Escape";
+}

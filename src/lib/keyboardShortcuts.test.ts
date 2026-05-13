@@ -3,6 +3,7 @@ import {
   formatShortcut,
   isEditableElement,
   isGlobalShortcutEvent,
+  isEscapeKeyEvent,
   isShortcutEvent,
 } from "./keyboardShortcuts";
 
@@ -82,5 +83,22 @@ describe("keyboard shortcuts", () => {
         } as never,
       } as unknown as KeyboardEvent),
     ).toBe(false);
+  });
+
+  it("detects escape keys even when focus is in editable content", () => {
+    expect(
+      isEscapeKeyEvent({
+        key: "Escape",
+        ctrlKey: false,
+        metaKey: false,
+        altKey: false,
+        shiftKey: false,
+        repeat: false,
+        defaultPrevented: false,
+        target: {
+          closest: () => ({}),
+        } as never,
+      } as unknown as KeyboardEvent),
+    ).toBe(true);
   });
 });

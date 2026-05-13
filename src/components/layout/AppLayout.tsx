@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { AlertCircle, Loader2, RefreshCw, WalletCards } from "lucide-react";
 import { Sidebar } from "./Sidebar";
@@ -26,30 +26,42 @@ export function AppLayout() {
   const [profile, setProfile] = useState<LocalProfile | null>(() =>
     getLocalProfile(),
   );
-  const openCommandPalette = () => setCommandPaletteOpen(true);
-  const openNewTransaction = () => {
+  const openCommandPalette = useCallback(() => {
+    setCommandPaletteOpen(true);
+  }, []);
+  const closeCommandPalette = useCallback(() => {
+    setCommandPaletteOpen(false);
+  }, []);
+  const openNewTransaction = useCallback(() => {
     setCommandPaletteOpen(false);
     setTransactionModalOpen(true);
-  };
-  const openSettings = () => navigate("/configuracoes");
+  }, []);
+  const closeTransactionModal = useCallback(() => {
+    setTransactionModalOpen(false);
+  }, []);
+  const openSettings = useCallback(() => navigate("/configuracoes"), [navigate]);
+  const navigateToIndex = useCallback(
+    (index: number) => {
+      const route = appRoutes[index];
+      if (route) navigate(route.path);
+    },
+    [navigate],
+  );
 
   useEffect(() => {
     void initialize();
   }, [initialize]);
 
   useDesktopShortcuts({
-    enabled:
-      isLoaded &&
-      accounts.length > 0 &&
-      !commandPaletteOpen &&
-      !transactionModalOpen,
+    enabled: isLoaded && accounts.length > 0,
     onOpenPalette: openCommandPalette,
     onOpenNewTransaction: openNewTransaction,
     onOpenSettings: openSettings,
-    onNavigateToIndex: (index) => {
-      const route = appRoutes[index];
-      if (route) navigate(route.path);
-    },
+    onNavigateToIndex: navigateToIndex,
+    onClosePalette: closeCommandPalette,
+    onCloseTransactionModal: closeTransactionModal,
+    isCommandPaletteOpen: commandPaletteOpen,
+    isTransactionModalOpen: transactionModalOpen,
   });
 
   if (!isLoaded) {

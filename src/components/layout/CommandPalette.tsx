@@ -189,15 +189,7 @@ export function CommandPalette({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="overflow-hidden p-0 sm:max-w-2xl"
-        onEscapeKeyDown={(event) => {
-          if (!query) return;
-          event.preventDefault();
-          setQuery("");
-          setSelectedIndex(0);
-        }}
-      >
+      <DialogContent className="overflow-hidden p-0 sm:max-w-2xl">
         <DialogHeader className="border-b border-border px-4 py-4">
           <DialogTitle className="sr-only">Command palette</DialogTitle>
           <DialogDescription className="sr-only">
@@ -220,6 +212,10 @@ export function CommandPalette({
               placeholder="Buscar rota ou ação"
               className="h-9 border-0 bg-transparent pl-9 pr-3 font-mono text-xs ui-focus-ring-inset"
             />
+          </div>
+          <div className="mt-2 flex items-center justify-between gap-3 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+            <span>Esc fecha</span>
+            <span>Ctrl/Cmd N nova transação</span>
           </div>
         </DialogHeader>
 

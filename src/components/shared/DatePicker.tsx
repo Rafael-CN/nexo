@@ -20,6 +20,7 @@ import { ptBR } from "date-fns/locale";
 import { CalendarDays, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { PickerPopover } from "@/components/shared/pickerPopover";
 
 const WEEKDAYS = ["D", "S", "T", "Q", "Q", "S", "S"];
 
@@ -55,19 +56,6 @@ export function DatePicker({
     setText(formatDisplayDate(value));
     if (value) setViewMonth(startOfMonth(parseISO(value)));
   }, [value]);
-
-  useEffect(() => {
-    if (!open) return;
-
-    function handlePointerDown(event: PointerEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    }
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    return () => document.removeEventListener("pointerdown", handlePointerDown);
-  }, [open]);
 
   const days = useMemo(() => {
     const start = startOfWeek(startOfMonth(viewMonth), { weekStartsOn: 0 });
@@ -150,12 +138,20 @@ export function DatePicker({
       </div>
 
       {open && !disabled && (
-        <div className="absolute left-0 top-[calc(100%+6px)] z-50 w-[248px] border border-border bg-popover p-2 shadow-xl">
+        <PickerPopover
+          anchorRef={rootRef}
+          open={open}
+          onClose={() => setOpen(false)}
+          preferredWidth={248}
+          preferredHeight={340}
+          className="p-2"
+        >
           <div className="mb-2 flex items-center justify-between">
             <Button
               type="button"
               variant="ghost"
               size="icon"
+              tabIndex={-1}
               onClick={() => setViewMonth((month) => subMonths(month, 1))}
             >
               <ChevronLeft className="h-3.5 w-3.5" strokeWidth={1.5} />
@@ -167,6 +163,7 @@ export function DatePicker({
               type="button"
               variant="ghost"
               size="icon"
+              tabIndex={-1}
               onClick={() => setViewMonth((month) => addMonths(month, 1))}
             >
               <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.5} />
@@ -189,6 +186,7 @@ export function DatePicker({
                 <button
                   key={formatISO(day, { representation: "date" })}
                   type="button"
+                  tabIndex={-1}
                   onClick={() => selectDate(day)}
                   className={cn(
                     "grid h-8 place-items-center bg-background font-mono text-[11px] tabular-nums transition-colors hover:bg-accent ui-focus-ring-inset",
@@ -209,6 +207,7 @@ export function DatePicker({
               type="button"
               variant="ghost"
               size="sm"
+              tabIndex={-1}
               className="px-2 font-mono text-[10px] uppercase tracking-wider"
               onClick={() => selectDate(new Date())}
             >
@@ -218,7 +217,7 @@ export function DatePicker({
               Digite ou selecione
             </span>
           </div>
-        </div>
+        </PickerPopover>
       )}
     </div>
   );

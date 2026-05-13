@@ -46,6 +46,7 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { PickerPopover } from "@/components/shared/pickerPopover";
 
 type FinanceIconGroup =
   | "base"
@@ -424,9 +425,6 @@ export function IconPicker({
   const [query, setQuery] = useState("");
   const [activeGroup, setActiveGroup] = useState<FinanceIconGroup | "all">("all");
   const [activeIndex, setActiveIndex] = useState(0);
-  const [placement, setPlacement] = useState<"bottom" | "top">("bottom");
-  const [panelMaxHeight, setPanelMaxHeight] = useState(420);
-
   const selectedOption = getFinanceIconOption(value);
   const SelectedIcon = selectedOption.icon;
 
@@ -487,46 +485,6 @@ export function IconPicker({
     setActiveIndex((current) => Math.min(current, flatOptions.length - 1));
   }, [flatOptions.length, open]);
 
-  useEffect(() => {
-    if (!open) return;
-
-    const updatePanelPosition = () => {
-      const rect = rootRef.current?.getBoundingClientRect();
-      if (!rect) return;
-
-      const margin = 20;
-      const below = window.innerHeight - rect.bottom - margin;
-      const above = rect.top - margin;
-      const nextPlacement = below < 360 && above > below ? "top" : "bottom";
-      const available = nextPlacement === "top" ? above : below;
-
-      setPlacement(nextPlacement);
-      setPanelMaxHeight(Math.min(420, Math.max(260, available)));
-    };
-
-    updatePanelPosition();
-    window.addEventListener("resize", updatePanelPosition);
-    window.addEventListener("scroll", updatePanelPosition, true);
-
-    return () => {
-      window.removeEventListener("resize", updatePanelPosition);
-      window.removeEventListener("scroll", updatePanelPosition, true);
-    };
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-
-    const handlePointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    };
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    return () => document.removeEventListener("pointerdown", handlePointerDown);
-  }, [open]);
-
   function closePicker() {
     setOpen(false);
   }
@@ -538,18 +496,6 @@ export function IconPicker({
 
   function openPicker() {
     if (disabled) return;
-
-    const rect = rootRef.current?.getBoundingClientRect();
-    if (rect) {
-      const margin = 20;
-      const below = window.innerHeight - rect.bottom - margin;
-      const above = rect.top - margin;
-      const nextPlacement = below < 360 && above > below ? "top" : "bottom";
-      const available = nextPlacement === "top" ? above : below;
-
-      setPlacement(nextPlacement);
-      setPanelMaxHeight(Math.min(420, Math.max(260, available)));
-    }
 
     setOpen(true);
   }
@@ -576,6 +522,11 @@ export function IconPicker({
     if (event.key === "Escape") {
       event.preventDefault();
       closePicker();
+      return;
+    }
+
+    if (event.key === "Tab") {
+      setOpen(false);
       return;
     }
 
@@ -644,14 +595,13 @@ export function IconPicker({
       </button>
 
       {open && !disabled && (
-        <div
-          className={cn(
-            "absolute left-0 z-50 flex w-full min-w-[360px] flex-col overflow-hidden border border-border bg-background shadow-xl",
-            placement === "top"
-              ? "bottom-[calc(100%+6px)]"
-              : "top-[calc(100%+6px)]",
-          )}
-          style={{ maxHeight: panelMaxHeight }}
+        <PickerPopover
+          anchorRef={rootRef}
+          open={open}
+          onClose={closePicker}
+          preferredWidth={360}
+          preferredHeight={420}
+          className="flex flex-col"
         >
           <div className="shrink-0 border-b border-border px-3 py-3">
             <div className="relative">
@@ -676,6 +626,7 @@ export function IconPicker({
                   <button
                     key={group.value}
                     type="button"
+                    tabIndex={-1}
                     onClick={() => setActiveGroup(group.value)}
                     className={cn(
                       "h-7 min-w-0 truncate border px-2 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors ui-focus-ring-inset",
@@ -693,7 +644,9 @@ export function IconPicker({
 
           <div
             className="min-h-0 flex-1 overflow-y-auto"
-            style={{ maxHeight: Math.max(180, panelMaxHeight - 184) }}
+            style={{
+              maxHeight: "max(72px, calc(var(--picker-popover-max-height, 420px) - 112px))",
+            }}
           >
             <div className="p-2">
               {flatOptions.length === 0 ? (
@@ -722,6 +675,7 @@ export function IconPicker({
                           <button
                             key={option.value}
                             type="button"
+                            tabIndex={-1}
                             onClick={() => selectIcon(option)}
                             onMouseEnter={() =>
                               setActiveIndex(
@@ -768,7 +722,7 @@ export function IconPicker({
               )}
             </div>
           </div>
-        </div>
+        </PickerPopover>
       )}
     </div>
   );

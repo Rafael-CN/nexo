@@ -10,6 +10,7 @@ import { Check, ChevronDown, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { FinanceIcon } from "@/components/shared/IconPicker";
+import { PickerPopover } from "@/components/shared/pickerPopover";
 import type { Category, TransactionType } from "@/types";
 import { filterTransactionCategories } from "./transactionModalUtils";
 
@@ -45,21 +46,6 @@ export function CategoryPicker({
     [categories, type, query],
   );
   const selected = categories.find((category) => category.id === value) ?? null;
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    const handlePointerDown = (event: PointerEvent) => {
-      if (rootRef.current?.contains(event.target as Node)) return;
-      setOpen(false);
-      setQuery(selected?.name ?? "");
-    };
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    return () => document.removeEventListener("pointerdown", handlePointerDown);
-  }, [open, selected]);
 
   useEffect(() => {
     if (!open) return;
@@ -195,8 +181,15 @@ export function CategoryPicker({
       </div>
 
       {open && (
-        <div className="absolute left-0 top-[calc(100%+4px)] z-20 w-full border border-border bg-background shadow-sm">
-          <div className="max-h-64 overflow-auto p-1">
+        <PickerPopover
+          anchorRef={rootRef}
+          open={open}
+          onClose={closePicker}
+          preferredWidth="trigger"
+          preferredHeight={320}
+          className="w-full"
+        >
+          <div className="max-h-64 overflow-y-auto p-1">
             {options.length === 0 ? (
               <div className="px-3 py-2 text-xs text-muted-foreground">
                 Nenhuma categoria encontrada.
@@ -209,6 +202,7 @@ export function CategoryPicker({
                   <button
                     key={category.id}
                     type="button"
+                    tabIndex={-1}
                     onMouseDown={(event) => event.preventDefault()}
                     onMouseEnter={() => setActiveIndex(index)}
                     onClick={() => selectCategory(category)}
@@ -239,7 +233,7 @@ export function CategoryPicker({
               })
             )}
           </div>
-        </div>
+        </PickerPopover>
       )}
     </div>
   );

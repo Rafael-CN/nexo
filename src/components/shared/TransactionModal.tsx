@@ -13,6 +13,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { NumberInput } from "@/components/ui/number-input";
 import { DatePicker } from "@/components/shared/DatePicker";
 import { CurrencyInput } from "@/components/shared/CurrencyInput";
 import {
@@ -694,12 +696,10 @@ export function TransactionModal({
               <Label htmlFor="txn-recurrence-interval" className={labelClass}>
                 Intervalo
               </Label>
-              <Input
+              <NumberInput
                 ref={intervalRef}
                 id="txn-recurrence-interval"
-                type="number"
-                min="1"
-                step="1"
+                inputMode="numeric"
                 className="h-9 font-mono tabular-nums"
                 value={form.recurrenceInterval}
                 disabled={form.recurrenceFrequency === "none"}
@@ -710,25 +710,18 @@ export function TransactionModal({
 
           {form.recurrenceFrequency !== "none" && (
             <div className="space-y-3">
-              <label className="flex cursor-pointer items-center gap-2.5">
-                <input
-                  type="checkbox"
-                  className="h-3.5 w-3.5 accent-foreground"
-                  checked={form.recurrenceNoEnd}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      recurrenceNoEnd: event.target.checked,
-                      recurrenceUntil: event.target.checked
-                        ? ""
-                        : current.recurrenceUntil,
-                    }))
-                  }
-                />
-                <span className="font-mono text-[11px] text-muted-foreground">
-                  Repetir sem data limite
-                </span>
-              </label>
+              <Checkbox
+                checked={form.recurrenceNoEnd}
+                onCheckedChange={(checked) =>
+                  setForm((current) => ({
+                    ...current,
+                    recurrenceNoEnd: checked,
+                    recurrenceUntil: checked ? "" : current.recurrenceUntil,
+                  }))
+                }
+              >
+                Repetir sem data limite
+              </Checkbox>
 
               {!form.recurrenceNoEnd && (
                 <div className="space-y-1.5">
