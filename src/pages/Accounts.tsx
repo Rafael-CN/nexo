@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { ArrowRightLeft, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AccountModal } from "@/components/shared/AccountModal";
 import { CategoryModal } from "@/components/shared/CategoryModal";
+import { TransactionModal } from "@/components/shared/TransactionModal";
 import { FinanceIcon } from "@/components/shared/IconPicker";
 import { getCurrentAccountBalances } from "@/lib/balance";
 import { formatCurrency } from "@/lib/format";
@@ -32,6 +33,7 @@ export function AccountsPage() {
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [transferModalOpen, setTransferModalOpen] = useState(false);
 
   const groupedCategories = useMemo(
     () => ({
@@ -76,10 +78,26 @@ export function AccountsPage() {
           </p>
         </div>
 
-        <Button size="sm" className="gap-1.5 rounded-sm text-xs" onClick={openNewAccount}>
-          <Plus className="h-3.5 w-3.5" strokeWidth={2} />
-          Nova conta
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {accounts.length > 1 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 rounded-sm text-xs"
+              onClick={() => setTransferModalOpen(true)}
+            >
+              <ArrowRightLeft className="h-3.5 w-3.5" strokeWidth={1.5} />
+              Transferir
+              <span className="font-mono text-[10px] uppercase text-muted-foreground">
+                Ctrl/Cmd T
+              </span>
+            </Button>
+          )}
+          <Button size="sm" className="gap-1.5 rounded-sm text-xs" onClick={openNewAccount}>
+            <Plus className="h-3.5 w-3.5" strokeWidth={2} />
+            Nova conta
+          </Button>
+        </div>
       </section>
 
       <section>
@@ -163,6 +181,11 @@ export function AccountsPage() {
         open={categoryModalOpen}
         onOpenChange={setCategoryModalOpen}
         category={editingCategory}
+      />
+      <TransactionModal
+        open={transferModalOpen}
+        onOpenChange={setTransferModalOpen}
+        initialType="transfer"
       />
     </div>
   );

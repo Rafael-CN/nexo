@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NumberInput } from "@/components/ui/number-input";
 import { ColorPicker } from "@/components/shared/ColorPicker";
+import { ConfirmDeleteButton } from "@/components/shared/ConfirmDeleteButton";
 import { IconPicker } from "@/components/shared/IconPicker";
 import {
   Select,
@@ -248,16 +248,11 @@ export function AccountModal({ open, onOpenChange, account }: Props) {
 
         <DialogFooter>
           {isEdit && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="mr-auto gap-1.5 rounded-sm text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
-              onClick={handleDelete}
+            <ConfirmDeleteButton
+              className="mr-auto"
+              onConfirm={handleDelete}
               disabled={saving}
-            >
-              <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
-              Excluir
-            </Button>
+            />
           )}
           <Button
             variant="outline"

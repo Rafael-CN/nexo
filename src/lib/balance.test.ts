@@ -54,18 +54,92 @@ describe("getCurrentAccountBalance", () => {
     expect(result).toBe(1_350);
   });
 
-  it("ignores future transactions, other accounts, and transfers", () => {
+  it("ignores future transactions, other accounts, and destination-less transfers", () => {
     const result = getCurrentAccountBalance(
       account(),
       [
         tx({ id: "future-income", date: "2026-04-21", amount: 500, type: "income" }),
         tx({ id: "other-account", accountId: "account-2", amount: 200 }),
-        tx({ id: "transfer", amount: 300, type: "transfer" }),
+        tx({ id: "legacy-transfer", amount: 300, type: "transfer" }),
       ],
       today,
     );
 
     expect(result).toBe(1_000);
+  });
+
+  it("debits the source and credits the destination of a transfer", () => {
+    const transactions = [
+      tx({
+        id: "transfer",
+        amount: 300,
+        type: "transfer",
+        accountId: "account-1",
+        transferAccountId: "account-2",
+        categoryId: "",
+      }),
+    ];
+
+    expect(
+      getCurrentAccountBalance(account({ id: "account-1" }), transactions, today),
+    ).toBe(700);
+    expect(
+      getCurrentAccountBalance(
+        account({ id: "account-2", balance: 50 }),
+        transactions,
+        today,
+      ),
+    ).toBe(350);
+    expect(
+      getCurrentAccountBalance(
+        account({ id: "account-3", balance: 10 }),
+        transactions,
+        today,
+      ),
+    ).toBe(10);
+  });
+
+  it("keeps the total balance unchanged by transfers", () => {
+    const accounts = [
+      account({ id: "account-1", balance: 1_000 }),
+      account({ id: "account-2", balance: 500 }),
+    ];
+    const total = getTotalCurrentBalance(
+      accounts,
+      [
+        tx({
+          id: "transfer",
+          amount: 250,
+          type: "transfer",
+          accountId: "account-1",
+          transferAccountId: "account-2",
+          categoryId: "",
+        }),
+      ],
+      today,
+    );
+
+    expect(total).toBe(1_500);
+  });
+
+  it("ignores future transfers", () => {
+    const result = getCurrentAccountBalance(
+      account({ id: "account-2", balance: 100 }),
+      [
+        tx({
+          id: "future-transfer",
+          amount: 300,
+          type: "transfer",
+          accountId: "account-1",
+          transferAccountId: "account-2",
+          date: "2026-04-25",
+          categoryId: "",
+        }),
+      ],
+      today,
+    );
+
+    expect(result).toBe(100);
   });
 });
 

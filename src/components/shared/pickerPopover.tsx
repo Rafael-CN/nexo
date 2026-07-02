@@ -184,6 +184,7 @@ export function PickerPopover({
     <div
       ref={panelRef}
       data-side={placement}
+      data-picker-popover=""
       className={cn(
         "fixed z-[70] overflow-hidden rounded-[calc(var(--radius)+1px)]",
         SURFACE_CLASS,

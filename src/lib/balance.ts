@@ -1,7 +1,15 @@
 import { formatISO } from "date-fns";
 import type { Account, Transaction } from "@/types";
 
-function transactionDelta(transaction: Transaction): number {
+function transactionDelta(transaction: Transaction, accountId: string): number {
+  if (transaction.type === "transfer") {
+    // Transferência sem destino (dado legado) permanece neutra.
+    if (!transaction.transferAccountId) return 0;
+    if (transaction.accountId === accountId) return -transaction.amount;
+    if (transaction.transferAccountId === accountId) return transaction.amount;
+    return 0;
+  }
+  if (transaction.accountId !== accountId) return 0;
   if (transaction.type === "income") return transaction.amount;
   if (transaction.type === "expense") return -transaction.amount;
   return 0;
@@ -15,11 +23,9 @@ export function getCurrentAccountBalance(
   const asOfIso = formatISO(asOf, { representation: "date" });
 
   return transactions.reduce((balance, transaction) => {
-    if (transaction.accountId !== account.id) return balance;
     if (transaction.date > asOfIso) return balance;
-    if (transaction.type === "transfer") return balance;
 
-    return balance + transactionDelta(transaction);
+    return balance + transactionDelta(transaction, account.id);
   }, account.balance);
 }
 

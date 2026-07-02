@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { format, isValid, parseISO } from "date-fns";
-import { Copy, Trash2 } from "lucide-react";
+import { Copy } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { NumberInput } from "@/components/ui/number-input";
+import { ConfirmDeleteButton } from "@/components/shared/ConfirmDeleteButton";
 import { DatePicker } from "@/components/shared/DatePicker";
 import { CurrencyInput } from "@/components/shared/CurrencyInput";
 import {
@@ -44,7 +45,10 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   transaction?: Transaction | null;
   initialDate?: string;
+  initialType?: TransactionType;
 }
+
+const typeCycle: TransactionType[] = ["expense", "income", "transfer"];
 
 const recurrenceOptions: {
   value: TransactionModalFormState["recurrenceFrequency"];
@@ -65,6 +69,7 @@ export function TransactionModal({
   onOpenChange,
   transaction,
   initialDate,
+  initialType,
 }: Props) {
   const accounts = useFinanceStore(useShallow((s) => s.accounts));
   const categories = useFinanceStore(useShallow((s) => s.categories));
@@ -109,6 +114,11 @@ export function TransactionModal({
   const [accountSelectOpen, setAccountSelectOpen] = useState(false);
   const shouldOpenRecurrenceOnFocusRef = useRef(false);
   const [recurrenceSelectOpen, setRecurrenceSelectOpen] = useState(false);
+  const destinationTriggerRef = useRef<HTMLButtonElement>(null);
+  const shouldOpenDestinationOnFocusRef = useRef(false);
+  const [destinationSelectOpen, setDestinationSelectOpen] = useState(false);
+
+  const isTransfer = form.type === "transfer";
 
   useEffect(() => {
     if (!open) return;
@@ -119,6 +129,7 @@ export function TransactionModal({
         currentRule,
         initialDate,
         defaultAccountId,
+        initialType ?? "expense",
       ),
     );
     setError(null);
@@ -130,7 +141,7 @@ export function TransactionModal({
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [open, transaction, currentRule, initialDate, defaultAccountId]);
+  }, [open, transaction, currentRule, initialDate, defaultAccountId, initialType]);
 
   function updateField<K extends keyof TransactionModalFormState>(
     key: K,
@@ -149,10 +160,16 @@ export function TransactionModal({
   const accentClasses =
     form.type === "income"
       ? "border-success/20 bg-success/5 ring-success/10"
-      : "border-destructive/20 bg-destructive/5 ring-destructive/10";
+      : form.type === "transfer"
+        ? "border-border bg-accent/30 ring-border/40"
+        : "border-destructive/20 bg-destructive/5 ring-destructive/10";
 
   const amountClasses =
-    form.type === "income" ? "text-success" : "text-destructive";
+    form.type === "income"
+      ? "text-success"
+      : form.type === "transfer"
+        ? "text-foreground"
+        : "text-destructive";
 
   async function saveTransaction(keepOpenForNew = false) {
     setError(null);
@@ -192,7 +209,8 @@ export function TransactionModal({
       amount,
       date: form.date,
       accountId: form.accountId,
-      categoryId: form.categoryId,
+      categoryId: isTransfer ? "" : form.categoryId,
+      transferAccountId: isTransfer ? form.transferAccountId : undefined,
       isProjected: form.date > todayIso,
       recurrenceId: undefined,
     };
@@ -270,7 +288,8 @@ export function TransactionModal({
         amount,
         date: form.date,
         accountId: form.accountId,
-        categoryId: form.categoryId,
+        categoryId: isTransfer ? "" : form.categoryId,
+        transferAccountId: isTransfer ? form.transferAccountId : undefined,
         isProjected: form.date > todayIso,
         recurrenceId: undefined,
       });
@@ -319,7 +338,16 @@ export function TransactionModal({
       return null;
     }
 
-    if (!form.categoryId) {
+    if (isTransfer) {
+      if (!form.transferAccountId) {
+        setError("Selecione a conta de destino.");
+        return null;
+      }
+      if (form.transferAccountId === form.accountId) {
+        setError("A conta de destino deve ser diferente da conta de origem.");
+        return null;
+      }
+    } else if (!form.categoryId) {
       setError("Selecione uma categoria.");
       return null;
     }
@@ -341,7 +369,11 @@ export function TransactionModal({
   function handleModalKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if ((event.ctrlKey || event.metaKey) && event.key === "Tab") {
       event.preventDefault();
-      handleTypeChange(form.type === "expense" ? "income" : "expense");
+      const currentIndex = typeCycle.indexOf(form.type);
+      const step = event.shiftKey ? typeCycle.length - 1 : 1;
+      handleTypeChange(
+        typeCycle[(currentIndex + step) % typeCycle.length],
+      );
       return;
     }
 
@@ -360,10 +392,25 @@ export function TransactionModal({
     ) {
       event.preventDefault();
       setAccountSelectOpen(false);
-      window.requestAnimationFrame(() => {
-        categoryInputRef.current?.focus();
-        categoryInputRef.current?.select();
-      });
+      if (isTransfer) {
+        focusDestinationSelect();
+      } else {
+        window.requestAnimationFrame(() => {
+          categoryInputRef.current?.focus();
+          categoryInputRef.current?.select();
+        });
+      }
+      return;
+    }
+
+    if (event.key === "Tab" && destinationSelectOpen) {
+      event.preventDefault();
+      setDestinationSelectOpen(false);
+      if (event.shiftKey) {
+        focusAccountSelect();
+      } else {
+        focusRecurrenceSelect();
+      }
       return;
     }
 
@@ -402,10 +449,14 @@ export function TransactionModal({
     ) {
       event.preventDefault();
       setRecurrenceSelectOpen(false);
-      window.requestAnimationFrame(() => {
-        categoryInputRef.current?.focus();
-        categoryInputRef.current?.select();
-      });
+      if (isTransfer) {
+        focusDestinationSelect();
+      } else {
+        window.requestAnimationFrame(() => {
+          categoryInputRef.current?.focus();
+          categoryInputRef.current?.select();
+        });
+      }
       return;
     }
 
@@ -457,11 +508,25 @@ export function TransactionModal({
         dateInputRef.current?.focus();
         dateInputRef.current?.select();
       });
+    } else if (isTransfer) {
+      focusDestinationSelect();
     } else {
       window.requestAnimationFrame(() => {
         categoryInputRef.current?.focus();
         categoryInputRef.current?.select();
       });
+    }
+  }
+
+  function moveFromDestination(event: KeyboardEvent<HTMLElement>) {
+    if (event.key !== "Tab") return;
+
+    event.preventDefault();
+    setDestinationSelectOpen(false);
+    if (event.shiftKey) {
+      focusAccountSelect();
+    } else {
+      focusRecurrenceSelect();
     }
   }
 
@@ -471,10 +536,14 @@ export function TransactionModal({
     event.preventDefault();
     setRecurrenceSelectOpen(false);
     if (event.shiftKey) {
-      window.requestAnimationFrame(() => {
-        categoryInputRef.current?.focus();
-        categoryInputRef.current?.select();
-      });
+      if (isTransfer) {
+        focusDestinationSelect();
+      } else {
+        window.requestAnimationFrame(() => {
+          categoryInputRef.current?.focus();
+          categoryInputRef.current?.select();
+        });
+      }
     } else {
       window.requestAnimationFrame(() => {
         intervalRef.current?.focus();
@@ -497,10 +566,25 @@ export function TransactionModal({
     });
   }
 
+  function focusDestinationSelect() {
+    shouldOpenDestinationOnFocusRef.current = true;
+    window.requestAnimationFrame(() => {
+      destinationTriggerRef.current?.focus();
+    });
+  }
+
   const selectedAccount = accounts.find((account) => account.id === form.accountId);
+  const selectedDestination = accounts.find(
+    (account) => account.id === form.transferAccountId,
+  );
   const selectedCategory = categories.find((category) => category.id === form.categoryId);
 
   function handleTypeChange(type: TransactionType) {
+    if (type === "transfer") {
+      setForm((current) => ({ ...current, type }));
+      return;
+    }
+
     const categoryStillValid = categories.some(
       (category) =>
         category.id === form.categoryId &&
@@ -543,6 +627,12 @@ export function TransactionModal({
                     label="Receita"
                     active={form.type === "income"}
                     onClick={() => handleTypeChange("income")}
+                    className="border-r border-border"
+                  />
+                  <TypeButton
+                    label="Transferência"
+                    active={form.type === "transfer"}
+                    onClick={() => handleTypeChange("transfer")}
                   />
                 </div>
                 <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
@@ -550,9 +640,13 @@ export function TransactionModal({
                 </span>
               </div>
               <div className="text-right">
-                <p className={labelClass}>Conta</p>
+                <p className={labelClass}>{isTransfer ? "Rota" : "Conta"}</p>
                 <p className="mt-1 truncate text-xs text-foreground">
-                  {selectedAccount?.name ?? "Selecionar"}
+                  {isTransfer
+                    ? `${selectedAccount?.name ?? "?"} → ${
+                        selectedDestination?.name ?? "?"
+                      }`
+                    : selectedAccount?.name ?? "Selecionar"}
                 </p>
               </div>
             </div>
@@ -604,7 +698,9 @@ export function TransactionModal({
 
           <div className="grid gap-3 md:grid-cols-[0.95fr_1.05fr]">
             <div className="space-y-1.5">
-              <Label className={labelClass}>Conta</Label>
+              <Label className={labelClass}>
+                {isTransfer ? "De (origem)" : "Conta"}
+              </Label>
               <Select
                 open={accountSelectOpen}
                 onOpenChange={setAccountSelectOpen}
@@ -635,24 +731,62 @@ export function TransactionModal({
               </Select>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className={labelClass}>Categoria</Label>
-              <CategoryPicker
-                inputRef={categoryInputRef}
-                categories={categories}
-                type={form.type}
-                value={form.categoryId}
-                onChange={(value) => updateField("categoryId", value)}
-                disabled={saving}
-                onBackwardTab={focusAccountSelect}
-                onForwardTab={focusRecurrenceSelect}
-              />
-              {selectedCategory && (
-                <p className="font-mono text-[10px] text-muted-foreground">
-                  {selectedCategory.name}
-                </p>
-              )}
-            </div>
+            {isTransfer ? (
+              <div className="space-y-1.5">
+                <Label className={labelClass}>Para (destino)</Label>
+                <Select
+                  open={destinationSelectOpen}
+                  onOpenChange={setDestinationSelectOpen}
+                  value={form.transferAccountId}
+                  onValueChange={(value) =>
+                    updateField("transferAccountId", value)
+                  }
+                >
+                  <SelectTrigger
+                    ref={destinationTriggerRef}
+                    className="font-mono text-xs"
+                    onKeyDown={moveFromDestination}
+                    onFocus={() => {
+                      if (!shouldOpenDestinationOnFocusRef.current) return;
+                      shouldOpenDestinationOnFocusRef.current = false;
+                      window.requestAnimationFrame(() => {
+                        setDestinationSelectOpen(true);
+                      });
+                    }}
+                  >
+                    <SelectValue placeholder="Selecionar" />
+                  </SelectTrigger>
+                  <SelectContent onKeyDown={moveFromDestination}>
+                    {accounts
+                      .filter((account) => account.id !== form.accountId)
+                      .map((account) => (
+                        <SelectItem key={account.id} value={account.id}>
+                          {account.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <Label className={labelClass}>Categoria</Label>
+                <CategoryPicker
+                  inputRef={categoryInputRef}
+                  categories={categories}
+                  type={form.type}
+                  value={form.categoryId}
+                  onChange={(value) => updateField("categoryId", value)}
+                  disabled={saving}
+                  onBackwardTab={focusAccountSelect}
+                  onForwardTab={focusRecurrenceSelect}
+                />
+                {selectedCategory && (
+                  <p className="font-mono text-[10px] text-muted-foreground">
+                    {selectedCategory.name}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-[1fr_96px] gap-3">
@@ -759,16 +893,7 @@ export function TransactionModal({
                 <Copy className="h-3.5 w-3.5" strokeWidth={1.5} />
                 Duplicar
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1.5 rounded-sm text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
-                onClick={handleDelete}
-                disabled={saving}
-              >
-                <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
-                Excluir
-              </Button>
+              <ConfirmDeleteButton onConfirm={handleDelete} disabled={saving} />
             </div>
           )}
           <Button

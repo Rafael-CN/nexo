@@ -128,6 +128,12 @@ export function buildDemoDataset(today = new Date()): DemoDataset {
       isProjected: true,
       recurrenceId: "demo-rule-salary",
     }),
+    tx("m0-reserve", "Aporte na reserva", 900, addDays(currentMonth, 6), "transfer", "", {
+      transferAccountId: "demo-account-investment",
+    }),
+    tx("m1-reserve", "Aporte na reserva", 900, addDays(previousMonth, 6), "transfer", "", {
+      transferAccountId: "demo-account-investment",
+    }),
   ];
 
   const goals: Goal[] = [

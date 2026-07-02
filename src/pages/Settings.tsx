@@ -1,7 +1,8 @@
-import type { ReactNode } from "react";
-import { Database, Moon, Sun, Upload } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { Database, Keyboard, Moon, Sun, Upload } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { Button } from "@/components/ui/button";
+import { ShortcutsHelp } from "@/components/shared/ShortcutsHelp";
 import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
 import { isTauri } from "@/lib/db";
@@ -11,6 +12,7 @@ const labelClass =
 
 export function SettingsPage() {
   const { theme, setTheme } = useTheme();
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   return (
     <div className="mx-auto max-w-4xl space-y-10">
@@ -46,6 +48,23 @@ export function SettingsPage() {
               Escuro
             </ThemeButton>
           </div>
+        </SettingRow>
+      </SettingsSection>
+
+      <SettingsSection label="Teclado">
+        <SettingRow
+          label="Atalhos de teclado"
+          description="Todo o app é navegável sem mouse. Pressione ? em qualquer tela para consultar."
+        >
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 rounded-sm text-xs"
+            onClick={() => setShortcutsOpen(true)}
+          >
+            <Keyboard className="h-3.5 w-3.5" strokeWidth={1.5} />
+            Ver atalhos
+          </Button>
         </SettingRow>
       </SettingsSection>
 
@@ -164,6 +183,8 @@ export function SettingsPage() {
           </span>
         </SettingRow>
       </SettingsSection>
+
+      <ShortcutsHelp open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
     </div>
   );
 }

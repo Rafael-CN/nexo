@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
-import { Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { NumberInput } from "@/components/ui/number-input";
+import { ConfirmDeleteButton } from "@/components/shared/ConfirmDeleteButton";
 import { DatePicker } from "@/components/shared/DatePicker";
 import {
   Select,
@@ -22,7 +22,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useFinanceStore } from "@/store/useFinanceStore";
-import { cn } from "@/lib/utils";
 import type { Goal } from "@/types";
 
 interface Props {
@@ -255,19 +254,11 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
 
         <DialogFooter>
           {isEdit && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className={cn(
-                "mr-auto gap-1.5 rounded-sm text-xs",
-                "text-destructive hover:bg-destructive/10 hover:text-destructive",
-              )}
-              onClick={handleDelete}
+            <ConfirmDeleteButton
+              className="mr-auto"
+              onConfirm={handleDelete}
               disabled={saving}
-            >
-              <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
-              Excluir
-            </Button>
+            />
           )}
           <Button
             variant="outline"

@@ -4,6 +4,7 @@ export type TransactionTypeFilter =
   | "all"
   | "income"
   | "expense"
+  | "transfer"
   | "projected"
   | "recurring";
 
@@ -38,6 +39,7 @@ export function filterTransactions(
     switch (filters.type) {
       case "income":
       case "expense":
+      case "transfer":
         return transaction.type === filters.type;
       case "projected":
         return transaction.isProjected;

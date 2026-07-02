@@ -24,11 +24,14 @@ export interface Transaction {
   amount: number;
   date: string;
   accountId: string;
+  /** Vazio ("") para transferências, que não usam categoria. */
   categoryId: string;
   type: TransactionType;
   isProjected: boolean;
   notes?: string;
   recurrenceId?: string;
+  /** Conta de destino — presente apenas quando type === "transfer". */
+  transferAccountId?: string;
 }
 
 export type CategoryKind = "income" | "expense";
