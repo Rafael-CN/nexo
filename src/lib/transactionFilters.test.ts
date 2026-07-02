@@ -32,6 +32,34 @@ function tx(overrides: Partial<Transaction> = {}): Transaction {
 }
 
 describe("transaction filters", () => {
+  it("filters transfers by type and keeps them out of income/expense totals", () => {
+    const transactions = [
+      tx({ id: "expense", type: "expense", amount: 100 }),
+      tx({ id: "income", type: "income", amount: 400 }),
+      tx({
+        id: "transfer",
+        type: "transfer",
+        amount: 250,
+        transferAccountId: "account-2",
+        categoryId: "",
+      }),
+    ];
+
+    const transfersOnly = filterTransactions(transactions, {
+      ...defaultFilters,
+      type: "transfer",
+    });
+    expect(transfersOnly.map((transaction) => transaction.id)).toEqual([
+      "transfer",
+    ]);
+
+    const totals = calculateTransactionTotals(transactions);
+    expect(totals.income).toBe(400);
+    expect(totals.expense).toBe(100);
+    expect(totals.net).toBe(300);
+    expect(totals.count).toBe(3);
+  });
+
   it("matches text without requiring accents", () => {
     const result = filterTransactions(
       [

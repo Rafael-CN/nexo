@@ -62,6 +62,26 @@ describe("transactionModalUtils", () => {
     });
   });
 
+  it("keeps transfer type and destination when editing a transfer", () => {
+    const form = buildTransactionForm({
+      ...transaction("t-1", "2025-04-21", "acc-1"),
+      type: "transfer",
+      categoryId: "",
+      transferAccountId: "acc-2",
+    });
+
+    expect(form.type).toBe("transfer");
+    expect(form.transferAccountId).toBe("acc-2");
+    expect(form.categoryId).toBe("");
+  });
+
+  it("honors the default type when creating", () => {
+    const form = buildTransactionForm(null, null, undefined, "acc-1", "transfer");
+
+    expect(form.type).toBe("transfer");
+    expect(form.transferAccountId).toBe("");
+  });
+
   it("formats currency while typing from cents", () => {
     expect(formatCurrencyInputValue("1")).toContain("0,01");
     expect(formatCurrencyInputValue("123456")).toContain("1.234,56");

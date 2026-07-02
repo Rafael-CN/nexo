@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 pub struct DbState(pub std::sync::Mutex<Connection>);
 
-const LATEST_SCHEMA_VERSION: i64 = 2;
+const LATEST_SCHEMA_VERSION: i64 = 3;
 
 pub fn open(app_data_dir: PathBuf) -> Result<Connection> {
     let db_path = app_data_dir.join("nexo.db");
@@ -143,6 +143,10 @@ fn migrate_schema(conn: &mut Connection) -> Result<()> {
                 migrate_to_v2(conn)?;
                 current_version = 2;
             }
+            2 => {
+                migrate_to_v3(conn)?;
+                current_version = 3;
+            }
             _ => unreachable!("schema version is lower than latest but has no migration"),
         }
     }
@@ -234,5 +238,19 @@ fn migrate_to_v2(conn: &mut Connection) -> Result<()> {
     )?;
 
     set_schema_version(&tx, 2)?;
+    tx.commit()
+}
+
+fn migrate_to_v3(conn: &mut Connection) -> Result<()> {
+    let tx = conn.transaction()?;
+
+    tx.execute_batch(
+        "ALTER TABLE transactions ADD COLUMN transfer_account_id TEXT;
+
+        CREATE INDEX IF NOT EXISTS idx_transactions_transfer_account_id
+            ON transactions(transfer_account_id);",
+    )?;
+
+    set_schema_version(&tx, 3)?;
     tx.commit()
 }

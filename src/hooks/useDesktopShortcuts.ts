@@ -2,11 +2,14 @@ import { useEffect } from "react";
 import {
   isEscapeKeyEvent,
   isGlobalShortcutEvent,
+  isShortcutEvent,
 } from "@/lib/keyboardShortcuts";
 
 type DesktopShortcutHandlers = {
   onOpenPalette: () => void;
   onOpenNewTransaction: () => void;
+  onOpenNewTransfer: () => void;
+  onOpenHelp: () => void;
   onOpenSettings: () => void;
   onNavigateToIndex: (index: number) => void;
   onClosePalette: () => void;
@@ -19,6 +22,8 @@ type DesktopShortcutHandlers = {
 export function useDesktopShortcuts({
   onOpenPalette,
   onOpenNewTransaction,
+  onOpenNewTransfer,
+  onOpenHelp,
   onOpenSettings,
   onNavigateToIndex,
   onClosePalette,
@@ -32,6 +37,13 @@ export function useDesktopShortcuts({
 
     function handleKeyDown(event: KeyboardEvent) {
       if (isCommandPaletteOpen || isTransactionModalOpen) return;
+
+      if (isShortcutEvent(event, "shift+?")) {
+        event.preventDefault();
+        onOpenHelp();
+        return;
+      }
+
       if (!isGlobalShortcutEvent(event)) return;
 
       const key = event.key.toLowerCase();
@@ -44,6 +56,12 @@ export function useDesktopShortcuts({
       if (key === "n") {
         event.preventDefault();
         onOpenNewTransaction();
+        return;
+      }
+
+      if (key === "t") {
+        event.preventDefault();
+        onOpenNewTransfer();
         return;
       }
 
@@ -65,6 +83,8 @@ export function useDesktopShortcuts({
     enabled,
     onNavigateToIndex,
     onOpenNewTransaction,
+    onOpenNewTransfer,
+    onOpenHelp,
     onOpenPalette,
     onOpenSettings,
     isCommandPaletteOpen,
@@ -76,6 +96,16 @@ export function useDesktopShortcuts({
 
     function handleEscape(event: KeyboardEvent) {
       if (!isEscapeKeyEvent(event)) return;
+
+      // Uma camada flutuante aberta (select, date picker, autocomplete)
+      // consome o Escape antes do modal — fechar só a camada, nunca os dois.
+      if (
+        document.querySelector(
+          "[data-radix-popper-content-wrapper], [data-picker-popover]",
+        )
+      ) {
+        return;
+      }
 
       if (isCommandPaletteOpen) {
         event.preventDefault();

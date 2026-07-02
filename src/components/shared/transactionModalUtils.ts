@@ -14,6 +14,7 @@ export interface TransactionModalFormState {
   date: string;
   accountId: string;
   categoryId: string;
+  transferAccountId: string;
   recurrenceFrequency: RecurrenceRule["frequency"] | "none";
   recurrenceInterval: string;
   recurrenceNoEnd: boolean;
@@ -87,12 +88,13 @@ export function buildTransactionForm(
   defaultType: TransactionType = "expense",
 ): TransactionModalFormState {
   return {
-    type: transaction?.type === "income" ? "income" : defaultType,
+    type: transaction?.type ?? defaultType,
     title: transaction?.title ?? "",
     amount: transaction ? formatTransactionAmount(transaction.amount) : "",
     date: transaction?.date ?? initialDate ?? format(new Date(), "yyyy-MM-dd"),
     accountId: transaction?.accountId ?? defaultAccountId,
     categoryId: transaction?.categoryId ?? "",
+    transferAccountId: transaction?.transferAccountId ?? "",
     recurrenceFrequency: rule?.frequency ?? "none",
     recurrenceInterval: rule ? String(rule.interval) : "1",
     recurrenceNoEnd: !rule?.until,

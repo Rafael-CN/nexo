@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, Plus, RefreshCw, Search, Settings } from "lucide-react";
+import {
+  ArrowRightLeft,
+  Check,
+  Keyboard,
+  Plus,
+  RefreshCw,
+  Search,
+  Settings,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   Dialog,
@@ -20,6 +28,8 @@ type CommandPaletteProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onNewTransaction: () => void;
+  onNewTransfer: () => void;
+  onOpenHelp: () => void;
 };
 
 type PaletteAction = {
@@ -45,6 +55,8 @@ export function CommandPalette({
   open,
   onOpenChange,
   onNewTransaction,
+  onNewTransfer,
+  onOpenHelp,
 }: CommandPaletteProps) {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -79,6 +91,25 @@ export function CommandPalette({
         run: onNewTransaction,
       },
       {
+        id: "nova-transferencia",
+        label: "Nova transferência",
+        description: "Mover dinheiro entre contas",
+        icon: ArrowRightLeft,
+        shortcut: "T",
+        keywords: ["transferir", "mover", "entre contas"],
+        group: "Ações" as const,
+        run: onNewTransfer,
+      },
+      {
+        id: "atalhos",
+        label: "Atalhos de teclado",
+        description: "Ver todos os atalhos disponíveis",
+        icon: Keyboard,
+        keywords: ["ajuda", "teclado", "shortcuts"],
+        group: "Ações" as const,
+        run: onOpenHelp,
+      },
+      {
         id: "configuracoes",
         label: "Configurações",
         description: "Abrir preferências do aplicativo",
@@ -98,7 +129,7 @@ export function CommandPalette({
         run: () => void useFinanceStore.getState().initialize(),
       },
     ],
-    [navigate, onNewTransaction],
+    [navigate, onNewTransaction, onNewTransfer, onOpenHelp],
   );
 
   const filteredActions = useMemo(() => {

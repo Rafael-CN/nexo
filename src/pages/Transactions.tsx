@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -27,6 +27,7 @@ import {
   type TransactionSort,
   type TransactionTypeFilter,
 } from "@/lib/transactionFilters";
+import { isEditableElement } from "@/lib/keyboardShortcuts";
 import type { Transaction } from "@/types";
 
 const defaultFilters: TransactionFilters = {
@@ -43,6 +44,71 @@ export function TransactionsPage() {
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filters, setFilters] = useState<TransactionFilters>(defaultFilters);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  // Teclado: "/" foca a busca (abrindo os filtros se preciso),
+  // F alterna os filtros e as setas percorrem as linhas da lista.
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.defaultPrevented) return;
+      if (modalOpen) return;
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      if (isEditableElement(event.target)) return;
+      if (
+        event.target instanceof HTMLElement &&
+        event.target.closest(
+          '[role="dialog"], [data-radix-popper-content-wrapper], [data-picker-popover]',
+        )
+      ) {
+        return;
+      }
+
+      if (event.key === "/" && !event.repeat) {
+        event.preventDefault();
+        setFiltersOpen(true);
+        window.requestAnimationFrame(() => {
+          searchRef.current?.focus();
+          searchRef.current?.select();
+        });
+        return;
+      }
+
+      if ((event.key === "f" || event.key === "F") && !event.repeat) {
+        event.preventDefault();
+        setFiltersOpen((open) => !open);
+        return;
+      }
+
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        const rows = Array.from(
+          document.querySelectorAll<HTMLElement>("[data-txn-row]"),
+        );
+        if (rows.length === 0) return;
+
+        event.preventDefault();
+        const currentIndex = rows.indexOf(
+          document.activeElement as HTMLElement,
+        );
+        const next =
+          currentIndex === -1
+            ? event.key === "ArrowDown"
+              ? 0
+              : rows.length - 1
+            : Math.min(
+                Math.max(
+                  currentIndex + (event.key === "ArrowDown" ? 1 : -1),
+                  0,
+                ),
+                rows.length - 1,
+              );
+        rows[next]?.focus();
+        rows[next]?.scrollIntoView({ block: "nearest" });
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [modalOpen]);
 
   function openNew() {
     setEditing(null);
@@ -129,9 +195,10 @@ export function TransactionsPage() {
               strokeWidth={1.5}
             />
             <Input
+              ref={searchRef}
               value={filters.query}
               onChange={(event) => updateFilters({ query: event.target.value })}
-              placeholder="Buscar título"
+              placeholder="Buscar título ( / )"
               className="pl-8 font-mono text-xs"
             />
           </div>
@@ -149,6 +216,7 @@ export function TransactionsPage() {
               <SelectItem value="all">Todas</SelectItem>
               <SelectItem value="income">Receitas</SelectItem>
               <SelectItem value="expense">Despesas</SelectItem>
+              <SelectItem value="transfer">Transferências</SelectItem>
               <SelectItem value="projected">Projetadas</SelectItem>
               <SelectItem value="recurring">Recorrentes</SelectItem>
             </SelectContent>
@@ -203,10 +271,11 @@ export function TransactionsPage() {
         ) : (
           groups.map(([date, list]) => {
             const parsed = parseISO(date);
-            const dayTotal = list.reduce(
-              (s, t) => s + (t.type === "income" ? t.amount : -t.amount),
-              0,
-            );
+            const dayTotal = list.reduce((s, t) => {
+              if (t.type === "income") return s + t.amount;
+              if (t.type === "expense") return s - t.amount;
+              return s;
+            }, 0);
 
             return (
               <div key={date} className="space-y-3">

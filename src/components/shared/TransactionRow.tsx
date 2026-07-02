@@ -1,4 +1,4 @@
-import { Repeat } from "lucide-react";
+import { ArrowRightLeft, Repeat } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { Transaction } from "@/types";
@@ -17,8 +17,12 @@ export function TransactionRow({ transaction, onClick }: TransactionRowProps) {
 
   const cat = categories.find((c) => c.id === transaction.categoryId);
   const acc = accounts.find((a) => a.id === transaction.accountId);
+  const destination = accounts.find(
+    (a) => a.id === transaction.transferAccountId,
+  );
 
   const isIncome = transaction.type === "income";
+  const isTransfer = transaction.type === "transfer";
   const date = parseISO(transaction.date);
   const isProjected = transaction.date > format(new Date(), "yyyy-MM-dd");
 
@@ -26,10 +30,11 @@ export function TransactionRow({ transaction, onClick }: TransactionRowProps) {
     <div
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
+      data-txn-row={onClick ? "" : undefined}
       onClick={onClick}
       onKeyDown={onClick ? (e) => e.key === "Enter" && onClick() : undefined}
       className={cn(
-        "group grid grid-cols-[88px_minmax(0,1fr)_auto] items-center gap-4 border-b border-border px-3 py-3 transition-colors last:border-b-0 hover:bg-accent/30",
+        "group grid grid-cols-[88px_minmax(0,1fr)_auto] items-center gap-4 border-b border-border px-3 py-3 transition-colors last:border-b-0 hover:bg-accent/30 ui-focus-ring-inset",
         onClick && "cursor-pointer",
       )}
     >
@@ -60,19 +65,44 @@ export function TransactionRow({ transaction, onClick }: TransactionRowProps) {
           )}
         </div>
         <p className="selectable-text truncate font-mono text-[11px] text-muted-foreground">
-          {acc?.name ?? "—"}
-          <span className="px-1.5 text-muted-foreground/60">·</span>
-          {cat?.name ?? "—"}
+          {isTransfer ? (
+            <>
+              {acc?.name ?? "—"}
+              <span className="px-1.5 text-muted-foreground/60">→</span>
+              {destination?.name ?? "—"}
+            </>
+          ) : (
+            <>
+              {acc?.name ?? "—"}
+              <span className="px-1.5 text-muted-foreground/60">·</span>
+              {cat?.name ?? "—"}
+            </>
+          )}
         </p>
       </div>
 
       <p
         className={cn(
-          "selectable-text min-w-[112px] text-right font-mono text-sm tabular-nums",
-          isIncome ? "text-success" : "text-foreground",
+          "selectable-text flex min-w-[112px] items-center justify-end gap-1.5 text-right font-mono text-sm tabular-nums",
+          isIncome
+            ? "text-success"
+            : isTransfer
+              ? "text-muted-foreground"
+              : "text-foreground",
         )}
       >
-        {isIncome ? "+" : "−"} {formatCurrency(transaction.amount)}
+        {isTransfer ? (
+          <ArrowRightLeft
+            className="h-3 w-3 shrink-0"
+            strokeWidth={1.5}
+            aria-label="Transferência"
+          />
+        ) : isIncome ? (
+          "+"
+        ) : (
+          "−"
+        )}{" "}
+        {formatCurrency(transaction.amount)}
       </p>
     </div>
   );

@@ -8,8 +8,10 @@ import { DesktopTitleBar } from "./DesktopTitleBar";
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Onboarding } from "@/components/shared/Onboarding";
+import { ShortcutsHelp } from "@/components/shared/ShortcutsHelp";
 import { TransactionModal } from "@/components/shared/TransactionModal";
 import { useDesktopShortcuts } from "@/hooks/useDesktopShortcuts";
+import type { TransactionType } from "@/types";
 import { appRoutes } from "@/lib/navigation";
 import { getLocalProfile, type LocalProfile } from "@/lib/profile";
 import { useFinanceStore } from "@/store/useFinanceStore";
@@ -23,6 +25,9 @@ export function AppLayout() {
   const navigate = useNavigate();
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [transactionModalOpen, setTransactionModalOpen] = useState(false);
+  const [transactionModalType, setTransactionModalType] =
+    useState<TransactionType>("expense");
+  const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false);
   const [profile, setProfile] = useState<LocalProfile | null>(() =>
     getLocalProfile(),
   );
@@ -34,7 +39,17 @@ export function AppLayout() {
   }, []);
   const openNewTransaction = useCallback(() => {
     setCommandPaletteOpen(false);
+    setTransactionModalType("expense");
     setTransactionModalOpen(true);
+  }, []);
+  const openNewTransfer = useCallback(() => {
+    setCommandPaletteOpen(false);
+    setTransactionModalType("transfer");
+    setTransactionModalOpen(true);
+  }, []);
+  const openShortcutsHelp = useCallback(() => {
+    setCommandPaletteOpen(false);
+    setShortcutsHelpOpen(true);
   }, []);
   const closeTransactionModal = useCallback(() => {
     setTransactionModalOpen(false);
@@ -56,6 +71,8 @@ export function AppLayout() {
     enabled: isLoaded && accounts.length > 0,
     onOpenPalette: openCommandPalette,
     onOpenNewTransaction: openNewTransaction,
+    onOpenNewTransfer: openNewTransfer,
+    onOpenHelp: openShortcutsHelp,
     onOpenSettings: openSettings,
     onNavigateToIndex: navigateToIndex,
     onClosePalette: closeCommandPalette,
@@ -113,10 +130,17 @@ export function AppLayout() {
         open={commandPaletteOpen}
         onOpenChange={setCommandPaletteOpen}
         onNewTransaction={openNewTransaction}
+        onNewTransfer={openNewTransfer}
+        onOpenHelp={openShortcutsHelp}
       />
       <TransactionModal
         open={transactionModalOpen}
         onOpenChange={setTransactionModalOpen}
+        initialType={transactionModalType}
+      />
+      <ShortcutsHelp
+        open={shortcutsHelpOpen}
+        onOpenChange={setShortcutsHelpOpen}
       />
     </TooltipProvider>
   );

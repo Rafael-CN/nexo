@@ -123,7 +123,7 @@ pub fn delete_account(state: State<DbState>, id: String) -> CmdResult<()> {
     let conn = state.0.lock().map_err(e)?;
     let txn_count: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM transactions WHERE account_id=?1",
+            "SELECT COUNT(*) FROM transactions WHERE account_id=?1 OR transfer_account_id=?1",
             [&id],
             |row| row.get(0),
         )
@@ -271,7 +271,7 @@ pub fn get_transactions(state: State<DbState>) -> CmdResult<Vec<Transaction>> {
     let mut stmt = conn
         .prepare(
             "SELECT id, title, amount, date, account_id, category_id, type,
-                    is_projected, notes, recurrence_id
+                    is_projected, notes, recurrence_id, transfer_account_id
              FROM transactions ORDER BY date",
         )
         .map_err(e)?;
@@ -289,6 +289,7 @@ pub fn get_transactions(state: State<DbState>) -> CmdResult<Vec<Transaction>> {
                 is_projected: is_projected != 0,
                 notes: row.get(8)?,
                 recurrence_id: row.get(9)?,
+                transfer_account_id: row.get(10)?,
             })
         })
         .map_err(e)?;
@@ -303,12 +304,13 @@ pub fn add_transaction(state: State<DbState>, txn: Transaction) -> CmdResult<()>
     validate_transaction_refs(&conn, &txn)?;
     conn.execute(
         "INSERT INTO transactions
-           (id, title, amount, date, account_id, category_id, type, is_projected, notes, recurrence_id)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",
+           (id, title, amount, date, account_id, category_id, type, is_projected, notes, recurrence_id, transfer_account_id)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)",
         rusqlite::params![
             txn.id, txn.title, txn.amount, txn.date,
             txn.account_id, txn.category_id, txn.transaction_type,
-            txn.is_projected as i32, txn.notes, txn.recurrence_id
+            txn.is_projected as i32, txn.notes, txn.recurrence_id,
+            txn.transfer_account_id
         ],
     )
     .map_err(e)?;
@@ -323,7 +325,7 @@ pub fn update_transaction(state: State<DbState>, txn: Transaction) -> CmdResult<
     conn.execute(
         "UPDATE transactions SET
            title=?2, amount=?3, date=?4, account_id=?5, category_id=?6,
-           type=?7, is_projected=?8, notes=?9, recurrence_id=?10
+           type=?7, is_projected=?8, notes=?9, recurrence_id=?10, transfer_account_id=?11
          WHERE id=?1",
         rusqlite::params![
             txn.id,
@@ -335,7 +337,8 @@ pub fn update_transaction(state: State<DbState>, txn: Transaction) -> CmdResult<
             txn.transaction_type,
             txn.is_projected as i32,
             txn.notes,
-            txn.recurrence_id
+            txn.recurrence_id,
+            txn.transfer_account_id
         ],
     )
     .map_err(e)?;
@@ -454,7 +457,12 @@ fn validate_transaction_refs(conn: &Connection, txn: &Transaction) -> CmdResult<
         return Err("Conta da transação não foi encontrada.".into());
     }
 
-    if !category_exists(conn, &txn.category_id)? {
+    if txn.is_transfer() {
+        let destination = txn.transfer_account_id.as_deref().unwrap_or("");
+        if !account_exists(conn, destination)? {
+            return Err("Conta de destino da transferência não foi encontrada.".into());
+        }
+    } else if !category_exists(conn, &txn.category_id)? {
         return Err("Categoria da transação não foi encontrada.".into());
     }
 

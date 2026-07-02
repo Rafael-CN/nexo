@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import {
   addDays,
@@ -26,6 +26,7 @@ import {
   summarizeSelectedRange,
   type SelectedRangeSummary,
 } from "@/lib/calendarSelection";
+import { isEditableElement } from "@/lib/keyboardShortcuts";
 import { useFinanceStore } from "@/store/useFinanceStore";
 import { useProjection } from "@/hooks/useProjection";
 import type { Transaction } from "@/types";
@@ -148,6 +149,83 @@ export function CalendarPage() {
     setIsSelecting(false);
     setTransactionModalOpen(true);
   }
+
+  // Navegação por teclado: setas movem o cursor (fim da seleção),
+  // Shift estende, Enter/N cria lançamento, T volta a hoje,
+  // PageUp/PageDown trocam o mês.
+  useEffect(() => {
+    function moveCursor(days: number, extend: boolean) {
+      setSelection((current) => {
+        const nextIso = formatISO(addDays(parseISO(current.end), days), {
+          representation: "date",
+        });
+        setViewMonth((month) =>
+          isSameMonth(parseISO(nextIso), month)
+            ? month
+            : startOfMonth(parseISO(nextIso)),
+        );
+        return extend
+          ? { start: current.start, end: nextIso }
+          : { start: nextIso, end: nextIso };
+      });
+      setIsSelecting(false);
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.defaultPrevented) return;
+      if (transactionModalOpen) return;
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      if (isEditableElement(event.target)) return;
+      if (
+        event.target instanceof HTMLElement &&
+        event.target.closest(
+          '[role="dialog"], [data-radix-popper-content-wrapper], [data-picker-popover]',
+        )
+      ) {
+        return;
+      }
+
+      switch (event.key) {
+        case "ArrowLeft":
+          moveCursor(-1, event.shiftKey);
+          break;
+        case "ArrowRight":
+          moveCursor(1, event.shiftKey);
+          break;
+        case "ArrowUp":
+          moveCursor(-7, event.shiftKey);
+          break;
+        case "ArrowDown":
+          moveCursor(7, event.shiftKey);
+          break;
+        case "PageUp":
+          setViewMonth((month) => subMonths(month, 1));
+          break;
+        case "PageDown":
+          setViewMonth((month) => addMonths(month, 1));
+          break;
+        case "Enter":
+        case "n":
+        case "N":
+          if (event.repeat) return;
+          openTransactionModal(selection.end);
+          break;
+        case "t":
+        case "T":
+          if (event.repeat) return;
+          setViewMonth(startOfMonth(startOfToday()));
+          setSelection({ start: todayIso, end: todayIso });
+          break;
+        default:
+          return;
+      }
+
+      event.preventDefault();
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selection.end, transactionModalOpen, todayIso]);
 
   return (
     <div className="space-y-10">
@@ -308,7 +386,9 @@ export function CalendarPage() {
                           "h-1 w-1 shrink-0 rounded-full",
                           transaction.type === "income"
                             ? "bg-success"
-                            : "bg-destructive",
+                            : transaction.type === "transfer"
+                              ? "bg-muted-foreground"
+                              : "bg-destructive",
                         )}
                         aria-hidden
                       />
@@ -358,9 +438,10 @@ export function CalendarPage() {
         <div className="mt-4 flex flex-wrap items-center gap-4 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
           <Legend color="bg-success" label="Entrada" />
           <Legend color="bg-destructive" label="Saída" />
+          <Legend color="bg-muted-foreground" label="Transferência" />
           <span>.</span>
           <span className="normal-case tracking-normal text-muted-foreground/70">
-            Clique e arraste para selecionar um período
+            Setas movem o dia · Shift estende · Enter lança · T hoje
           </span>
         </div>
       </section>
@@ -472,10 +553,16 @@ function SelectionSummary({ summary }: { summary: SelectedRangeSummary }) {
                   "selectable-text font-mono tabular-nums",
                   transaction.type === "income"
                     ? "text-success"
-                    : "text-foreground",
+                    : transaction.type === "transfer"
+                      ? "text-muted-foreground"
+                      : "text-foreground",
                 )}
               >
-                {transaction.type === "income" ? "+" : "-"}
+                {transaction.type === "income"
+                  ? "+"
+                  : transaction.type === "transfer"
+                    ? "⇄ "
+                    : "-"}
                 {formatCurrency(transaction.amount)}
               </span>
             </div>

@@ -63,6 +63,8 @@ pub struct Transaction {
     pub notes: Option<String>,
     #[serde(rename = "recurrenceId")]
     pub recurrence_id: Option<String>,
+    #[serde(rename = "transferAccountId", default)]
+    pub transfer_account_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -106,11 +108,14 @@ impl Category {
 }
 
 impl Transaction {
+    pub fn is_transfer(&self) -> bool {
+        self.transaction_type == "transfer"
+    }
+
     pub fn validate(&self) -> Result<(), String> {
         validate_required("ID da transação", &self.id)?;
         validate_required("Título da transação", &self.title)?;
         validate_required("Conta da transação", &self.account_id)?;
-        validate_required("Categoria da transação", &self.category_id)?;
         validate_enum(
             "Tipo da transação",
             &self.transaction_type,
@@ -118,6 +123,29 @@ impl Transaction {
         )?;
         validate_positive("Valor da transação", self.amount)?;
         validate_date("Data da transação", &self.date)?;
+
+        if self.is_transfer() {
+            let destination = self
+                .transfer_account_id
+                .as_deref()
+                .map(str::trim)
+                .unwrap_or("");
+            if destination.is_empty() {
+                return Err("Conta de destino da transferência é obrigatória.".into());
+            }
+            if destination == self.account_id {
+                return Err(
+                    "A conta de destino deve ser diferente da conta de origem.".into(),
+                );
+            }
+        } else {
+            validate_required("Categoria da transação", &self.category_id)?;
+            if self.transfer_account_id.is_some() {
+                return Err(
+                    "Conta de destino só é permitida em transferências.".into(),
+                );
+            }
+        }
 
         if let Some(recurrence_id) = &self.recurrence_id {
             validate_optional_text("Recorrência da transação", recurrence_id)?;

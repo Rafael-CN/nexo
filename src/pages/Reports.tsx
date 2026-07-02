@@ -1,25 +1,31 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useShallow } from "zustand/react/shallow";
+import { format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import {
   ArrowDownLeft,
   ArrowUpRight,
   CalendarClock,
   PiggyBank,
-  Scale,
+  Repeat,
   Sparkles,
 } from "lucide-react";
 import {
-  CashflowBars,
+  CashflowChart,
   CategoryRanking,
   InsightList,
   PeriodSegmentedControl,
   ReportKpiGrid,
+  type CashflowChartPoint,
+  type CategoryRankingItem,
   type InsightItem,
   type ReportKpiItem,
 } from "@/components/reports";
 import { Button } from "@/components/ui/button";
 import { useProjection } from "@/hooks/useProjection";
 import { formatCurrency } from "@/lib/format";
+import { isEditableElement } from "@/lib/keyboardShortcuts";
 import { cn } from "@/lib/utils";
 import {
   aggregateTransactionsByCategory,
@@ -33,6 +39,7 @@ import {
   resolveReportPeriod,
   summarizePeriodCashFlow,
   type CashflowPoint,
+  type CategoryReportItem,
   type ReportInsight,
   type ReportPeriodPreset,
 } from "@/lib/reports";
@@ -40,13 +47,47 @@ import { getFinanceIconOption } from "@/components/shared/IconPicker";
 import { useFinanceStore } from "@/store/useFinanceStore";
 
 const DEFAULT_PRESET: ReportPeriodPreset = "current-month";
+const RANKING_LIMIT = 6;
+
+type RankingKind = "expense" | "income";
 
 export function ReportsPage() {
   const [preset, setPreset] = useState<ReportPeriodPreset>(DEFAULT_PRESET);
+  const [rankingKind, setRankingKind] = useState<RankingKind>("expense");
+  const navigate = useNavigate();
   const transactions = useFinanceStore(useShallow((s) => s.transactions));
   const categories = useFinanceStore(useShallow((s) => s.categories));
-  const accounts = useFinanceStore(useShallow((s) => s.accounts));
   const { expanded } = useProjection();
+
+  // [ e ] percorrem os períodos sem depender do foco no controle segmentado.
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.defaultPrevented || event.repeat) return;
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      if (event.key !== "[" && event.key !== "]") return;
+      if (isEditableElement(event.target)) return;
+      if (
+        event.target instanceof HTMLElement &&
+        event.target.closest('[role="dialog"]')
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      const step = event.key === "]" ? 1 : reportPeriodOptions.length - 1;
+      setPreset((current) => {
+        const index = reportPeriodOptions.findIndex(
+          (option) => option.value === current,
+        );
+        return reportPeriodOptions[
+          (Math.max(index, 0) + step) % reportPeriodOptions.length
+        ].value;
+      });
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const period = useMemo(() => resolveReportPeriod(preset), [preset]);
   const previousPeriod = useMemo(() => getPreviousPeriod(period), [period]);
@@ -69,16 +110,34 @@ export function ReportsPage() {
         categories,
         period,
         previousPeriod,
-        kind: "expense",
+        kind: rankingKind,
       }),
-    [categories, period, previousPeriod, reportTransactions],
+    [categories, period, previousPeriod, rankingKind, reportTransactions],
+  );
+  const expenseRanking = useMemo(
+    () =>
+      rankingKind === "expense"
+        ? categoryRanking
+        : aggregateTransactionsByCategory({
+            transactions: reportTransactions,
+            categories,
+            period,
+            previousPeriod,
+            kind: "expense",
+          }),
+    [categoryRanking, categories, period, previousPeriod, rankingKind, reportTransactions],
   );
   const cashflow = useMemo(
-    () => compactCashflowSeries(buildCashflowSeries(reportTransactions, period)),
+    () => bucketCashflowSeries(buildCashflowSeries(reportTransactions, period)),
     [period, reportTransactions],
   );
   const insights = useMemo(
-    () => generateReportInsights({ transactions: reportTransactions, categories, period }),
+    () =>
+      generateReportInsights({
+        transactions: reportTransactions,
+        categories,
+        period,
+      }),
     [categories, period, reportTransactions],
   );
   const periodTransactions = useMemo(
@@ -86,63 +145,91 @@ export function ReportsPage() {
     [period, reportTransactions],
   );
 
-  const hasData = periodTransactions.length > 0;
-  const topCategory = categoryRanking[0];
+  const hasData = periodTransactions.some(
+    (transaction) => transaction.type !== "transfer",
+  );
+  const topExpense = expenseRanking[0];
+  const recurringExpense = useMemo(
+    () =>
+      periodTransactions
+        .filter(
+          (transaction) =>
+            transaction.type === "expense" && transaction.recurrenceId,
+        )
+        .reduce((sum, transaction) => sum + transaction.amount, 0),
+    [periodTransactions],
+  );
+
   const kpis: ReportKpiItem[] = [
     {
       label: "Entradas",
       value: formatCurrency(summary.income),
       delta: buildDelta(comparison.incomeDeltaPct),
       icon: ArrowUpRight,
-      tone: "positive" as const,
+      tone: "positive",
     },
     {
       label: "Saídas",
       value: formatCurrency(summary.expense),
-      delta: buildDelta(comparison.expenseDeltaPct, true),
+      delta: buildDelta(comparison.expenseDeltaPct),
       icon: ArrowDownLeft,
-      tone: summary.expense > comparison.previous.expense ? "negative" as const : "neutral" as const,
-    },
-    {
-      label: "Líquido",
-      value: formatCurrency(summary.net),
-      delta: buildDelta(comparison.netDeltaPct),
-      icon: Scale,
-      tone: summary.net >= 0 ? "positive" as const : "negative" as const,
+      tone:
+        summary.expense > comparison.previous.expense ? "negative" : "neutral",
     },
     {
       label: "Economia",
-      value: summary.savingsRate === null ? "Sem receita" : formatPercent(summary.savingsRate),
+      value:
+        summary.savingsRate === null
+          ? "—"
+          : formatPercent(summary.savingsRate),
       note:
-        summary.projectedCount > 0
-          ? `${summary.projectedCount} previstos no período`
-          : `${summary.count} lançamentos`,
+        summary.savingsRate === null
+          ? "Sem receita no período"
+          : "das entradas ficou em caixa",
       icon: PiggyBank,
       tone:
         summary.savingsRate !== null && summary.savingsRate >= 0.2
-          ? "positive" as const
-          : "neutral" as const,
+          ? "positive"
+          : "neutral",
+    },
+    {
+      label: "Recorrentes",
+      value: formatCurrency(recurringExpense),
+      note:
+        summary.expense > 0
+          ? `${formatPercent(recurringExpense / summary.expense)} das saídas`
+          : "sem saídas no período",
+      icon: Repeat,
+      tone:
+        summary.expense > 0 && recurringExpense / summary.expense >= 0.45
+          ? "warning"
+          : "neutral",
     },
   ];
 
   return (
     <div className="space-y-10">
-      <section className="flex flex-col gap-6 border-b border-border pb-8 xl:flex-row xl:items-end xl:justify-between">
+      <section className="flex flex-col gap-6 border-b border-border pb-10 xl:flex-row xl:items-end xl:justify-between">
         <div className="space-y-3">
           <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            Relatórios e insights
+            Resultado do período
           </p>
-          <h1 className="max-w-3xl text-3xl font-medium tracking-tight md:text-4xl">
-            Entenda o período e encontre onde agir.
+          <h1
+            className={cn(
+              "selectable-text font-mono text-4xl font-light tracking-tight md:text-5xl",
+              summary.net < 0 && "text-destructive",
+            )}
+          >
+            {formatCurrency(summary.net)}
           </h1>
-          <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+          <p className="font-mono text-xs text-muted-foreground">
             {period.label}
-            <span className="px-2">-</span>
+            <span className="px-2">·</span>
             comparando com {previousPeriod.label.toLowerCase()}
           </p>
         </div>
 
-        <div className="flex w-full flex-col gap-3 xl:max-w-[420px] xl:items-end">
+        <div className="flex flex-col gap-2 xl:items-end">
           <PeriodSegmentedControl
             value={preset}
             options={reportPeriodOptions.map((option) => ({
@@ -151,121 +238,44 @@ export function ReportsPage() {
             }))}
             onValueChange={(value) => setPreset(value as ReportPeriodPreset)}
           />
-          <div className="flex flex-wrap gap-2 xl:justify-end">
-            <SummaryChip label="Contas" value={`${accounts.length}`} />
-            <SummaryChip label="Categorias" value={`${categories.length}`} />
-            <SummaryChip
-              label="Intervalo"
-              value={period.label}
-              className="xl:max-w-[220px]"
-            />
-          </div>
+          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">
+            [ e ] trocam o período
+          </p>
         </div>
       </section>
 
       {!hasData ? (
-        <EmptyReportsState onUseCurrentMonth={() => setPreset("current-month")} />
+        <EmptyReportsState onUseCurrentMonth={() => setPreset(DEFAULT_PRESET)} />
       ) : (
         <>
           <ReportKpiGrid items={kpis} />
 
-          <section className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)]">
-            <CashflowBars
-              title="Fluxo do período"
-              subtitle="Entradas acima, saídas abaixo"
-              points={cashflow.map((point) => ({
-                label: point.label,
-                inflow: point.income,
-                outflow: point.expense,
-                value: point.net,
-              }))}
-            />
-
+          <section className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
+            <CashflowChart title="Fluxo do período" points={cashflow} />
             <InsightList
-              title="Leituras automáticas"
-              items={insights.map(mapInsight)}
+              title="Leituras do período"
+              items={insights.slice(0, 3).map(mapInsight)}
             />
           </section>
 
-          <section className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <section className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_340px]">
             <CategoryRanking
-              title="Despesas por categoria"
-              items={categoryRanking.slice(0, 8).map((item) => ({
-                label: item.name,
-                value: `${formatCurrency(item.total)} - ${formatPercent(item.percentage)}`,
-                amount: item.total,
-                share: item.percentage * 100,
-                icon: getFinanceIconOption(item.icon).icon,
-                tone:
-                  item.delta > 0
-                    ? "warning"
-                    : item.delta < 0
-                      ? "positive"
-                      : "neutral",
-              }))}
+              title="Categorias"
+              items={buildRankingItems(categoryRanking, rankingKind)}
+              emptyLabel={
+                rankingKind === "expense"
+                  ? "Sem despesas no período."
+                  : "Sem receitas no período."
+              }
+              headerSlot={
+                <KindToggle value={rankingKind} onChange={setRankingKind} />
+              }
             />
 
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                  Ponto de atenção
-                </p>
-                <div className="h-px flex-1 bg-border" />
-              </div>
-
-              <div className="space-y-5 border border-border bg-background p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-medium">
-                      {topCategory
-                        ? `${topCategory.name} lidera as saídas`
-                        : "Sem despesas no período"}
-                    </p>
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                      {topCategory
-                        ? "Use este bloco para abrir a composição mental do período: categoria, participação, recorrência e variação."
-                        : "Quando houver saídas, este espaço destaca a categoria mais relevante."}
-                    </p>
-                  </div>
-                  <Sparkles className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
-                </div>
-
-                {topCategory && (
-                  <div className="grid grid-cols-2 gap-px overflow-hidden border border-border bg-background">
-                    <MiniMetric
-                      label="Participação"
-                      value={formatPercent(topCategory.percentage)}
-                    />
-                    <MiniMetric
-                      label="Variação"
-                      value={
-                        topCategory.deltaPct === null
-                          ? "Novo"
-                          : formatPercent(topCategory.deltaPct)
-                      }
-                    />
-                    <MiniMetric
-                      label="Recorrente"
-                      value={formatCurrency(topCategory.recurringTotal, true)}
-                    />
-                    <MiniMetric
-                      label="Previsto"
-                      value={formatCurrency(topCategory.projectedTotal, true)}
-                    />
-                  </div>
-                )}
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full gap-1.5 rounded-sm text-xs"
-                  type="button"
-                >
-                  <CalendarClock className="h-3.5 w-3.5" strokeWidth={1.5} />
-                  Abrir calendário do período
-                </Button>
-              </div>
-            </div>
+            <TopCategoryPanel
+              item={topExpense}
+              onOpenCalendar={() => navigate("/calendario")}
+            />
           </section>
         </>
       )}
@@ -273,42 +283,130 @@ export function ReportsPage() {
   );
 }
 
-function MiniMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-h-[88px] bg-background p-4">
-      <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-1 truncate font-mono text-sm tabular-nums">{value}</p>
-    </div>
-  );
-}
-
-function SummaryChip({
-  label,
+function KindToggle({
   value,
-  className,
+  onChange,
 }: {
-  label: string;
-  value: string;
-  className?: string;
+  value: RankingKind;
+  onChange: (value: RankingKind) => void;
 }) {
   return (
-    <div
-      className={cn(
-        "flex min-w-[132px] flex-1 flex-col justify-between border border-border bg-background px-4 py-3",
-        className,
-      )}
-    >
-      <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-1 truncate font-mono text-sm tabular-nums">{value}</p>
+    <div className="inline-flex border border-border bg-transparent p-px">
+      {(
+        [
+          { value: "expense", label: "Despesas" },
+          { value: "income", label: "Receitas" },
+        ] as const
+      ).map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          onClick={() => onChange(option.value)}
+          aria-pressed={option.value === value}
+          className={cn(
+            "px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors ui-focus-ring-inset",
+            option.value === value
+              ? "bg-background text-foreground"
+              : "bg-muted/30 text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+          )}
+        >
+          {option.label}
+        </button>
+      ))}
     </div>
   );
 }
 
-function EmptyReportsState({ onUseCurrentMonth }: { onUseCurrentMonth: () => void }) {
+function TopCategoryPanel({
+  item,
+  onOpenCalendar,
+}: {
+  item?: CategoryReportItem;
+  onOpenCalendar: () => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+          Maior saída
+        </p>
+        <div className="h-px flex-1 bg-border" />
+      </div>
+
+      <div className="space-y-5 border border-border bg-background p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">
+              {item ? item.name : "Sem despesas no período"}
+            </p>
+            {item && (
+              <p className="selectable-text mt-1 font-mono text-2xl font-light tabular-nums tracking-tight">
+                {formatCurrency(item.total)}
+              </p>
+            )}
+          </div>
+          <Sparkles
+            className="h-4 w-4 shrink-0 text-muted-foreground"
+            strokeWidth={1.5}
+          />
+        </div>
+
+        {item && (
+          <div className="grid grid-cols-2 gap-px overflow-hidden border border-border bg-border">
+            <MiniMetric
+              label="Participação"
+              value={formatPercent(item.percentage)}
+            />
+            <MiniMetric
+              label="Variação"
+              value={
+                item.deltaPct === null ? "Novo" : formatPercent(item.deltaPct)
+              }
+            />
+            <MiniMetric
+              label="Recorrente"
+              value={formatCurrency(item.recurringTotal, true)}
+            />
+            <MiniMetric
+              label="Previsto"
+              value={formatCurrency(item.projectedTotal, true)}
+            />
+          </div>
+        )}
+
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full gap-1.5 rounded-sm text-xs"
+          type="button"
+          onClick={onOpenCalendar}
+        >
+          <CalendarClock className="h-3.5 w-3.5" strokeWidth={1.5} />
+          Abrir calendário do período
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function MiniMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-h-[72px] bg-background p-3.5">
+      <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="selectable-text mt-1 truncate font-mono text-sm tabular-nums">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function EmptyReportsState({
+  onUseCurrentMonth,
+}: {
+  onUseCurrentMonth: () => void;
+}) {
   return (
     <section className="grid place-items-center border border-dashed border-border py-16 text-center">
       <Sparkles className="h-5 w-5 text-muted-foreground" strokeWidth={1.5} />
@@ -316,8 +414,8 @@ function EmptyReportsState({ onUseCurrentMonth }: { onUseCurrentMonth: () => voi
         Ainda não há dados neste período
       </p>
       <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-        Registre transações, crie recorrências ou amplie o intervalo para liberar
-        rankings, fluxo de caixa e insights automáticos.
+        Registre transações, crie recorrências ou amplie o intervalo para
+        liberar o fluxo de caixa e as leituras automáticas.
       </p>
       <Button
         className="mt-5 rounded-sm text-xs"
@@ -331,13 +429,58 @@ function EmptyReportsState({ onUseCurrentMonth }: { onUseCurrentMonth: () => voi
   );
 }
 
-function buildDelta(value: number | null, invertGood = false): ReportKpiItem["delta"] {
+function buildRankingItems(
+  ranking: CategoryReportItem[],
+  kind: RankingKind,
+): CategoryRankingItem[] {
+  const visible = ranking.slice(0, RANKING_LIMIT);
+  const rest = ranking.slice(RANKING_LIMIT);
+  const items: CategoryRankingItem[] = visible.map((item) => ({
+    label: item.name,
+    amount: item.total,
+    share: item.percentage * 100,
+    meta:
+      item.deltaPct === null
+        ? "novo"
+        : item.deltaPct === 0
+          ? undefined
+          : `${item.deltaPct > 0 ? "+" : ""}${formatPercent(item.deltaPct)}`,
+    icon: getFinanceIconOption(item.icon).icon,
+    tone: rankingTone(item, kind),
+  }));
+
+  if (rest.length > 0) {
+    const restTotal = rest.reduce((sum, item) => sum + item.total, 0);
+    const restShare = rest.reduce((sum, item) => sum + item.percentage, 0);
+    items.push({
+      label: `Outras (${rest.length})`,
+      amount: restTotal,
+      share: restShare * 100,
+      meta: undefined,
+      icon: undefined,
+      tone: "neutral",
+    });
+  }
+
+  return items;
+}
+
+function rankingTone(
+  item: CategoryReportItem,
+  kind: RankingKind,
+): CategoryRankingItem["tone"] {
+  if (item.delta === 0) return "neutral";
+  const grew = item.delta > 0;
+  if (kind === "expense") return grew ? "warning" : "positive";
+  return grew ? "positive" : "warning";
+}
+
+function buildDelta(value: number | null): ReportKpiItem["delta"] {
   if (value === null) return undefined;
   const direction: "up" | "down" | "flat" =
     value > 0 ? "up" : value < 0 ? "down" : "flat";
-  const good = invertGood ? value <= 0 : value >= 0;
   return {
-    value: `${good ? "" : ""}${formatPercent(Math.abs(value))} vs anterior`,
+    value: `${formatPercent(Math.abs(value))} vs anterior`,
     direction,
   };
 }
@@ -346,7 +489,7 @@ function mapInsight(insight: ReportInsight): InsightItem {
   return {
     title: insight.title,
     description: insight.description,
-    meta: insight.value ?? insight.actionLabel,
+    meta: insight.value,
     tone:
       insight.tone === "success"
         ? "positive"
@@ -356,27 +499,39 @@ function mapInsight(insight: ReportInsight): InsightItem {
   };
 }
 
-function compactCashflowSeries(points: CashflowPoint[], maxBuckets = 8) {
-  if (points.length <= maxBuckets) return points;
-  const size = Math.ceil(points.length / maxBuckets);
-  const buckets: CashflowPoint[] = [];
-
-  for (let index = 0; index < points.length; index += size) {
-    const slice = points.slice(index, index + size);
-    const first = slice[0];
-    const last = slice[slice.length - 1];
-    const income = slice.reduce((sum, point) => sum + point.income, 0);
-    const expense = slice.reduce((sum, point) => sum + point.expense, 0);
-    const net = income - expense;
-    buckets.push({
-      date: first.date,
-      label: first.date === last.date ? first.label : `${first.label} - ${last.label}`,
-      income,
-      expense,
-      net,
-      runningNet: last.runningNet,
-    });
+/**
+ * Reduz a série diária para uma granularidade legível:
+ * até 31 dias mantém diário, até ~4 meses agrupa por semana,
+ * acima disso agrupa por mês.
+ */
+function bucketCashflowSeries(points: CashflowPoint[]): CashflowChartPoint[] {
+  if (points.length <= 31) {
+    return points.map((point) => ({
+      label: point.label,
+      inflow: point.income,
+      outflow: point.expense,
+    }));
   }
 
-  return buckets;
+  const byMonth = points.length > 120;
+  const buckets = new Map<string, CashflowChartPoint>();
+
+  for (const point of points) {
+    const date = parseISO(point.date);
+    const key = byMonth
+      ? format(date, "yyyy-MM")
+      : `${format(date, "RRRR")}-${format(date, "II")}`;
+    const entry = buckets.get(key) ?? {
+      label: byMonth
+        ? format(date, "MMM", { locale: ptBR })
+        : `sem. ${point.label}`,
+      inflow: 0,
+      outflow: 0,
+    };
+    entry.inflow += point.income;
+    entry.outflow += point.expense;
+    buckets.set(key, entry);
+  }
+
+  return Array.from(buckets.values());
 }
