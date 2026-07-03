@@ -2,6 +2,8 @@ import { useState, type ReactNode } from "react";
 import { Database, Keyboard, Moon, Sun, Upload } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { Button } from "@/components/ui/button";
+import { BackupSection } from "@/components/shared/BackupSection";
+import { ImportStatementModal } from "@/components/shared/ImportStatementModal";
 import { ShortcutsHelp } from "@/components/shared/ShortcutsHelp";
 import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
@@ -13,6 +15,7 @@ const labelClass =
 export function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [importStatementOpen, setImportStatementOpen] = useState(false);
 
   return (
     <div className="mx-auto max-w-4xl space-y-10">
@@ -107,20 +110,31 @@ export function SettingsPage() {
         </SettingRow>
       </SettingsSection>
 
-      <SettingsSection label="Sincronização">
+      <SettingsSection label="Dados">
         <SettingRow
           label="Importar extrato"
-          description="Importe transações a partir de arquivo OFX ou CSV exportado pelo seu banco."
+          description="Importe transações de um arquivo OFX ou CSV exportado pelo seu banco, com revisão antes de salvar."
         >
           <Button
             variant="outline"
             size="sm"
             className="gap-1.5 rounded-sm text-xs"
-            disabled
+            onClick={() => setImportStatementOpen(true)}
           >
             <Upload className="h-3.5 w-3.5" strokeWidth={1.5} />
             Importar OFX / CSV
           </Button>
+        </SettingRow>
+
+        <BackupSection />
+
+        <SettingRow
+          label="Persistência local"
+          description="Os dados ficam no dispositivo, em SQLite. Exporte backups regularmente."
+        >
+          <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground/60">
+            SQLite local
+          </span>
         </SettingRow>
 
         <SettingRow
@@ -129,15 +143,6 @@ export function SettingsPage() {
         >
           <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground/60">
             Em breve
-          </span>
-        </SettingRow>
-
-        <SettingRow
-          label="Persistência local"
-          description="Os dados são armazenados localmente no dispositivo via SQLite (Tauri)."
-        >
-          <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground/60">
-            Em desenvolvimento
           </span>
         </SettingRow>
       </SettingsSection>
@@ -185,6 +190,10 @@ export function SettingsPage() {
       </SettingsSection>
 
       <ShortcutsHelp open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
+      <ImportStatementModal
+        open={importStatementOpen}
+        onOpenChange={setImportStatementOpen}
+      />
     </div>
   );
 }

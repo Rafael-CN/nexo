@@ -44,6 +44,15 @@ export interface FinanceState {
   addGoal: (goal: Goal) => Promise<void>;
   removeGoal: (id: string) => Promise<void>;
   updateGoal: (id: string, patch: Partial<Goal>) => Promise<void>;
+
+  /** Substitui o dataset em memória — usado pela importação de backup no modo navegador. */
+  hydrateLocal: (data: {
+    accounts: Account[];
+    categories: Category[];
+    recurrenceRules: RecurrenceRule[];
+    transactions: Transaction[];
+    goals: Goal[];
+  }) => void;
 }
 
 export const useFinanceStore = create<FinanceState>((set, get) => ({
@@ -215,6 +224,18 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     set((state) => ({
       goals: state.goals.map((g) => (g.id === id ? merged : g)),
     }));
+  },
+
+  hydrateLocal: (data) => {
+    set({
+      accounts: data.accounts,
+      categories: data.categories,
+      recurrenceRules: data.recurrenceRules,
+      transactions: data.transactions,
+      goals: data.goals,
+      isLoaded: true,
+      initializeError: null,
+    });
   },
 }));
 

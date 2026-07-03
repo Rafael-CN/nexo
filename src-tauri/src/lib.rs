@@ -1,3 +1,4 @@
+mod backup;
 mod commands;
 mod db;
 mod models;
@@ -9,6 +10,7 @@ use tauri::Manager;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let app_data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&app_data_dir)?;
@@ -38,6 +40,9 @@ pub fn run() {
             commands::update_goal,
             commands::delete_goal,
             commands::reset_database,
+            backup::export_backup,
+            backup::import_backup,
+            backup::export_transactions_csv,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

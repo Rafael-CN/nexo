@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   ArrowRightLeft,
   Check,
+  FileUp,
   Keyboard,
   Plus,
   RefreshCw,
@@ -30,6 +31,7 @@ type CommandPaletteProps = {
   onNewTransaction: () => void;
   onNewTransfer: () => void;
   onOpenHelp: () => void;
+  onImportStatement: () => void;
 };
 
 type PaletteAction = {
@@ -57,6 +59,7 @@ export function CommandPalette({
   onNewTransaction,
   onNewTransfer,
   onOpenHelp,
+  onImportStatement,
 }: CommandPaletteProps) {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -101,6 +104,15 @@ export function CommandPalette({
         run: onNewTransfer,
       },
       {
+        id: "importar-extrato",
+        label: "Importar extrato",
+        description: "Trazer OFX ou CSV do banco com conciliação",
+        icon: FileUp,
+        keywords: ["ofx", "csv", "banco", "extrato", "conciliar"],
+        group: "Ações" as const,
+        run: onImportStatement,
+      },
+      {
         id: "atalhos",
         label: "Atalhos de teclado",
         description: "Ver todos os atalhos disponíveis",
@@ -129,7 +141,7 @@ export function CommandPalette({
         run: () => void useFinanceStore.getState().initialize(),
       },
     ],
-    [navigate, onNewTransaction, onNewTransfer, onOpenHelp],
+    [navigate, onNewTransaction, onNewTransfer, onOpenHelp, onImportStatement],
   );
 
   const filteredActions = useMemo(() => {

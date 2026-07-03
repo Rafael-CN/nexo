@@ -7,6 +7,7 @@ import { CommandPalette } from "./CommandPalette";
 import { DesktopTitleBar } from "./DesktopTitleBar";
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ImportStatementModal } from "@/components/shared/ImportStatementModal";
 import { Onboarding } from "@/components/shared/Onboarding";
 import { ShortcutsHelp } from "@/components/shared/ShortcutsHelp";
 import { TransactionModal } from "@/components/shared/TransactionModal";
@@ -28,6 +29,7 @@ export function AppLayout() {
   const [transactionModalType, setTransactionModalType] =
     useState<TransactionType>("expense");
   const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false);
+  const [importStatementOpen, setImportStatementOpen] = useState(false);
   const [profile, setProfile] = useState<LocalProfile | null>(() =>
     getLocalProfile(),
   );
@@ -50,6 +52,10 @@ export function AppLayout() {
   const openShortcutsHelp = useCallback(() => {
     setCommandPaletteOpen(false);
     setShortcutsHelpOpen(true);
+  }, []);
+  const openImportStatement = useCallback(() => {
+    setCommandPaletteOpen(false);
+    setImportStatementOpen(true);
   }, []);
   const closeTransactionModal = useCallback(() => {
     setTransactionModalOpen(false);
@@ -132,6 +138,7 @@ export function AppLayout() {
         onNewTransaction={openNewTransaction}
         onNewTransfer={openNewTransfer}
         onOpenHelp={openShortcutsHelp}
+        onImportStatement={openImportStatement}
       />
       <TransactionModal
         open={transactionModalOpen}
@@ -141,6 +148,10 @@ export function AppLayout() {
       <ShortcutsHelp
         open={shortcutsHelpOpen}
         onOpenChange={setShortcutsHelpOpen}
+      />
+      <ImportStatementModal
+        open={importStatementOpen}
+        onOpenChange={setImportStatementOpen}
       />
     </TooltipProvider>
   );
