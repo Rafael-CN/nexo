@@ -1,12 +1,19 @@
 import { useMemo, useState } from "react";
-import { ArrowRightLeft, Plus } from "lucide-react";
+import { format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { ArrowRightLeft, Plus, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AccountModal } from "@/components/shared/AccountModal";
 import { CategoryModal } from "@/components/shared/CategoryModal";
 import { TransactionModal } from "@/components/shared/TransactionModal";
 import { FinanceIcon } from "@/components/shared/IconPicker";
+import {
+  formatTransactionAmount,
+  type TransactionModalFormState,
+} from "@/components/shared/transactionModalUtils";
 import { getCurrentAccountBalances } from "@/lib/balance";
 import { formatCurrency } from "@/lib/format";
+import { getInvoiceSummary, type InvoiceSummary } from "@/lib/invoice";
 import { selectTotalBalance, useFinanceStore } from "@/store/useFinanceStore";
 import type { Account, AccountType, Category } from "@/types";
 import { cn } from "@/lib/utils";
@@ -34,6 +41,22 @@ export function AccountsPage() {
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [transferModalOpen, setTransferModalOpen] = useState(false);
+  const [invoiceDraft, setInvoiceDraft] =
+    useState<Partial<TransactionModalFormState> | null>(null);
+
+  function openPayInvoice(account: Account, summary: InvoiceSummary) {
+    const amount = summary.closed.total > 0 ? summary.closed.total : summary.open.total;
+    const sourceAccount = accounts.find(
+      (candidate) => candidate.type !== "credit" && candidate.id !== account.id,
+    );
+    setInvoiceDraft({
+      type: "transfer",
+      title: `Pagamento fatura ${account.name}`,
+      amount: amount > 0 ? formatTransactionAmount(amount) : "",
+      accountId: sourceAccount?.id ?? "",
+      transferAccountId: account.id,
+    });
+  }
 
   const groupedCategories = useMemo(
     () => ({
@@ -123,7 +146,9 @@ export function AccountsPage() {
                   key={account.id}
                   account={account}
                   effectiveBalance={accountBalances.get(account.id) ?? account.balance}
+                  invoice={getInvoiceSummary(account, transactions)}
                   onEdit={() => openEditAccount(account)}
+                  onPayInvoice={(summary) => openPayInvoice(account, summary)}
                 />
               ))}
             </div>
@@ -187,6 +212,14 @@ export function AccountsPage() {
         onOpenChange={setTransferModalOpen}
         initialType="transfer"
       />
+      <TransactionModal
+        open={invoiceDraft !== null}
+        onOpenChange={(open) => {
+          if (!open) setInvoiceDraft(null);
+        }}
+        initialType="transfer"
+        initialDraft={invoiceDraft ?? undefined}
+      />
     </div>
   );
 }
@@ -194,20 +227,30 @@ export function AccountsPage() {
 function AccountCard({
   account,
   effectiveBalance,
+  invoice,
   onEdit,
+  onPayInvoice,
 }: {
   account: Account;
   effectiveBalance: number;
+  invoice: InvoiceSummary | null;
   onEdit: () => void;
+  onPayInvoice: (summary: InvoiceSummary) => void;
 }) {
   const meta = typeMeta[account.type];
   const isNegative = effectiveBalance < 0;
 
   return (
-    <button
-      type="button"
-      className="group flex min-h-[180px] flex-col gap-5 bg-background p-5 text-left transition-colors hover:bg-accent/30"
+    <div
+      role="button"
+      tabIndex={0}
+      className="group flex min-h-[180px] cursor-pointer flex-col gap-5 bg-background p-5 text-left transition-colors hover:bg-accent/30 ui-focus-ring-inset"
       onClick={onEdit}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" && event.target === event.currentTarget) {
+          onEdit();
+        }
+      }}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
@@ -242,19 +285,63 @@ function AccountCard({
         </p>
       </div>
 
-      <div className="mt-auto flex items-center justify-between border-t border-border pt-3">
-        <span className="flex items-center gap-2 font-mono text-[11px] tracking-wider text-muted-foreground">
-          <FinanceIcon
-            name={account.icon ?? meta.fallbackIcon}
-            className="h-3.5 w-3.5"
-          />
-          {account.lastFour ? `.... ${account.lastFour}` : meta.label}
-        </span>
-        <span className="selectable-text font-mono text-[10px] uppercase tracking-wider text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
-          Base {formatCurrency(account.balance, true)}
-        </span>
-      </div>
-    </button>
+      {invoice ? (
+        <div className="mt-auto space-y-2 border-t border-border pt-3">
+          <div className="flex items-baseline justify-between gap-3 font-mono text-[11px]">
+            <span className="text-muted-foreground">
+              Aberta · fecha{" "}
+              {format(parseISO(invoice.open.end), "dd MMM", { locale: ptBR })}
+            </span>
+            <span className="selectable-text tabular-nums">
+              {formatCurrency(invoice.open.total)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-3 font-mono text-[11px]">
+            <span className="text-muted-foreground">
+              Fechada · vence{" "}
+              {format(parseISO(invoice.closed.dueDate), "dd MMM", {
+                locale: ptBR,
+              })}
+            </span>
+            <span className="flex items-center gap-2">
+              <span
+                className={cn(
+                  "selectable-text tabular-nums",
+                  invoice.closed.total > 0 && "text-warning",
+                )}
+              >
+                {formatCurrency(invoice.closed.total)}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-6 gap-1 rounded-sm px-2 text-[10px] uppercase tracking-wider"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onPayInvoice(invoice);
+                }}
+              >
+                <Receipt className="h-3 w-3" strokeWidth={1.5} />
+                Pagar
+              </Button>
+            </span>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-auto flex items-center justify-between border-t border-border pt-3">
+          <span className="flex items-center gap-2 font-mono text-[11px] tracking-wider text-muted-foreground">
+            <FinanceIcon
+              name={account.icon ?? meta.fallbackIcon}
+              className="h-3.5 w-3.5"
+            />
+            {account.lastFour ? `.... ${account.lastFour}` : meta.label}
+          </span>
+          <span className="selectable-text font-mono text-[10px] uppercase tracking-wider text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
+            Base {formatCurrency(account.balance, true)}
+          </span>
+        </div>
+      )}
+    </div>
   );
 }
 

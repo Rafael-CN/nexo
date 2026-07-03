@@ -1,6 +1,6 @@
 [package]
 name = "nexo"
-version = "0.1.0"
+version = "0.2.0"
 description = "Gestão financeira pessoal com projeção de saldo via calendário"
 authors = ["you"]
 edition = "2021"

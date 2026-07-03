@@ -69,6 +69,54 @@ export function expandRecurring(
   return expanded;
 }
 
+/**
+ * Ocorrências recorrentes que já venceram sem serem materializadas:
+ * ficam entre a última ocorrência registrada e hoje. São candidatas
+ * a confirmação manual ("lançar") no painel inicial.
+ */
+export function findOverdueRecurrences(
+  transactions: Transaction[],
+  rules: RecurrenceRule[],
+  todayIso = formatISO(new Date(), { representation: "date" }),
+): Transaction[] {
+  const ruleMap = new Map(rules.map((r) => [r.id, r]));
+
+  const latestByRule = new Map<string, Transaction>();
+  for (const t of transactions) {
+    if (!t.recurrenceId) continue;
+    const prev = latestByRule.get(t.recurrenceId);
+    if (!prev || t.date > prev.date) latestByRule.set(t.recurrenceId, t);
+  }
+
+  const overdue: Transaction[] = [];
+
+  for (const [ruleId, anchor] of latestByRule) {
+    const rule = ruleMap.get(ruleId);
+    if (!rule) continue;
+
+    let next = advance(parseISO(anchor.date), rule);
+    let guard = 0;
+
+    while (true) {
+      const isoDate = formatISO(next, { representation: "date" });
+      if (isoDate > todayIso) break;
+      if (rule.until && isoDate > rule.until) break;
+      if (++guard > 120) break;
+
+      overdue.push({
+        ...anchor,
+        id: `${ruleId}_due_${isoDate}`,
+        date: isoDate,
+        isProjected: false,
+      });
+
+      next = advance(next, rule);
+    }
+  }
+
+  return overdue.sort((a, b) => a.date.localeCompare(b.date));
+}
+
 function advance(date: Date, rule: RecurrenceRule): Date {
   switch (rule.frequency) {
     case "daily":   return addDays(date, rule.interval);

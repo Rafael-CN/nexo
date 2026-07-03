@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
-import { Database, Keyboard, Moon, Sun, Upload } from "lucide-react";
+import { Database, Keyboard, Moon, RefreshCw, Sun, Upload } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
+import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
 import { BackupSection } from "@/components/shared/BackupSection";
 import { ImportStatementModal } from "@/components/shared/ImportStatementModal";
@@ -8,6 +9,7 @@ import { ShortcutsHelp } from "@/components/shared/ShortcutsHelp";
 import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
 import { isTauri } from "@/lib/db";
+import { checkForUpdate, getAppVersion, type UpdateInfo } from "@/lib/updates";
 
 const labelClass =
   "font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground";
@@ -16,6 +18,34 @@ export function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [importStatementOpen, setImportStatementOpen] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<
+    | { state: "idle" }
+    | { state: "checking" }
+    | { state: "current" }
+    | { state: "available"; update: UpdateInfo }
+    | { state: "error"; message: string }
+  >({ state: "idle" });
+
+  async function handleCheckUpdates() {
+    setUpdateStatus({ state: "checking" });
+    try {
+      const update = await checkForUpdate();
+      setUpdateStatus(update ? { state: "available", update } : { state: "current" });
+    } catch (err) {
+      setUpdateStatus({
+        state: "error",
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  function handleDownloadUpdate(update: UpdateInfo) {
+    if (isTauri) {
+      void openExternal(update.url);
+    } else {
+      window.open(update.url, "_blank", "noopener");
+    }
+  }
 
   return (
     <div className="mx-auto max-w-4xl space-y-10">
@@ -176,8 +206,52 @@ export function SettingsPage() {
       <SettingsSection label="Sobre">
         <SettingRow label="Aplicativo" description="Nexo — finanças pessoais">
           <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
-            v0.1.0
+            v{getAppVersion()}
           </span>
+        </SettingRow>
+
+        <SettingRow
+          label="Atualizações"
+          description="Consulta os releases publicados no GitHub e baixa o instalador da versão nova."
+        >
+          <div className="flex items-center gap-3">
+            {updateStatus.state === "current" && (
+              <span className="font-mono text-[11px] text-success">
+                Você está na versão mais recente.
+              </span>
+            )}
+            {updateStatus.state === "error" && (
+              <span className="font-mono text-[11px] text-destructive">
+                {updateStatus.message}
+              </span>
+            )}
+            {updateStatus.state === "available" ? (
+              <Button
+                size="sm"
+                className="gap-1.5 rounded-sm text-xs"
+                onClick={() => handleDownloadUpdate(updateStatus.update)}
+              >
+                Baixar v{updateStatus.update.version}
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 rounded-sm text-xs"
+                onClick={handleCheckUpdates}
+                disabled={updateStatus.state === "checking"}
+              >
+                <RefreshCw
+                  className={cn(
+                    "h-3.5 w-3.5",
+                    updateStatus.state === "checking" && "animate-spin",
+                  )}
+                  strokeWidth={1.5}
+                />
+                Verificar atualizações
+              </Button>
+            )}
+          </div>
         </SettingRow>
         <SettingRow
           label="Stack"

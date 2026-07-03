@@ -18,6 +18,12 @@ pub struct Account {
     pub icon: Option<String>,
     #[serde(rename = "lastFour")]
     pub last_four: Option<String>,
+    /// Dia do fechamento da fatura (apenas cartões de crédito).
+    #[serde(rename = "closingDay", default)]
+    pub closing_day: Option<i64>,
+    /// Dia do vencimento da fatura (apenas cartões de crédito).
+    #[serde(rename = "dueDay", default)]
+    pub due_day: Option<i64>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -27,6 +33,9 @@ pub struct Category {
     pub color: String,
     pub icon: String,
     pub kind: String,
+    /// Limite mensal de gastos (orçamento) — apenas categorias de despesa.
+    #[serde(rename = "monthlyBudget", default)]
+    pub monthly_budget: Option<f64>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -65,6 +74,9 @@ pub struct Transaction {
     pub recurrence_id: Option<String>,
     #[serde(rename = "transferAccountId", default)]
     pub transfer_account_id: Option<String>,
+    /// Agrupa as parcelas de uma mesma compra parcelada.
+    #[serde(rename = "installmentId", default)]
+    pub installment_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -92,6 +104,14 @@ impl Account {
             validate_optional_text("Ícone da conta", icon)?;
         }
 
+        if let Some(day) = self.closing_day {
+            validate_day_of_month("Dia de fechamento da fatura", day)?;
+        }
+
+        if let Some(day) = self.due_day {
+            validate_day_of_month("Dia de vencimento da fatura", day)?;
+        }
+
         Ok(())
     }
 }
@@ -103,6 +123,11 @@ impl Category {
         validate_required("Cor da categoria", &self.color)?;
         validate_required("Ícone da categoria", &self.icon)?;
         validate_enum("Tipo da categoria", &self.kind, CATEGORY_KINDS)?;
+
+        if let Some(budget) = self.monthly_budget {
+            validate_positive("Orçamento mensal da categoria", budget)?;
+        }
+
         Ok(())
     }
 }
@@ -145,6 +170,10 @@ impl Transaction {
 
         if let Some(recurrence_id) = &self.recurrence_id {
             validate_optional_text("Recorrência da transação", recurrence_id)?;
+        }
+
+        if let Some(installment_id) = &self.installment_id {
+            validate_optional_text("Parcelamento da transação", installment_id)?;
         }
 
         Ok(())
@@ -236,6 +265,13 @@ fn validate_non_negative(field: &str, value: f64) -> Result<(), String> {
     validate_finite(field, value)?;
     if value < 0.0 {
         return Err(format!("{field} não pode ser negativo."));
+    }
+    Ok(())
+}
+
+fn validate_day_of_month(field: &str, value: i64) -> Result<(), String> {
+    if !(1..=31).contains(&value) {
+        return Err(format!("{field} deve estar entre 1 e 31."));
     }
     Ok(())
 }

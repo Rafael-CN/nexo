@@ -2,24 +2,30 @@ import { useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { differenceInMonths, format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Flag, Plus } from "lucide-react";
+import { ArrowRightLeft, Flag, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GoalModal } from "@/components/shared/GoalModal";
+import { TransactionModal } from "@/components/shared/TransactionModal";
 import {
-  selectGoalsSummary,
-  useFinanceStore,
-} from "@/store/useFinanceStore";
+  formatTransactionAmount,
+  type TransactionModalFormState,
+} from "@/components/shared/transactionModalUtils";
+import { useFinanceStore } from "@/store/useFinanceStore";
 import { formatCurrency } from "@/lib/format";
+import { resolveGoals, type ResolvedGoal } from "@/lib/goals";
 import { cn } from "@/lib/utils";
 import type { Goal } from "@/types";
 import type { ReactNode } from "react";
 
 export function GoalsPage() {
   const goals = useFinanceStore(useShallow((s) => s.goals));
-  const summary = useFinanceStore(useShallow(selectGoalsSummary));
+  const accounts = useFinanceStore(useShallow((s) => s.accounts));
+  const transactions = useFinanceStore(useShallow((s) => s.transactions));
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Goal | null>(null);
+  const [contributionDraft, setContributionDraft] =
+    useState<Partial<TransactionModalFormState> | null>(null);
 
   function openNew() {
     setEditing(null);
@@ -31,9 +37,40 @@ export function GoalsPage() {
     setModalOpen(true);
   }
 
+  function openContribution(goal: ResolvedGoal) {
+    if (!goal.accountId) return;
+    const sourceAccount = accounts.find(
+      (candidate) =>
+        candidate.type !== "credit" && candidate.id !== goal.accountId,
+    );
+    setContributionDraft({
+      type: "transfer",
+      title: `Aporte ${goal.name}`,
+      amount: goal.monthlyContribution
+        ? formatTransactionAmount(goal.monthlyContribution)
+        : "",
+      accountId: sourceAccount?.id ?? "",
+      transferAccountId: goal.accountId,
+    });
+  }
+
+  const resolved = useMemo(
+    () => resolveGoals(goals, accounts, transactions),
+    [goals, accounts, transactions],
+  );
+
+  const summary = useMemo(() => {
+    const active = resolved.filter((goal) => goal.status === "active");
+    return {
+      count: active.length,
+      totalCurrent: active.reduce((sum, goal) => sum + goal.currentAmount, 0),
+      totalTarget: active.reduce((sum, goal) => sum + goal.targetAmount, 0),
+    };
+  }, [resolved]);
+
   const sorted = useMemo(
     () =>
-      [...goals].sort((a, b) => {
+      [...resolved].sort((a, b) => {
         if (a.deadline && b.deadline) {
           return a.deadline.localeCompare(b.deadline);
         }
@@ -41,7 +78,7 @@ export function GoalsPage() {
         if (b.deadline) return 1;
         return a.currentAmount / a.targetAmount - b.currentAmount / b.targetAmount;
       }),
-    [goals],
+    [resolved],
   );
 
   const overallProgress =
@@ -99,7 +136,8 @@ export function GoalsPage() {
                 <GoalCard
                   key={goal.id}
                   goal={goal}
-                  onEdit={() => openEdit(goal)}
+                  onEdit={() => openEdit(goals.find((g) => g.id === goal.id) ?? goal)}
+                  onContribute={() => openContribution(goal)}
                 />
               ))}
             </div>
@@ -120,6 +158,14 @@ export function GoalsPage() {
       {sorted.length > 0 && <OverallProgress goals={sorted} />}
 
       <GoalModal open={modalOpen} onOpenChange={setModalOpen} goal={editing} />
+      <TransactionModal
+        open={contributionDraft !== null}
+        onOpenChange={(open) => {
+          if (!open) setContributionDraft(null);
+        }}
+        initialType="transfer"
+        initialDraft={contributionDraft ?? undefined}
+      />
     </div>
   );
 }
@@ -127,9 +173,11 @@ export function GoalsPage() {
 function GoalCard({
   goal,
   onEdit,
+  onContribute,
 }: {
-  goal: Goal;
+  goal: ResolvedGoal;
   onEdit: () => void;
+  onContribute: () => void;
 }) {
   const accounts = useFinanceStore(useShallow((s) => s.accounts));
   const account = accounts.find((a) => a.id === goal.accountId);
@@ -279,10 +327,24 @@ function GoalCard({
         {account && (
           <p className="selectable-text font-mono text-[10px] text-muted-foreground">
             Conta vinculada · {account.name}
+            {goal.isLive && (
+              <span className="text-success"> · saldo ao vivo</span>
+            )}
           </p>
         )}
 
-        <div className="flex justify-end pt-1">
+        <div className="flex items-center justify-end gap-1 pt-1">
+          {goal.accountId && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 gap-1 px-2 font-mono text-[10px] uppercase tracking-wider opacity-0 transition-opacity group-hover:opacity-100"
+              onClick={onContribute}
+            >
+              <ArrowRightLeft className="h-3 w-3" strokeWidth={1.5} />
+              Aportar
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"

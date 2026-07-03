@@ -8,6 +8,7 @@ export type CategoryReportItem = {
   color: string;
   icon: string;
   kind: Category["kind"];
+  monthlyBudget: number | null;
   total: number;
   previousTotal: number;
   delta: number;
@@ -88,6 +89,7 @@ function buildCategoryItem(
     color: category?.color ?? "#71717a",
     icon: category?.icon ?? "tag",
     kind,
+    monthlyBudget: category?.monthlyBudget ?? null,
     total: 0,
     previousTotal: 0,
     delta: 0,
