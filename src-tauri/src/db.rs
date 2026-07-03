@@ -130,7 +130,7 @@ pub fn seed_default_categories(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-fn migrate_schema(conn: &mut Connection) -> Result<()> {
+pub(crate) fn migrate_schema(conn: &mut Connection) -> Result<()> {
     let mut current_version = schema_version(conn)?;
 
     while current_version < LATEST_SCHEMA_VERSION {

@@ -134,16 +134,12 @@ impl Transaction {
                 return Err("Conta de destino da transferência é obrigatória.".into());
             }
             if destination == self.account_id {
-                return Err(
-                    "A conta de destino deve ser diferente da conta de origem.".into(),
-                );
+                return Err("A conta de destino deve ser diferente da conta de origem.".into());
             }
         } else {
             validate_required("Categoria da transação", &self.category_id)?;
             if self.transfer_account_id.is_some() {
-                return Err(
-                    "Conta de destino só é permitida em transferências.".into(),
-                );
+                return Err("Conta de destino só é permitida em transferências.".into());
             }
         }
 

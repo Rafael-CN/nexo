@@ -3,9 +3,9 @@ use crate::models::{Account, Category, Goal, RecurrenceRule, Transaction};
 use rusqlite::Connection;
 use tauri::State;
 
-type CmdResult<T> = Result<T, String>;
+pub(crate) type CmdResult<T> = Result<T, String>;
 
-fn e<E: std::fmt::Display>(err: E) -> String {
+pub(crate) fn e<E: std::fmt::Display>(err: E) -> String {
     err.to_string()
 }
 
@@ -27,9 +27,7 @@ fn entity_exists(conn: &Connection, table: &str, id: &str) -> CmdResult<bool> {
     Ok(exists != 0)
 }
 
-#[tauri::command]
-pub fn get_accounts(state: State<DbState>) -> CmdResult<Vec<Account>> {
-    let conn = state.0.lock().map_err(e)?;
+pub(crate) fn query_accounts(conn: &Connection) -> CmdResult<Vec<Account>> {
     let mut stmt = conn
         .prepare(
             "SELECT id, name, institution, type, balance, color, icon, last_four FROM accounts",
@@ -49,13 +47,16 @@ pub fn get_accounts(state: State<DbState>) -> CmdResult<Vec<Account>> {
             })
         })
         .map_err(e)?;
-    let accounts: Vec<Account> = rows.collect::<Result<Vec<_>, _>>().map_err(e)?;
-    Ok(accounts)
+    rows.collect::<Result<Vec<_>, _>>().map_err(e)
 }
 
 #[tauri::command]
-pub fn get_categories(state: State<DbState>) -> CmdResult<Vec<Category>> {
+pub fn get_accounts(state: State<DbState>) -> CmdResult<Vec<Account>> {
     let conn = state.0.lock().map_err(e)?;
+    query_accounts(&conn)
+}
+
+pub(crate) fn query_categories(conn: &Connection) -> CmdResult<Vec<Category>> {
     let mut stmt = conn
         .prepare("SELECT id, name, color, icon, kind FROM categories")
         .map_err(e)?;
@@ -70,16 +71,18 @@ pub fn get_categories(state: State<DbState>) -> CmdResult<Vec<Category>> {
             })
         })
         .map_err(e)?;
-    let categories: Vec<Category> = rows.collect::<Result<Vec<_>, _>>().map_err(e)?;
-    Ok(categories)
+    rows.collect::<Result<Vec<_>, _>>().map_err(e)
 }
 
 #[tauri::command]
-pub fn add_account(state: State<DbState>, account: Account) -> CmdResult<()> {
-    account.validate()?;
+pub fn get_categories(state: State<DbState>) -> CmdResult<Vec<Category>> {
     let conn = state.0.lock().map_err(e)?;
+    query_categories(&conn)
+}
+
+pub(crate) fn insert_account(conn: &Connection, account: &Account) -> CmdResult<usize> {
     conn.execute(
-        "INSERT INTO accounts (id, name, institution, type, balance, color, icon, last_four)
+        "INSERT OR IGNORE INTO accounts (id, name, institution, type, balance, color, icon, last_four)
          VALUES (?1,?2,?3,?4,?5,?6,?7,?8)",
         rusqlite::params![
             account.id,
@@ -92,7 +95,16 @@ pub fn add_account(state: State<DbState>, account: Account) -> CmdResult<()> {
             account.last_four
         ],
     )
-    .map_err(e)?;
+    .map_err(e)
+}
+
+#[tauri::command]
+pub fn add_account(state: State<DbState>, account: Account) -> CmdResult<()> {
+    account.validate()?;
+    let conn = state.0.lock().map_err(e)?;
+    if insert_account(&conn, &account)? == 0 {
+        return Err("Já existe uma conta com este identificador.".into());
+    }
     Ok(())
 }
 
@@ -146,12 +158,9 @@ pub fn delete_account(state: State<DbState>, id: String) -> CmdResult<()> {
     Ok(())
 }
 
-#[tauri::command]
-pub fn add_category(state: State<DbState>, category: Category) -> CmdResult<()> {
-    category.validate()?;
-    let conn = state.0.lock().map_err(e)?;
+pub(crate) fn insert_category(conn: &Connection, category: &Category) -> CmdResult<usize> {
     conn.execute(
-        "INSERT INTO categories (id, name, color, icon, kind)
+        "INSERT OR IGNORE INTO categories (id, name, color, icon, kind)
          VALUES (?1,?2,?3,?4,?5)",
         rusqlite::params![
             category.id,
@@ -161,7 +170,16 @@ pub fn add_category(state: State<DbState>, category: Category) -> CmdResult<()> 
             category.kind
         ],
     )
-    .map_err(e)?;
+    .map_err(e)
+}
+
+#[tauri::command]
+pub fn add_category(state: State<DbState>, category: Category) -> CmdResult<()> {
+    category.validate()?;
+    let conn = state.0.lock().map_err(e)?;
+    if insert_category(&conn, &category)? == 0 {
+        return Err("Já existe uma categoria com este identificador.".into());
+    }
     Ok(())
 }
 
@@ -201,9 +219,7 @@ pub fn delete_category(state: State<DbState>, id: String) -> CmdResult<()> {
     Ok(())
 }
 
-#[tauri::command]
-pub fn get_recurrence_rules(state: State<DbState>) -> CmdResult<Vec<RecurrenceRule>> {
-    let conn = state.0.lock().map_err(e)?;
+pub(crate) fn query_recurrence_rules(conn: &Connection) -> CmdResult<Vec<RecurrenceRule>> {
     let mut stmt = conn
         .prepare("SELECT id, frequency, interval, until FROM recurrence_rules")
         .map_err(e)?;
@@ -217,20 +233,31 @@ pub fn get_recurrence_rules(state: State<DbState>) -> CmdResult<Vec<RecurrenceRu
             })
         })
         .map_err(e)?;
-    let rules: Vec<RecurrenceRule> = rows.collect::<Result<Vec<_>, _>>().map_err(e)?;
-    Ok(rules)
+    rows.collect::<Result<Vec<_>, _>>().map_err(e)
+}
+
+#[tauri::command]
+pub fn get_recurrence_rules(state: State<DbState>) -> CmdResult<Vec<RecurrenceRule>> {
+    let conn = state.0.lock().map_err(e)?;
+    query_recurrence_rules(&conn)
+}
+
+pub(crate) fn insert_recurrence_rule(conn: &Connection, rule: &RecurrenceRule) -> CmdResult<usize> {
+    conn.execute(
+        "INSERT OR IGNORE INTO recurrence_rules (id, frequency, interval, until)
+         VALUES (?1,?2,?3,?4)",
+        rusqlite::params![rule.id, rule.frequency, rule.interval, rule.until],
+    )
+    .map_err(e)
 }
 
 #[tauri::command]
 pub fn add_recurrence_rule(state: State<DbState>, rule: RecurrenceRule) -> CmdResult<()> {
     rule.validate()?;
     let conn = state.0.lock().map_err(e)?;
-    conn.execute(
-        "INSERT INTO recurrence_rules (id, frequency, interval, until)
-         VALUES (?1,?2,?3,?4)",
-        rusqlite::params![rule.id, rule.frequency, rule.interval, rule.until],
-    )
-    .map_err(e)?;
+    if insert_recurrence_rule(&conn, &rule)? == 0 {
+        return Err("Já existe uma recorrência com este identificador.".into());
+    }
     Ok(())
 }
 
@@ -265,9 +292,7 @@ pub fn delete_recurrence_rule(state: State<DbState>, id: String) -> CmdResult<()
     Ok(())
 }
 
-#[tauri::command]
-pub fn get_transactions(state: State<DbState>) -> CmdResult<Vec<Transaction>> {
-    let conn = state.0.lock().map_err(e)?;
+pub(crate) fn query_transactions(conn: &Connection) -> CmdResult<Vec<Transaction>> {
     let mut stmt = conn
         .prepare(
             "SELECT id, title, amount, date, account_id, category_id, type,
@@ -293,8 +318,35 @@ pub fn get_transactions(state: State<DbState>) -> CmdResult<Vec<Transaction>> {
             })
         })
         .map_err(e)?;
-    let transactions: Vec<Transaction> = rows.collect::<Result<Vec<_>, _>>().map_err(e)?;
-    Ok(transactions)
+    rows.collect::<Result<Vec<_>, _>>().map_err(e)
+}
+
+#[tauri::command]
+pub fn get_transactions(state: State<DbState>) -> CmdResult<Vec<Transaction>> {
+    let conn = state.0.lock().map_err(e)?;
+    query_transactions(&conn)
+}
+
+pub(crate) fn insert_transaction(conn: &Connection, txn: &Transaction) -> CmdResult<usize> {
+    conn.execute(
+        "INSERT OR IGNORE INTO transactions
+           (id, title, amount, date, account_id, category_id, type, is_projected, notes, recurrence_id, transfer_account_id)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)",
+        rusqlite::params![
+            txn.id,
+            txn.title,
+            txn.amount,
+            txn.date,
+            txn.account_id,
+            txn.category_id,
+            txn.transaction_type,
+            txn.is_projected as i32,
+            txn.notes,
+            txn.recurrence_id,
+            txn.transfer_account_id
+        ],
+    )
+    .map_err(e)
 }
 
 #[tauri::command]
@@ -302,18 +354,9 @@ pub fn add_transaction(state: State<DbState>, txn: Transaction) -> CmdResult<()>
     txn.validate()?;
     let conn = state.0.lock().map_err(e)?;
     validate_transaction_refs(&conn, &txn)?;
-    conn.execute(
-        "INSERT INTO transactions
-           (id, title, amount, date, account_id, category_id, type, is_projected, notes, recurrence_id, transfer_account_id)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)",
-        rusqlite::params![
-            txn.id, txn.title, txn.amount, txn.date,
-            txn.account_id, txn.category_id, txn.transaction_type,
-            txn.is_projected as i32, txn.notes, txn.recurrence_id,
-            txn.transfer_account_id
-        ],
-    )
-    .map_err(e)?;
+    if insert_transaction(&conn, &txn)? == 0 {
+        return Err("Já existe uma transação com este identificador.".into());
+    }
     Ok(())
 }
 
@@ -353,9 +396,7 @@ pub fn delete_transaction(state: State<DbState>, id: String) -> CmdResult<()> {
     Ok(())
 }
 
-#[tauri::command]
-pub fn get_goals(state: State<DbState>) -> CmdResult<Vec<Goal>> {
-    let conn = state.0.lock().map_err(e)?;
+pub(crate) fn query_goals(conn: &Connection) -> CmdResult<Vec<Goal>> {
     let mut stmt = conn
         .prepare(
             "SELECT id, name, description, target_amount, current_amount, deadline,
@@ -378,17 +419,18 @@ pub fn get_goals(state: State<DbState>) -> CmdResult<Vec<Goal>> {
             })
         })
         .map_err(e)?;
-    let goals: Vec<Goal> = rows.collect::<Result<Vec<_>, _>>().map_err(e)?;
-    Ok(goals)
+    rows.collect::<Result<Vec<_>, _>>().map_err(e)
 }
 
 #[tauri::command]
-pub fn add_goal(state: State<DbState>, goal: Goal) -> CmdResult<()> {
-    goal.validate()?;
+pub fn get_goals(state: State<DbState>) -> CmdResult<Vec<Goal>> {
     let conn = state.0.lock().map_err(e)?;
-    validate_goal_refs(&conn, &goal)?;
+    query_goals(&conn)
+}
+
+pub(crate) fn insert_goal(conn: &Connection, goal: &Goal) -> CmdResult<usize> {
     conn.execute(
-        "INSERT INTO goals
+        "INSERT OR IGNORE INTO goals
            (id, name, description, target_amount, current_amount, deadline, account_id, status, monthly_contribution)
          VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)",
         rusqlite::params![
@@ -403,7 +445,17 @@ pub fn add_goal(state: State<DbState>, goal: Goal) -> CmdResult<()> {
             goal.monthly_contribution
         ],
     )
-    .map_err(e)?;
+    .map_err(e)
+}
+
+#[tauri::command]
+pub fn add_goal(state: State<DbState>, goal: Goal) -> CmdResult<()> {
+    goal.validate()?;
+    let conn = state.0.lock().map_err(e)?;
+    validate_goal_refs(&conn, &goal)?;
+    if insert_goal(&conn, &goal)? == 0 {
+        return Err("Já existe uma meta com este identificador.".into());
+    }
     Ok(())
 }
 
