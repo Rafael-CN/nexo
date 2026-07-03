@@ -30,7 +30,8 @@ fn entity_exists(conn: &Connection, table: &str, id: &str) -> CmdResult<bool> {
 pub(crate) fn query_accounts(conn: &Connection) -> CmdResult<Vec<Account>> {
     let mut stmt = conn
         .prepare(
-            "SELECT id, name, institution, type, balance, color, icon, last_four FROM accounts",
+            "SELECT id, name, institution, type, balance, color, icon, last_four, closing_day, due_day
+             FROM accounts",
         )
         .map_err(e)?;
     let rows = stmt
@@ -44,6 +45,8 @@ pub(crate) fn query_accounts(conn: &Connection) -> CmdResult<Vec<Account>> {
                 color: row.get(5)?,
                 icon: row.get(6)?,
                 last_four: row.get(7)?,
+                closing_day: row.get(8)?,
+                due_day: row.get(9)?,
             })
         })
         .map_err(e)?;
@@ -58,7 +61,7 @@ pub fn get_accounts(state: State<DbState>) -> CmdResult<Vec<Account>> {
 
 pub(crate) fn query_categories(conn: &Connection) -> CmdResult<Vec<Category>> {
     let mut stmt = conn
-        .prepare("SELECT id, name, color, icon, kind FROM categories")
+        .prepare("SELECT id, name, color, icon, kind, monthly_budget FROM categories")
         .map_err(e)?;
     let rows = stmt
         .query_map([], |row| {
@@ -68,6 +71,7 @@ pub(crate) fn query_categories(conn: &Connection) -> CmdResult<Vec<Category>> {
                 color: row.get(2)?,
                 icon: row.get(3)?,
                 kind: row.get(4)?,
+                monthly_budget: row.get(5)?,
             })
         })
         .map_err(e)?;
@@ -82,8 +86,8 @@ pub fn get_categories(state: State<DbState>) -> CmdResult<Vec<Category>> {
 
 pub(crate) fn insert_account(conn: &Connection, account: &Account) -> CmdResult<usize> {
     conn.execute(
-        "INSERT OR IGNORE INTO accounts (id, name, institution, type, balance, color, icon, last_four)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8)",
+        "INSERT OR IGNORE INTO accounts (id, name, institution, type, balance, color, icon, last_four, closing_day, due_day)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",
         rusqlite::params![
             account.id,
             account.name,
@@ -92,7 +96,9 @@ pub(crate) fn insert_account(conn: &Connection, account: &Account) -> CmdResult<
             account.balance,
             account.color,
             account.icon,
-            account.last_four
+            account.last_four,
+            account.closing_day,
+            account.due_day
         ],
     )
     .map_err(e)
@@ -113,7 +119,7 @@ pub fn update_account(state: State<DbState>, account: Account) -> CmdResult<()> 
     account.validate()?;
     let conn = state.0.lock().map_err(e)?;
     conn.execute(
-        "UPDATE accounts SET name=?2, institution=?3, type=?4, balance=?5, color=?6, icon=?7, last_four=?8
+        "UPDATE accounts SET name=?2, institution=?3, type=?4, balance=?5, color=?6, icon=?7, last_four=?8, closing_day=?9, due_day=?10
          WHERE id=?1",
         rusqlite::params![
             account.id,
@@ -123,7 +129,9 @@ pub fn update_account(state: State<DbState>, account: Account) -> CmdResult<()> 
             account.balance,
             account.color,
             account.icon,
-            account.last_four
+            account.last_four,
+            account.closing_day,
+            account.due_day
         ],
     )
     .map_err(e)?;
@@ -160,14 +168,15 @@ pub fn delete_account(state: State<DbState>, id: String) -> CmdResult<()> {
 
 pub(crate) fn insert_category(conn: &Connection, category: &Category) -> CmdResult<usize> {
     conn.execute(
-        "INSERT OR IGNORE INTO categories (id, name, color, icon, kind)
-         VALUES (?1,?2,?3,?4,?5)",
+        "INSERT OR IGNORE INTO categories (id, name, color, icon, kind, monthly_budget)
+         VALUES (?1,?2,?3,?4,?5,?6)",
         rusqlite::params![
             category.id,
             category.name,
             category.color,
             category.icon,
-            category.kind
+            category.kind,
+            category.monthly_budget
         ],
     )
     .map_err(e)
@@ -188,13 +197,14 @@ pub fn update_category(state: State<DbState>, category: Category) -> CmdResult<(
     category.validate()?;
     let conn = state.0.lock().map_err(e)?;
     conn.execute(
-        "UPDATE categories SET name=?2, color=?3, icon=?4, kind=?5 WHERE id=?1",
+        "UPDATE categories SET name=?2, color=?3, icon=?4, kind=?5, monthly_budget=?6 WHERE id=?1",
         rusqlite::params![
             category.id,
             category.name,
             category.color,
             category.icon,
-            category.kind
+            category.kind,
+            category.monthly_budget
         ],
     )
     .map_err(e)?;
@@ -296,7 +306,7 @@ pub(crate) fn query_transactions(conn: &Connection) -> CmdResult<Vec<Transaction
     let mut stmt = conn
         .prepare(
             "SELECT id, title, amount, date, account_id, category_id, type,
-                    is_projected, notes, recurrence_id, transfer_account_id
+                    is_projected, notes, recurrence_id, transfer_account_id, installment_id
              FROM transactions ORDER BY date",
         )
         .map_err(e)?;
@@ -315,6 +325,7 @@ pub(crate) fn query_transactions(conn: &Connection) -> CmdResult<Vec<Transaction
                 notes: row.get(8)?,
                 recurrence_id: row.get(9)?,
                 transfer_account_id: row.get(10)?,
+                installment_id: row.get(11)?,
             })
         })
         .map_err(e)?;
@@ -330,8 +341,8 @@ pub fn get_transactions(state: State<DbState>) -> CmdResult<Vec<Transaction>> {
 pub(crate) fn insert_transaction(conn: &Connection, txn: &Transaction) -> CmdResult<usize> {
     conn.execute(
         "INSERT OR IGNORE INTO transactions
-           (id, title, amount, date, account_id, category_id, type, is_projected, notes, recurrence_id, transfer_account_id)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)",
+           (id, title, amount, date, account_id, category_id, type, is_projected, notes, recurrence_id, transfer_account_id, installment_id)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12)",
         rusqlite::params![
             txn.id,
             txn.title,
@@ -343,7 +354,8 @@ pub(crate) fn insert_transaction(conn: &Connection, txn: &Transaction) -> CmdRes
             txn.is_projected as i32,
             txn.notes,
             txn.recurrence_id,
-            txn.transfer_account_id
+            txn.transfer_account_id,
+            txn.installment_id
         ],
     )
     .map_err(e)
@@ -368,7 +380,7 @@ pub fn update_transaction(state: State<DbState>, txn: Transaction) -> CmdResult<
     conn.execute(
         "UPDATE transactions SET
            title=?2, amount=?3, date=?4, account_id=?5, category_id=?6,
-           type=?7, is_projected=?8, notes=?9, recurrence_id=?10, transfer_account_id=?11
+           type=?7, is_projected=?8, notes=?9, recurrence_id=?10, transfer_account_id=?11, installment_id=?12
          WHERE id=?1",
         rusqlite::params![
             txn.id,
@@ -381,7 +393,8 @@ pub fn update_transaction(state: State<DbState>, txn: Transaction) -> CmdResult<
             txn.is_projected as i32,
             txn.notes,
             txn.recurrence_id,
-            txn.transfer_account_id
+            txn.transfer_account_id,
+            txn.installment_id
         ],
     )
     .map_err(e)?;

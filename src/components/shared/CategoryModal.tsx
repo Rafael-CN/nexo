@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NumberInput } from "@/components/ui/number-input";
 import { ColorPicker } from "@/components/shared/ColorPicker";
 import { ConfirmDeleteButton } from "@/components/shared/ConfirmDeleteButton";
 import { IconPicker } from "@/components/shared/IconPicker";
@@ -33,6 +34,7 @@ interface FormState {
   kind: CategoryKind;
   color: string;
   icon: string;
+  monthlyBudget: string;
 }
 
 const labelClass =
@@ -44,6 +46,7 @@ function buildForm(category?: Category | null): FormState {
     kind: category?.kind ?? "expense",
     color: category?.color ?? "#6366F1",
     icon: category?.icon ?? "tag",
+    monthlyBudget: category?.monthlyBudget ? String(category.monthlyBudget) : "",
   };
 }
 
@@ -73,12 +76,21 @@ export function CategoryModal({ open, onOpenChange, category }: Props) {
     setError(null);
     if (!form.name.trim()) return setError("Informe o nome da categoria.");
 
+    let monthlyBudget: number | undefined;
+    if (form.kind === "expense" && form.monthlyBudget.trim()) {
+      monthlyBudget = Number.parseFloat(form.monthlyBudget.replace(",", "."));
+      if (!Number.isFinite(monthlyBudget) || monthlyBudget <= 0) {
+        return setError("Orçamento mensal inválido.");
+      }
+    }
+
     const payload: Category = {
       id: category?.id ?? crypto.randomUUID(),
       name: form.name.trim(),
       kind: form.kind,
       color: form.color || "#6366F1",
       icon: form.icon.trim() || "tag",
+      monthlyBudget,
     };
 
     try {
@@ -171,6 +183,24 @@ export function CategoryModal({ open, onOpenChange, category }: Props) {
               disabled={saving}
             />
           </div>
+
+          {form.kind === "expense" && (
+            <div className="space-y-1.5">
+              <Label htmlFor="category-budget" className={labelClass}>
+                Orçamento mensal (R$) — opcional
+              </Label>
+              <NumberInput
+                id="category-budget"
+                placeholder="Ex: 800,00"
+                className="h-9 font-mono tabular-nums"
+                value={form.monthlyBudget}
+                onChange={(event) => set("monthlyBudget", event.target.value)}
+              />
+              <p className="font-mono text-[10px] text-muted-foreground">
+                Usado nos relatórios para acompanhar o consumo do mês.
+              </p>
+            </div>
+          )}
 
           {error && (
             <p className="font-mono text-[11px] text-destructive">{error}</p>

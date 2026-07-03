@@ -261,7 +261,11 @@ export function ReportsPage() {
           <section className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_340px]">
             <CategoryRanking
               title="Categorias"
-              items={buildRankingItems(categoryRanking, rankingKind)}
+              items={buildRankingItems(
+                categoryRanking,
+                rankingKind,
+                preset === "current-month" || preset === "last-month",
+              )}
               emptyLabel={
                 rankingKind === "expense"
                   ? "Sem despesas no período."
@@ -432,22 +436,39 @@ function EmptyReportsState({
 function buildRankingItems(
   ranking: CategoryReportItem[],
   kind: RankingKind,
+  budgetApplies: boolean,
 ): CategoryRankingItem[] {
   const visible = ranking.slice(0, RANKING_LIMIT);
   const rest = ranking.slice(RANKING_LIMIT);
-  const items: CategoryRankingItem[] = visible.map((item) => ({
-    label: item.name,
-    amount: item.total,
-    share: item.percentage * 100,
-    meta:
-      item.deltaPct === null
-        ? "novo"
-        : item.deltaPct === 0
-          ? undefined
-          : `${item.deltaPct > 0 ? "+" : ""}${formatPercent(item.deltaPct)}`,
-    icon: getFinanceIconOption(item.icon).icon,
-    tone: rankingTone(item, kind),
-  }));
+  const items: CategoryRankingItem[] = visible.map((item) => {
+    const budgetUsage =
+      budgetApplies && kind === "expense" && item.monthlyBudget
+        ? item.total / item.monthlyBudget
+        : null;
+
+    return {
+      label: item.name,
+      amount: item.total,
+      share: item.percentage * 100,
+      meta:
+        budgetUsage !== null
+          ? `${formatPercent(budgetUsage)} do orçamento`
+          : item.deltaPct === null
+            ? "novo"
+            : item.deltaPct === 0
+              ? undefined
+              : `${item.deltaPct > 0 ? "+" : ""}${formatPercent(item.deltaPct)}`,
+      icon: getFinanceIconOption(item.icon).icon,
+      tone:
+        budgetUsage !== null
+          ? budgetUsage >= 1
+            ? "negative"
+            : budgetUsage >= 0.85
+              ? "warning"
+              : "positive"
+          : rankingTone(item, kind),
+    };
+  });
 
   if (rest.length > 0) {
     const restTotal = rest.reduce((sum, item) => sum + item.total, 0);

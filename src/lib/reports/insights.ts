@@ -31,6 +31,26 @@ export function generateReportInsights({
   });
   const insights: ReportInsight[] = [];
   const topCategory = expenseRanking[0];
+  const monthlyPreset =
+    period.preset === "current-month" || period.preset === "last-month";
+  const overBudget = monthlyPreset
+    ? expenseRanking.find(
+        (item) =>
+          item.monthlyBudget !== null && item.total > item.monthlyBudget,
+      )
+    : undefined;
+
+  if (overBudget && overBudget.monthlyBudget !== null) {
+    insights.push({
+      id: `over-budget-${overBudget.categoryId}`,
+      tone: "danger",
+      title: `${overBudget.name} estourou o orçamento`,
+      description: "O gasto do mês passou do limite definido para a categoria.",
+      value: formatPercent(overBudget.total / overBudget.monthlyBudget),
+      actionLabel: "Rever categoria",
+    });
+  }
+
   const strongestIncrease = expenseRanking.find(
     (item) => item.previousTotal > 0 && item.deltaPct !== null && item.deltaPct >= 0.2,
   );

@@ -14,6 +14,10 @@ export interface Account {
   color: string;
   icon?: string;
   lastFour?: string;
+  /** Dia do fechamento da fatura (1-31) — apenas cartões de crédito. */
+  closingDay?: number;
+  /** Dia do vencimento da fatura (1-31) — apenas cartões de crédito. */
+  dueDay?: number;
 }
 
 export type TransactionType = "income" | "expense" | "transfer";
@@ -32,6 +36,8 @@ export interface Transaction {
   recurrenceId?: string;
   /** Conta de destino — presente apenas quando type === "transfer". */
   transferAccountId?: string;
+  /** Agrupa as parcelas de uma mesma compra parcelada. */
+  installmentId?: string;
 }
 
 export type CategoryKind = "income" | "expense";
@@ -42,6 +48,8 @@ export interface Category {
   color: string;
   icon: string;
   kind: CategoryKind;
+  /** Limite mensal de gastos — apenas categorias de despesa. */
+  monthlyBudget?: number;
 }
 
 export type RecurrenceFrequency = "daily" | "weekly" | "monthly" | "yearly";

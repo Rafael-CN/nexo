@@ -7,14 +7,25 @@ import { CommandPalette } from "./CommandPalette";
 import { DesktopTitleBar } from "./DesktopTitleBar";
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { ImportStatementModal } from "@/components/shared/ImportStatementModal";
 import { Onboarding } from "@/components/shared/Onboarding";
 import { ShortcutsHelp } from "@/components/shared/ShortcutsHelp";
 import { TransactionModal } from "@/components/shared/TransactionModal";
+import { UpdateBanner } from "@/components/shared/UpdateBanner";
 import { useDesktopShortcuts } from "@/hooks/useDesktopShortcuts";
 import type { TransactionType } from "@/types";
+import { isTauri } from "@/lib/db";
 import { appRoutes } from "@/lib/navigation";
 import { getLocalProfile, type LocalProfile } from "@/lib/profile";
+import {
+  checkForUpdate,
+  dismissVersion,
+  getDismissedVersion,
+  markChecked,
+  shouldAutoCheck,
+  type UpdateInfo,
+} from "@/lib/updates";
 import { useFinanceStore } from "@/store/useFinanceStore";
 
 export function AppLayout() {
@@ -72,6 +83,43 @@ export function AppLayout() {
   useEffect(() => {
     void initialize();
   }, [initialize]);
+
+  // Verificação silenciosa de atualização (apenas no desktop, com throttle).
+  const [availableUpdate, setAvailableUpdate] = useState<UpdateInfo | null>(
+    null,
+  );
+  useEffect(() => {
+    if (!isTauri || !shouldAutoCheck()) return;
+
+    let cancelled = false;
+    markChecked();
+    checkForUpdate()
+      .then((update) => {
+        if (cancelled || !update) return;
+        if (getDismissedVersion() === update.version) return;
+        setAvailableUpdate(update);
+      })
+      .catch(() => undefined); // sem rede: tenta de novo na próxima janela
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleDownloadUpdate = useCallback(() => {
+    if (!availableUpdate) return;
+    if (isTauri) {
+      void openExternal(availableUpdate.url);
+    } else {
+      window.open(availableUpdate.url, "_blank", "noopener");
+    }
+    setAvailableUpdate(null);
+  }, [availableUpdate]);
+
+  const handleDismissUpdate = useCallback(() => {
+    if (availableUpdate) dismissVersion(availableUpdate.version);
+    setAvailableUpdate(null);
+  }, [availableUpdate]);
 
   useDesktopShortcuts({
     enabled: isLoaded && accounts.length > 0,
@@ -153,6 +201,13 @@ export function AppLayout() {
         open={importStatementOpen}
         onOpenChange={setImportStatementOpen}
       />
+      {availableUpdate && (
+        <UpdateBanner
+          info={availableUpdate}
+          onDownload={handleDownloadUpdate}
+          onDismiss={handleDismissUpdate}
+        />
+      )}
     </TooltipProvider>
   );
 }

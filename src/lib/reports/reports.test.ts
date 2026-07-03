@@ -49,6 +49,34 @@ const transactions: Transaction[] = [
 ];
 
 describe("reports", () => {
+  it("flags categories over their monthly budget in monthly periods", () => {
+    const budgeted: Category[] = categories.map((category) =>
+      category.id === "food" ? { ...category, monthlyBudget: 1200 } : category,
+    );
+    const period = resolveReportPeriod("current-month", "2026-02-15");
+
+    const insights = generateReportInsights({
+      transactions,
+      categories: budgeted,
+      period,
+    });
+
+    const overBudget = insights.find((insight) => insight.id.startsWith("over-budget"));
+    expect(overBudget).toBeDefined();
+    expect(overBudget!.tone).toBe("danger");
+    expect(overBudget!.title).toContain("Alimentação");
+
+    // fora de período mensal o orçamento não se aplica
+    const yearInsights = generateReportInsights({
+      transactions,
+      categories: budgeted,
+      period: resolveReportPeriod("year", "2026-02-15"),
+    });
+    expect(
+      yearInsights.find((insight) => insight.id.startsWith("over-budget")),
+    ).toBeUndefined();
+  });
+
   it("resolves current and previous periods with explicit today", () => {
     const period = resolveReportPeriod("current-month", "2026-02-15");
     const previous = getPreviousPeriod(period);

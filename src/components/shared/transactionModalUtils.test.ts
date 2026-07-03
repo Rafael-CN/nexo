@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildInstallmentTransactions,
   buildTransactionForm,
   filterTransactionCategories,
   formatCurrencyInputValue,
   getDefaultTransactionAccountId,
   parseCurrencyInputValue,
+  parseInstallmentCount,
 } from "./transactionModalUtils";
 import type { Account, Category, Transaction } from "@/types";
 
@@ -95,6 +97,47 @@ describe("transactionModalUtils", () => {
     const form = buildTransactionForm(transaction("t-1", "2025-04-21", "acc-1"));
 
     expect(form.amount).toContain("10,00");
+  });
+
+  it("builds a monthly installment series with shared id and clamped dates", () => {
+    const series = buildInstallmentTransactions(
+      {
+        title: "Notebook",
+        amount: 250,
+        date: "2026-01-31",
+        accountId: "card-1",
+        categoryId: "cat-1",
+        type: "expense",
+        isProjected: false,
+      },
+      3,
+      "2026-02-10",
+    );
+
+    expect(series).toHaveLength(3);
+    expect(series.map((txn) => txn.title)).toEqual([
+      "Notebook (1/3)",
+      "Notebook (2/3)",
+      "Notebook (3/3)",
+    ]);
+    // dia 31 ajustado nos meses curtos
+    expect(series.map((txn) => txn.date)).toEqual([
+      "2026-01-31",
+      "2026-02-28",
+      "2026-03-31",
+    ]);
+    // mesma série, ids distintos, projeção pela data
+    const ids = new Set(series.map((txn) => txn.installmentId));
+    expect(ids.size).toBe(1);
+    expect(new Set(series.map((txn) => txn.id)).size).toBe(3);
+    expect(series.map((txn) => txn.isProjected)).toEqual([false, true, true]);
+  });
+
+  it("clamps the installment count", () => {
+    expect(parseInstallmentCount("0")).toBe(1);
+    expect(parseInstallmentCount("abc")).toBe(1);
+    expect(parseInstallmentCount("12")).toBe(12);
+    expect(parseInstallmentCount("999")).toBe(48);
   });
 
   it("filters categories by type and query", () => {

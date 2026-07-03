@@ -37,6 +37,8 @@ interface FormState {
   color: string;
   icon: string;
   lastFour: string;
+  closingDay: string;
+  dueDay: string;
 }
 
 const accountTypes: { value: AccountType; label: string }[] = [
@@ -59,7 +61,15 @@ function buildForm(account?: Account | null): FormState {
     color: account?.color ?? "#8B5CF6",
     icon: account?.icon ?? "wallet",
     lastFour: account?.lastFour ?? "",
+    closingDay: account?.closingDay ? String(account.closingDay) : "",
+    dueDay: account?.dueDay ? String(account.dueDay) : "",
   };
+}
+
+function parseDayOfMonth(value: string): number | undefined {
+  const day = Number.parseInt(value, 10);
+  if (!Number.isFinite(day) || day < 1 || day > 31) return undefined;
+  return day;
 }
 
 function parseAmount(value: string): number {
@@ -97,6 +107,14 @@ export function AccountModal({ open, onOpenChange, account }: Props) {
     const balance = parseAmount(form.balance);
     if (!Number.isFinite(balance)) return setError("Saldo inválido.");
 
+    const isCredit = form.type === "credit";
+    if (isCredit && form.closingDay && !parseDayOfMonth(form.closingDay)) {
+      return setError("Dia de fechamento deve estar entre 1 e 31.");
+    }
+    if (isCredit && form.dueDay && !parseDayOfMonth(form.dueDay)) {
+      return setError("Dia de vencimento deve estar entre 1 e 31.");
+    }
+
     const payload: Account = {
       id: account?.id ?? crypto.randomUUID(),
       name: form.name.trim(),
@@ -106,6 +124,8 @@ export function AccountModal({ open, onOpenChange, account }: Props) {
       color: form.color || "#8B5CF6",
       icon: form.icon.trim() || undefined,
       lastFour: form.lastFour.trim() || undefined,
+      closingDay: isCredit ? parseDayOfMonth(form.closingDay) : undefined,
+      dueDay: isCredit ? parseDayOfMonth(form.dueDay) : undefined,
     };
 
     try {
@@ -217,6 +237,37 @@ export function AccountModal({ open, onOpenChange, account }: Props) {
               />
             </div>
           </div>
+
+          {form.type === "credit" && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="account-closing-day" className={labelClass}>
+                  Fechamento (dia)
+                </Label>
+                <NumberInput
+                  id="account-closing-day"
+                  inputMode="numeric"
+                  placeholder="Ex: 10"
+                  className="h-9 font-mono tabular-nums"
+                  value={form.closingDay}
+                  onChange={(event) => set("closingDay", event.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="account-due-day" className={labelClass}>
+                  Vencimento (dia)
+                </Label>
+                <NumberInput
+                  id="account-due-day"
+                  inputMode="numeric"
+                  placeholder="Ex: 17"
+                  className="h-9 font-mono tabular-nums"
+                  value={form.dueDay}
+                  onChange={(event) => set("dueDay", event.target.value)}
+                />
+              </div>
+            </div>
+          )}
 
           <div className="space-y-3">
             <div className="space-y-1.5">

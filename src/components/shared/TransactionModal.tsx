@@ -33,9 +33,12 @@ import type {
   TransactionType,
 } from "@/types";
 import {
+  buildInstallmentTransactions,
   buildTransactionForm,
   getDefaultTransactionAccountId,
+  MAX_INSTALLMENTS,
   parseCurrencyInputValue,
+  parseInstallmentCount,
   type TransactionModalFormState,
 } from "@/components/shared/transactionModalUtils";
 import { CategoryPicker } from "@/components/shared/CategoryPicker";
@@ -46,6 +49,8 @@ interface Props {
   transaction?: Transaction | null;
   initialDate?: string;
   initialType?: TransactionType;
+  /** Pré-preenchimento de campos ao criar (ex.: pagar fatura, aporte em meta). */
+  initialDraft?: Partial<TransactionModalFormState>;
 }
 
 const typeCycle: TransactionType[] = ["expense", "income", "transfer"];
@@ -70,6 +75,7 @@ export function TransactionModal({
   transaction,
   initialDate,
   initialType,
+  initialDraft,
 }: Props) {
   const accounts = useFinanceStore(useShallow((s) => s.accounts));
   const categories = useFinanceStore(useShallow((s) => s.categories));
@@ -123,15 +129,16 @@ export function TransactionModal({
   useEffect(() => {
     if (!open) return;
 
-    setForm(
-      buildTransactionForm(
+    setForm({
+      ...buildTransactionForm(
         transaction,
         currentRule,
         initialDate,
         defaultAccountId,
         initialType ?? "expense",
       ),
-    );
+      ...(transaction ? {} : initialDraft),
+    });
     setError(null);
     setSaving(false);
 
@@ -141,7 +148,15 @@ export function TransactionModal({
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [open, transaction, currentRule, initialDate, defaultAccountId, initialType]);
+  }, [
+    open,
+    transaction,
+    currentRule,
+    initialDate,
+    defaultAccountId,
+    initialType,
+    initialDraft,
+  ]);
 
   function updateField<K extends keyof TransactionModalFormState>(
     key: K,
@@ -175,6 +190,14 @@ export function TransactionModal({
     setError(null);
     const amount = validateBaseForm();
     if (amount === null) return;
+
+    const installments =
+      !isEdit && form.type === "expense"
+        ? parseInstallmentCount(form.installments)
+        : 1;
+    if (installments > 1 && form.recurrenceFrequency !== "none") {
+      return setError("Parcelamento e recorrência não podem ser combinados.");
+    }
 
     const recurrenceInterval = Number.parseInt(form.recurrenceInterval, 10);
     if (
@@ -219,6 +242,19 @@ export function TransactionModal({
 
     try {
       setSaving(true);
+
+      if (installments > 1) {
+        const series = buildInstallmentTransactions(payload, installments, todayIso);
+        for (const installment of series) {
+          await addTransaction(installment);
+        }
+        if (keepOpenForNew) {
+          resetForNewEntry();
+          return;
+        }
+        onOpenChange(false);
+        return;
+      }
 
       let recurrenceToRemove: string | undefined;
       let shouldRemoveUnusedRule = false;
@@ -293,6 +329,31 @@ export function TransactionModal({
         isProjected: form.date > todayIso,
         recurrenceId: undefined,
       });
+      onOpenChange(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const installmentSeries = useMemo(
+    () =>
+      transaction?.installmentId
+        ? transactions.filter(
+            (txn) => txn.installmentId === transaction.installmentId,
+          )
+        : [],
+    [transactions, transaction?.installmentId],
+  );
+
+  async function handleDeleteSeries() {
+    if (installmentSeries.length === 0) return;
+    try {
+      setSaving(true);
+      for (const txn of installmentSeries) {
+        await removeTransaction(txn.id);
+      }
       onOpenChange(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -573,6 +634,10 @@ export function TransactionModal({
     });
   }
 
+  const installmentCount =
+    form.type === "expense" && !isEdit
+      ? parseInstallmentCount(form.installments)
+      : 1;
   const selectedAccount = accounts.find((account) => account.id === form.accountId);
   const selectedDestination = accounts.find(
     (account) => account.id === form.transferAccountId,
@@ -789,7 +854,14 @@ export function TransactionModal({
             )}
           </div>
 
-          <div className="grid grid-cols-[1fr_96px] gap-3">
+          <div
+            className={cn(
+              "grid gap-3",
+              form.type === "expense" && !isEdit
+                ? "grid-cols-[1fr_96px_96px]"
+                : "grid-cols-[1fr_96px]",
+            )}
+          >
             <div className="space-y-1.5">
               <Label className={labelClass}>Recorrência</Label>
               <Select
@@ -840,7 +912,31 @@ export function TransactionModal({
                 onChange={(event) => updateField("recurrenceInterval", event.target.value)}
               />
             </div>
+            {form.type === "expense" && !isEdit && (
+              <div className="space-y-1.5">
+                <Label htmlFor="txn-installments" className={labelClass}>
+                  Parcelas
+                </Label>
+                <NumberInput
+                  id="txn-installments"
+                  inputMode="numeric"
+                  min={1}
+                  max={MAX_INSTALLMENTS}
+                  className="h-9 font-mono tabular-nums"
+                  value={form.installments}
+                  disabled={form.recurrenceFrequency !== "none"}
+                  onChange={(event) => updateField("installments", event.target.value)}
+                />
+              </div>
+            )}
           </div>
+
+          {installmentCount > 1 && (
+            <p className="font-mono text-[11px] text-muted-foreground">
+              {installmentCount}x de {form.amount || "R$ 0,00"} · lançadas
+              mensalmente a partir de {form.date}
+            </p>
+          )}
 
           {form.recurrenceFrequency !== "none" && (
             <div className="space-y-3">
@@ -894,6 +990,14 @@ export function TransactionModal({
                 Duplicar
               </Button>
               <ConfirmDeleteButton onConfirm={handleDelete} disabled={saving} />
+              {installmentSeries.length > 1 && (
+                <ConfirmDeleteButton
+                  onConfirm={handleDeleteSeries}
+                  disabled={saving}
+                  label={`Excluir série (${installmentSeries.length})`}
+                  confirmLabel="Confirmar série"
+                />
+              )}
             </div>
           )}
           <Button

@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { computeDailyBalances, expandRecurring } from "./projection";
+import {
+  computeDailyBalances,
+  expandRecurring,
+  findOverdueRecurrences,
+} from "./projection";
 import type { RecurrenceRule, Transaction } from "@/types";
 
 const fixedToday = new Date("2026-04-20T12:00:00");
@@ -34,6 +38,38 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+});
+
+describe("findOverdueRecurrences", () => {
+  it("lists occurrences between the anchor and today that were never materialized", () => {
+    const overdue = findOverdueRecurrences(
+      [tx({ date: "2026-02-10", recurrenceId: "rule-1" })],
+      [rule()],
+      "2026-04-20",
+    );
+
+    expect(overdue.map((t) => t.date)).toEqual(["2026-03-10", "2026-04-10"]);
+    expect(overdue.every((t) => !t.isProjected)).toBe(true);
+    expect(overdue[0].id).toBe("rule-1_due_2026-03-10");
+  });
+
+  it("respects the rule end date and returns nothing when up to date", () => {
+    expect(
+      findOverdueRecurrences(
+        [tx({ date: "2026-02-10", recurrenceId: "rule-1" })],
+        [rule({ until: "2026-03-01" })],
+        "2026-04-20",
+      ),
+    ).toHaveLength(0);
+
+    expect(
+      findOverdueRecurrences(
+        [tx({ date: "2026-04-10", recurrenceId: "rule-1" })],
+        [rule()],
+        "2026-04-20",
+      ),
+    ).toHaveLength(0);
+  });
 });
 
 describe("expandRecurring", () => {

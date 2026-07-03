@@ -1,4 +1,4 @@
-import { format } from "date-fns";
+import { addMonths, format, parseISO } from "date-fns";
 import type {
   Account,
   Category,
@@ -6,6 +6,8 @@ import type {
   Transaction,
   TransactionType,
 } from "@/types";
+
+export const MAX_INSTALLMENTS = 48;
 
 export interface TransactionModalFormState {
   type: TransactionType;
@@ -15,6 +17,7 @@ export interface TransactionModalFormState {
   accountId: string;
   categoryId: string;
   transferAccountId: string;
+  installments: string;
   recurrenceFrequency: RecurrenceRule["frequency"] | "none";
   recurrenceInterval: string;
   recurrenceNoEnd: boolean;
@@ -95,11 +98,44 @@ export function buildTransactionForm(
     accountId: transaction?.accountId ?? defaultAccountId,
     categoryId: transaction?.categoryId ?? "",
     transferAccountId: transaction?.transferAccountId ?? "",
+    installments: "1",
     recurrenceFrequency: rule?.frequency ?? "none",
     recurrenceInterval: rule ? String(rule.interval) : "1",
     recurrenceNoEnd: !rule?.until,
     recurrenceUntil: rule?.until ?? "",
   };
+}
+
+export function parseInstallmentCount(value: string): number {
+  const count = Number.parseInt(value, 10);
+  if (!Number.isFinite(count) || count < 1) return 1;
+  return Math.min(count, MAX_INSTALLMENTS);
+}
+
+/**
+ * Gera as N parcelas mensais de uma compra: títulos "(k/N)", datas
+ * avançando mês a mês (dia 31 é ajustado em meses curtos) e um
+ * installmentId compartilhado para a série.
+ */
+export function buildInstallmentTransactions(
+  base: Omit<Transaction, "id" | "installmentId">,
+  count: number,
+  todayIso = format(new Date(), "yyyy-MM-dd"),
+): Transaction[] {
+  const installmentId = crypto.randomUUID();
+  const firstDate = parseISO(base.date);
+
+  return Array.from({ length: count }, (_, index) => {
+    const date = format(addMonths(firstDate, index), "yyyy-MM-dd");
+    return {
+      ...base,
+      id: crypto.randomUUID(),
+      title: `${base.title} (${index + 1}/${count})`,
+      date,
+      isProjected: date > todayIso,
+      installmentId,
+    };
+  });
 }
 
 export function filterTransactionCategories(

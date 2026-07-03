@@ -7,6 +7,7 @@ import {
   CalendarClock,
   Target,
 } from "lucide-react";
+import { OverdueRecurrences } from "@/components/shared/OverdueRecurrences";
 import { StatCard } from "@/components/shared/StatCard";
 import { TransactionRow } from "@/components/shared/TransactionRow";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ import {
 } from "@/store/useFinanceStore";
 import { useProjection } from "@/hooks/useProjection";
 import { formatCurrency } from "@/lib/format";
+import { resolveGoal } from "@/lib/goals";
 import type { Goal, Transaction } from "@/types";
 
 const UPCOMING_LIMIT = 8;
@@ -60,7 +62,10 @@ export function DashboardPage() {
     [transactions],
   );
 
-  const primaryGoal = useMemo(() => selectPrimaryGoal(goals), [goals]);
+  const primaryGoal = useMemo(() => {
+    const goal = selectPrimaryGoal(goals);
+    return goal ? resolveGoal(goal, accounts, transactions) : null;
+  }, [goals, accounts, transactions]);
   const accountSummaries = accounts.map((account) => ({
     ...account,
     balance: accountBalances.get(account.id) ?? account.balance,
@@ -69,6 +74,8 @@ export function DashboardPage() {
   return (
     <div className="space-y-10">
       <HeroBalance balance={totalBalance} accounts={accountSummaries} />
+
+      <OverdueRecurrences />
 
       <SectionDivider label="Fluxo do mês" />
 
