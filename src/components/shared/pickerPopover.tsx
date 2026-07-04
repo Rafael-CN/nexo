@@ -186,9 +186,15 @@ export function PickerPopover({
       data-side={placement}
       data-picker-popover=""
       className={cn(
-        "fixed z-[70] overflow-hidden rounded-[calc(var(--radius)+1px)]",
+        // pointer-events-auto é obrigatório: dialogs modais do Radix aplicam
+        // pointer-events:none no body, e este painel é portado para lá —
+        // sem isso, nenhum clique dentro do popover chega aos elementos.
+        "pointer-events-auto fixed z-[70] overflow-hidden rounded-[calc(var(--radius)+1px)]",
+        "animate-in fade-in-0 zoom-in-95 duration-100",
         SURFACE_CLASS,
-        placement === "bottom" ? "origin-top-left" : "origin-bottom-left",
+        placement === "bottom"
+          ? "origin-top-left slide-in-from-top-1"
+          : "origin-bottom-left slide-in-from-bottom-1",
         className,
       )}
       style={style}

@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type KeyboardEvent } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -9,17 +10,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { NumberInput } from "@/components/ui/number-input";
 import { ColorPicker } from "@/components/shared/ColorPicker";
 import { ConfirmDeleteButton } from "@/components/shared/ConfirmDeleteButton";
-import { IconPicker } from "@/components/shared/IconPicker";
+import { CurrencyInput } from "@/components/shared/CurrencyInput";
+import { FinanceIcon, IconPicker } from "@/components/shared/IconPicker";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  cycleSegmentedValue,
+  SegmentedToggle,
+} from "@/components/shared/SegmentedToggle";
+import {
+  formatTransactionAmount,
+  parseCurrencyInputValue,
+} from "@/components/shared/transactionModalUtils";
 import { useFinanceStore } from "@/store/useFinanceStore";
 import type { Category, CategoryKind } from "@/types";
 
@@ -37,6 +39,11 @@ interface FormState {
   monthlyBudget: string;
 }
 
+const kindOptions = [
+  { value: "expense", label: "Despesa" },
+  { value: "income", label: "Receita" },
+] as const satisfies readonly { value: CategoryKind; label: string }[];
+
 const labelClass =
   "text-[10px] uppercase tracking-[0.12em] text-muted-foreground";
 
@@ -46,7 +53,9 @@ function buildForm(category?: Category | null): FormState {
     kind: category?.kind ?? "expense",
     color: category?.color ?? "#6366F1",
     icon: category?.icon ?? "tag",
-    monthlyBudget: category?.monthlyBudget ? String(category.monthlyBudget) : "",
+    monthlyBudget: category?.monthlyBudget
+      ? formatTransactionAmount(category.monthlyBudget)
+      : "",
   };
 }
 
@@ -72,16 +81,28 @@ export function CategoryModal({ open, onOpenChange, category }: Props) {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
+  function handleModalKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if ((event.ctrlKey || event.metaKey) && event.key === "Tab") {
+      event.preventDefault();
+      set("kind", cycleSegmentedValue(kindOptions, form.kind, event.shiftKey));
+      return;
+    }
+
+    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+      event.preventDefault();
+      if (!saving) void handleSave();
+    }
+  }
+
   async function handleSave() {
     setError(null);
     if (!form.name.trim()) return setError("Informe o nome da categoria.");
 
     let monthlyBudget: number | undefined;
     if (form.kind === "expense" && form.monthlyBudget.trim()) {
-      monthlyBudget = Number.parseFloat(form.monthlyBudget.replace(",", "."));
-      if (!Number.isFinite(monthlyBudget) || monthlyBudget <= 0) {
-        return setError("Orçamento mensal inválido.");
-      }
+      const parsed = parseCurrencyInputValue(form.monthlyBudget);
+      if (!parsed || parsed <= 0) return setError("Orçamento mensal inválido.");
+      monthlyBudget = parsed;
     }
 
     const payload: Category = {
@@ -123,14 +144,58 @@ export function CategoryModal({ open, onOpenChange, category }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md overflow-visible">
+      <DialogContent
+        className="max-w-md overflow-visible"
+        onKeyDown={handleModalKeyDown}
+      >
         <DialogHeader className="border-b border-border px-6 py-5 pb-4">
           <DialogTitle>
             {isEdit ? "Editar categoria" : "Nova categoria"}
           </DialogTitle>
+          <DialogDescription>
+            {form.kind === "expense"
+              ? "Organiza as saídas — com orçamento mensal opcional."
+              : "Organiza as entradas do seu fluxo."}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5 px-6 py-5">
+          <div className="space-y-4 border border-border bg-accent/30 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <SegmentedToggle
+                  options={kindOptions}
+                  value={form.kind}
+                  onChange={(value) => set("kind", value)}
+                />
+                <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                  Ctrl Tab
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <span
+                className="grid h-11 w-11 shrink-0 place-items-center border border-border"
+                style={{ backgroundColor: form.color }}
+                aria-hidden
+              >
+                <FinanceIcon
+                  name={form.icon}
+                  className="h-5 w-5 text-background mix-blend-luminosity"
+                />
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">
+                  {form.name.trim() || "Nova categoria"}
+                </p>
+                <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                  pré-visualização
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="category-name" className={labelClass}>
               Nome
@@ -147,21 +212,6 @@ export function CategoryModal({ open, onOpenChange, category }: Props) {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className={labelClass}>Tipo</Label>
-              <Select
-                value={form.kind}
-                onValueChange={(value) => set("kind", value as CategoryKind)}
-              >
-                <SelectTrigger className="h-9 font-mono text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="expense">Despesa</SelectItem>
-                  <SelectItem value="income">Receita</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
               <Label htmlFor="category-color" className={labelClass}>
                 Cor
               </Label>
@@ -173,37 +223,38 @@ export function CategoryModal({ open, onOpenChange, category }: Props) {
                 className="w-full"
               />
             </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className={labelClass}>Ícone</Label>
-            <IconPicker
-              value={form.icon}
-              onChange={(value) => set("icon", value)}
-              disabled={saving}
-            />
+            <div className="space-y-1.5">
+              <Label className={labelClass}>Ícone</Label>
+              <IconPicker
+                value={form.icon}
+                onChange={(value) => set("icon", value)}
+                disabled={saving}
+              />
+            </div>
           </div>
 
           {form.kind === "expense" && (
             <div className="space-y-1.5">
               <Label htmlFor="category-budget" className={labelClass}>
-                Orçamento mensal (R$) — opcional
+                Orçamento mensal — opcional
               </Label>
-              <NumberInput
+              <CurrencyInput
                 id="category-budget"
-                placeholder="Ex: 800,00"
-                className="h-9 font-mono tabular-nums"
+                placeholder="R$ 0,00"
+                className="h-9 font-mono text-sm tabular-nums"
                 value={form.monthlyBudget}
-                onChange={(event) => set("monthlyBudget", event.target.value)}
+                onChange={(value) => set("monthlyBudget", value)}
               />
               <p className="font-mono text-[10px] text-muted-foreground">
-                Usado nos relatórios para acompanhar o consumo do mês.
+                Acompanhe o consumo do mês nos relatórios.
               </p>
             </div>
           )}
 
           {error && (
-            <p className="font-mono text-[11px] text-destructive">{error}</p>
+            <p role="alert" className="font-mono text-[11px] text-destructive">
+              {error}
+            </p>
           )}
         </div>
 
@@ -224,8 +275,16 @@ export function CategoryModal({ open, onOpenChange, category }: Props) {
           >
             Cancelar
           </Button>
-          <Button size="sm" className="rounded-sm text-xs" onClick={handleSave} disabled={saving}>
+          <Button
+            size="sm"
+            className="gap-2 rounded-sm text-xs"
+            onClick={handleSave}
+            disabled={saving}
+          >
             Salvar
+            <span className="font-mono text-[10px] uppercase opacity-60">
+              Ctrl Enter
+            </span>
           </Button>
         </DialogFooter>
       </DialogContent>
