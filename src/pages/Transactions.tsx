@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { useShallow } from "zustand/react/shallow";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -33,17 +34,43 @@ import type { Transaction } from "@/types";
 const defaultFilters: TransactionFilters = {
   query: "",
   type: "all",
+  categoryId: "",
+  accountId: "",
   startDate: "",
   endDate: "",
   sort: "date-desc",
 };
 
+/** Filtros pré-aplicados por navegação (ex.: drill-down dos relatórios). */
+export type TransactionsPageState = Partial<
+  Pick<
+    TransactionFilters,
+    "categoryId" | "accountId" | "startDate" | "endDate" | "type"
+  >
+>;
+
 export function TransactionsPage() {
   const transactions = useFinanceStore(useShallow((s) => s.transactions));
+  const categories = useFinanceStore(useShallow((s) => s.categories));
+  const accounts = useFinanceStore(useShallow((s) => s.accounts));
+  const location = useLocation();
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [filters, setFilters] = useState<TransactionFilters>(defaultFilters);
+
+  const incomingState = (location.state ?? null) as TransactionsPageState | null;
+  const hasIncomingFilters =
+    !!incomingState && Object.values(incomingState).some(Boolean);
+  const [filtersOpen, setFiltersOpen] = useState(hasIncomingFilters);
+  const [filters, setFilters] = useState<TransactionFilters>(() =>
+    hasIncomingFilters ? { ...defaultFilters, ...incomingState } : defaultFilters,
+  );
+
+  // Navegações subsequentes para a mesma rota (drill-down) reaplicam filtros.
+  useEffect(() => {
+    if (!hasIncomingFilters || !incomingState) return;
+    setFilters({ ...defaultFilters, ...incomingState });
+    setFiltersOpen(true);
+  }, [location.key]);
   const searchRef = useRef<HTMLInputElement>(null);
 
   // Teclado: "/" foca a busca (abrindo os filtros se preciso),
@@ -188,80 +215,128 @@ export function TransactionsPage() {
       </section>
 
       {filtersOpen && (
-        <section className="grid grid-cols-1 gap-3 border-b border-border pb-5 md:grid-cols-[1.5fr_150px_150px_150px_150px_auto] md:items-end">
-          <div className="relative">
-            <Search
-              className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
-              strokeWidth={1.5}
-            />
-            <Input
-              ref={searchRef}
-              value={filters.query}
-              onChange={(event) => updateFilters({ query: event.target.value })}
-              placeholder="Buscar título ( / )"
-              className="pl-8 font-mono text-xs"
-            />
+        <section className="space-y-3 border-b border-border pb-5">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[1.5fr_150px_170px_170px]">
+            <div className="relative">
+              <Search
+                className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+                strokeWidth={1.5}
+              />
+              <Input
+                ref={searchRef}
+                value={filters.query}
+                onChange={(event) => updateFilters({ query: event.target.value })}
+                placeholder="Buscar título ( / )"
+                className="pl-8 font-mono text-xs"
+              />
+            </div>
+
+            <Select
+              value={filters.type}
+              onValueChange={(value) =>
+                updateFilters({ type: value as TransactionTypeFilter })
+              }
+            >
+              <SelectTrigger className="font-mono text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="income">Receitas</SelectItem>
+                <SelectItem value="expense">Despesas</SelectItem>
+                <SelectItem value="transfer">Transferências</SelectItem>
+                <SelectItem value="projected">Projetadas</SelectItem>
+                <SelectItem value="recurring">Recorrentes</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={filters.categoryId || "_all"}
+              onValueChange={(value) =>
+                updateFilters({ categoryId: value === "_all" ? "" : value })
+              }
+            >
+              <SelectTrigger
+                className="font-mono text-xs"
+                aria-label="Filtrar por categoria"
+              >
+                <SelectValue placeholder="Categoria" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">Toda categoria</SelectItem>
+                {categories.map((category) => (
+                  <SelectItem key={category.id} value={category.id}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={filters.accountId || "_all"}
+              onValueChange={(value) =>
+                updateFilters({ accountId: value === "_all" ? "" : value })
+              }
+            >
+              <SelectTrigger
+                className="font-mono text-xs"
+                aria-label="Filtrar por conta"
+              >
+                <SelectValue placeholder="Conta" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">Toda conta</SelectItem>
+                {accounts.map((account) => (
+                  <SelectItem key={account.id} value={account.id}>
+                    {account.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
-          <Select
-            value={filters.type}
-            onValueChange={(value) =>
-              updateFilters({ type: value as TransactionTypeFilter })
-            }
-          >
-            <SelectTrigger className="font-mono text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
-              <SelectItem value="income">Receitas</SelectItem>
-              <SelectItem value="expense">Despesas</SelectItem>
-              <SelectItem value="transfer">Transferências</SelectItem>
-              <SelectItem value="projected">Projetadas</SelectItem>
-              <SelectItem value="recurring">Recorrentes</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[170px_170px_170px_auto] md:items-center">
+            <DatePicker
+              value={filters.startDate}
+              onChange={(value) => updateFilters({ startDate: value })}
+              className="font-mono text-xs"
+              aria-label="Data inicial"
+            />
+            <DatePicker
+              value={filters.endDate}
+              onChange={(value) => updateFilters({ endDate: value })}
+              className="font-mono text-xs"
+              aria-label="Data final"
+            />
 
-          <DatePicker
-            value={filters.startDate}
-            onChange={(value) => updateFilters({ startDate: value })}
-            className="font-mono text-xs"
-            aria-label="Data inicial"
-          />
-          <DatePicker
-            value={filters.endDate}
-            onChange={(value) => updateFilters({ endDate: value })}
-            className="font-mono text-xs"
-            aria-label="Data final"
-          />
+            <Select
+              value={filters.sort}
+              onValueChange={(value) =>
+                updateFilters({ sort: value as TransactionSort })
+              }
+            >
+              <SelectTrigger className="font-mono text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="date-desc">Mais recentes</SelectItem>
+                <SelectItem value="date-asc">Mais antigas</SelectItem>
+                <SelectItem value="amount-desc">Maior valor</SelectItem>
+                <SelectItem value="amount-asc">Menor valor</SelectItem>
+              </SelectContent>
+            </Select>
 
-          <Select
-            value={filters.sort}
-            onValueChange={(value) =>
-              updateFilters({ sort: value as TransactionSort })
-            }
-          >
-            <SelectTrigger className="font-mono text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="date-desc">Mais recentes</SelectItem>
-              <SelectItem value="date-asc">Mais antigas</SelectItem>
-              <SelectItem value="amount-desc">Maior valor</SelectItem>
-              <SelectItem value="amount-asc">Menor valor</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-1.5 rounded-sm text-xs"
-            onClick={() => setFilters(defaultFilters)}
-            disabled={!activeFilters}
-          >
-            <RotateCcw className="h-3.5 w-3.5" strokeWidth={1.5} />
-            Limpar
-          </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="justify-self-start gap-1.5 rounded-sm text-xs"
+              onClick={() => setFilters(defaultFilters)}
+              disabled={!activeFilters}
+            >
+              <RotateCcw className="h-3.5 w-3.5" strokeWidth={1.5} />
+              Limpar
+            </Button>
+          </div>
         </section>
       )}
 

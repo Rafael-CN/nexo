@@ -17,6 +17,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { NumberInput } from "@/components/ui/number-input";
 import { ConfirmDeleteButton } from "@/components/shared/ConfirmDeleteButton";
 import { DatePicker } from "@/components/shared/DatePicker";
+import {
+  cycleSegmentedValue,
+  SegmentedToggle,
+} from "@/components/shared/SegmentedToggle";
 import { CurrencyInput } from "@/components/shared/CurrencyInput";
 import {
   Select,
@@ -53,7 +57,11 @@ interface Props {
   initialDraft?: Partial<TransactionModalFormState>;
 }
 
-const typeCycle: TransactionType[] = ["expense", "income", "transfer"];
+const typeOptions = [
+  { value: "expense", label: "Despesa" },
+  { value: "income", label: "Receita" },
+  { value: "transfer", label: "Transferência" },
+] as const satisfies readonly { value: TransactionType; label: string }[];
 
 const recurrenceOptions: {
   value: TransactionModalFormState["recurrenceFrequency"];
@@ -234,6 +242,7 @@ export function TransactionModal({
       accountId: form.accountId,
       categoryId: isTransfer ? "" : form.categoryId,
       transferAccountId: isTransfer ? form.transferAccountId : undefined,
+      notes: form.notes.trim() || undefined,
       isProjected: form.date > todayIso,
       recurrenceId: undefined,
     };
@@ -326,6 +335,7 @@ export function TransactionModal({
         accountId: form.accountId,
         categoryId: isTransfer ? "" : form.categoryId,
         transferAccountId: isTransfer ? form.transferAccountId : undefined,
+        notes: form.notes.trim() || undefined,
         isProjected: form.date > todayIso,
         recurrenceId: undefined,
       });
@@ -430,10 +440,8 @@ export function TransactionModal({
   function handleModalKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if ((event.ctrlKey || event.metaKey) && event.key === "Tab") {
       event.preventDefault();
-      const currentIndex = typeCycle.indexOf(form.type);
-      const step = event.shiftKey ? typeCycle.length - 1 : 1;
       handleTypeChange(
-        typeCycle[(currentIndex + step) % typeCycle.length],
+        cycleSegmentedValue(typeOptions, form.type, event.shiftKey),
       );
       return;
     }
@@ -681,25 +689,11 @@ export function TransactionModal({
           <div className={cn("space-y-4 border p-4", accentClasses)}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <div className="inline-flex border border-border bg-background">
-                  <TypeButton
-                    label="Despesa"
-                    active={form.type === "expense"}
-                    onClick={() => handleTypeChange("expense")}
-                    className="border-r border-border"
-                  />
-                  <TypeButton
-                    label="Receita"
-                    active={form.type === "income"}
-                    onClick={() => handleTypeChange("income")}
-                    className="border-r border-border"
-                  />
-                  <TypeButton
-                    label="Transferência"
-                    active={form.type === "transfer"}
-                    onClick={() => handleTypeChange("transfer")}
-                  />
-                </div>
+                <SegmentedToggle
+                  options={typeOptions}
+                  value={form.type}
+                  onChange={handleTypeChange}
+                />
                 <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
                   Ctrl Tab
                 </span>
@@ -938,6 +932,19 @@ export function TransactionModal({
             </p>
           )}
 
+          <div className="space-y-1.5">
+            <Label htmlFor="txn-notes" className={labelClass}>
+              Notas — opcional
+            </Label>
+            <Input
+              id="txn-notes"
+              placeholder="Contexto, referência, lembrete..."
+              value={form.notes}
+              onChange={(event) => updateField("notes", event.target.value)}
+              className="h-9 text-sm"
+            />
+          </div>
+
           {form.recurrenceFrequency !== "none" && (
             <div className="space-y-3">
               <Checkbox
@@ -1026,32 +1033,3 @@ export function TransactionModal({
   );
 }
 
-function TypeButton({
-  label,
-  active,
-  onClick,
-  className,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-  className?: string;
-}) {
-  return (
-    <button
-      type="button"
-      tabIndex={-1}
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        "px-3 py-2 text-[11px] uppercase tracking-[0.14em] transition-colors",
-        active
-          ? "bg-foreground text-background"
-          : "bg-background text-muted-foreground hover:bg-accent hover:text-foreground",
-        className,
-      )}
-    >
-      {label}
-    </button>
-  );
-}

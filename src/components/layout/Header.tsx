@@ -1,22 +1,38 @@
 import { useLocation } from "react-router-dom";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Plus, Search } from "lucide-react";
+import { Menu, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getRouteTitle } from "@/lib/navigation";
 
 interface HeaderProps {
   onOpenCommandPalette: () => void;
   onNewTransaction: () => void;
+  onToggleNav?: () => void;
 }
 
-export function Header({ onOpenCommandPalette, onNewTransaction }: HeaderProps) {
+export function Header({
+  onOpenCommandPalette,
+  onNewTransaction,
+  onToggleNav,
+}: HeaderProps) {
   const { pathname } = useLocation();
   const title = getRouteTitle(pathname);
   const today = format(new Date(), "dd MMM yyyy", { locale: ptBR });
 
   return (
-    <header className="sticky top-0 z-20 flex min-h-14 items-center gap-4 border-b border-border bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/85">
+    <header className="sticky top-0 z-20 flex min-h-14 items-center gap-4 border-b border-border bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/85 md:px-6">
+      {onToggleNav && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="lg:hidden"
+          aria-label="Abrir navegação"
+          onClick={onToggleNav}
+        >
+          <Menu className="h-4 w-4" strokeWidth={1.5} />
+        </Button>
+      )}
       <div className="flex min-w-0 flex-1 flex-col justify-center">
         <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
           Nexo

@@ -14,7 +14,8 @@ import { ShortcutsHelp } from "@/components/shared/ShortcutsHelp";
 import { TransactionModal } from "@/components/shared/TransactionModal";
 import { UpdateBanner } from "@/components/shared/UpdateBanner";
 import { useDesktopShortcuts } from "@/hooks/useDesktopShortcuts";
-import type { TransactionType } from "@/types";
+import type { Transaction, TransactionType } from "@/types";
+import type { TransactionModalFormState } from "@/components/shared/transactionModalUtils";
 import { isTauri } from "@/lib/db";
 import { appRoutes } from "@/lib/navigation";
 import { getLocalProfile, type LocalProfile } from "@/lib/profile";
@@ -39,11 +40,16 @@ export function AppLayout() {
   const [transactionModalOpen, setTransactionModalOpen] = useState(false);
   const [transactionModalType, setTransactionModalType] =
     useState<TransactionType>("expense");
+  const [transactionDraft, setTransactionDraft] =
+    useState<Partial<TransactionModalFormState> | undefined>(undefined);
+  const [editingTransaction, setEditingTransaction] =
+    useState<Transaction | null>(null);
   const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false);
   const [importStatementOpen, setImportStatementOpen] = useState(false);
   const [profile, setProfile] = useState<LocalProfile | null>(() =>
     getLocalProfile(),
   );
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const openCommandPalette = useCallback(() => {
     setCommandPaletteOpen(true);
   }, []);
@@ -53,12 +59,39 @@ export function AppLayout() {
   const openNewTransaction = useCallback(() => {
     setCommandPaletteOpen(false);
     setTransactionModalType("expense");
+    setTransactionDraft(undefined);
+    setEditingTransaction(null);
     setTransactionModalOpen(true);
   }, []);
   const openNewTransfer = useCallback(() => {
     setCommandPaletteOpen(false);
     setTransactionModalType("transfer");
+    setTransactionDraft(undefined);
+    setEditingTransaction(null);
     setTransactionModalOpen(true);
+  }, []);
+  const openQuickCreate = useCallback(
+    (draft: Partial<TransactionModalFormState>) => {
+      setCommandPaletteOpen(false);
+      setTransactionModalType(draft.type ?? "expense");
+      setTransactionDraft(draft);
+      setEditingTransaction(null);
+      setTransactionModalOpen(true);
+    },
+    [],
+  );
+  const openEditTransaction = useCallback((transaction: Transaction) => {
+    setCommandPaletteOpen(false);
+    setTransactionDraft(undefined);
+    setEditingTransaction(transaction);
+    setTransactionModalOpen(true);
+  }, []);
+  const handleTransactionModalOpenChange = useCallback((next: boolean) => {
+    setTransactionModalOpen(next);
+    if (!next) {
+      setTransactionDraft(undefined);
+      setEditingTransaction(null);
+    }
   }, []);
   const openShortcutsHelp = useCallback(() => {
     setCommandPaletteOpen(false);
@@ -166,19 +199,41 @@ export function AppLayout() {
       <div className="flex h-full flex-col bg-background">
         <DesktopTitleBar />
         <div className="flex min-h-0 w-full flex-1 overflow-hidden bg-background">
-          <Sidebar profile={profile} />
+          <Sidebar profile={profile} className="hidden lg:flex" />
           <div className="flex h-full min-w-0 flex-1 flex-col">
             <Header
               onOpenCommandPalette={openCommandPalette}
               onNewTransaction={openNewTransaction}
+              onToggleNav={() => setMobileNavOpen((open) => !open)}
             />
             <main className="flex-1 overflow-y-auto">
-              <div className="mx-auto w-full max-w-[1400px] animate-fade-in px-8 py-8">
+              <div className="mx-auto w-full max-w-[1400px] animate-fade-in px-4 py-6 md:px-8 md:py-8">
                 <Outlet />
               </div>
             </main>
           </div>
         </div>
+
+        {mobileNavOpen && (
+          <div className="fixed inset-0 z-40 flex lg:hidden">
+            <div
+              onClick={(event) => {
+                // Fecha ao navegar ou ao clicar fora da navegação.
+                if (event.target instanceof HTMLElement && event.target.closest("a")) {
+                  setMobileNavOpen(false);
+                }
+              }}
+            >
+              <Sidebar profile={profile} className="animate-in slide-in-from-left-4 duration-150" />
+            </div>
+            <button
+              type="button"
+              aria-label="Fechar navegação"
+              className="flex-1 bg-background/60 backdrop-blur-[2px]"
+              onClick={() => setMobileNavOpen(false)}
+            />
+          </div>
+        )}
       </div>
       <CommandPalette
         open={commandPaletteOpen}
@@ -187,11 +242,15 @@ export function AppLayout() {
         onNewTransfer={openNewTransfer}
         onOpenHelp={openShortcutsHelp}
         onImportStatement={openImportStatement}
+        onQuickCreate={openQuickCreate}
+        onEditTransaction={openEditTransaction}
       />
       <TransactionModal
         open={transactionModalOpen}
-        onOpenChange={setTransactionModalOpen}
+        onOpenChange={handleTransactionModalOpenChange}
+        transaction={editingTransaction}
         initialType={transactionModalType}
+        initialDraft={transactionDraft}
       />
       <ShortcutsHelp
         open={shortcutsHelpOpen}

@@ -11,14 +11,25 @@ type Item = (typeof appRoutes)[number];
 const primary: Item[] = appRoutes.slice(0, 5);
 const secondary: Item[] = appRoutes.slice(5);
 
-export function Sidebar({ profile }: { profile: LocalProfile | null }) {
+export function Sidebar({
+  profile,
+  className,
+}: {
+  profile: LocalProfile | null;
+  className?: string;
+}) {
   const { theme, toggle } = useTheme();
   const profileName = profile?.name ?? "Usuário local";
   const profileSubtext = profile ? "perfil local" : "sem perfil";
   const initials = getProfileInitials(profileName);
 
   return (
-    <aside className="flex h-full w-64 shrink-0 flex-col border-r border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/90">
+    <aside
+      className={cn(
+        "flex h-full w-64 shrink-0 flex-col border-r border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/90",
+        className,
+      )}
+    >
       <div className="border-b border-border px-5 pb-4 pt-5">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">

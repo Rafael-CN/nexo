@@ -1,14 +1,20 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { useShallow } from "zustand/react/shallow";
+import { format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import {
   ArrowRightLeft,
   Check,
   FileUp,
+  Flag,
   Keyboard,
   Plus,
   RefreshCw,
   Search,
   Settings,
+  Sparkles,
+  Wallet,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -20,10 +26,19 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { FinanceIcon, getFinanceIconOption } from "@/components/shared/IconPicker";
+import {
+  formatTransactionAmount,
+  type TransactionModalFormState,
+} from "@/components/shared/transactionModalUtils";
+import { formatCurrency } from "@/lib/format";
 import { formatShortcut } from "@/lib/keyboardShortcuts";
+import { parseNaturalEntry } from "@/lib/naturalEntry";
 import { appRoutes } from "@/lib/navigation";
+import { suggestCategory } from "@/lib/statement";
 import { cn } from "@/lib/utils";
 import { useFinanceStore } from "@/store/useFinanceStore";
+import type { Transaction } from "@/types";
 
 type CommandPaletteProps = {
   open: boolean;
@@ -32,18 +47,32 @@ type CommandPaletteProps = {
   onNewTransfer: () => void;
   onOpenHelp: () => void;
   onImportStatement: () => void;
+  onQuickCreate: (draft: Partial<TransactionModalFormState>) => void;
+  onEditTransaction: (transaction: Transaction) => void;
 };
+
+type PaletteGroup =
+  | "Criar"
+  | "Transações"
+  | "Contas"
+  | "Categorias"
+  | "Metas"
+  | "Navegação"
+  | "Ações";
 
 type PaletteAction = {
   id: string;
   label: string;
   description: string;
   icon: LucideIcon;
+  iconName?: string;
   shortcut?: string;
   keywords?: string[];
-  group: "Navegação" | "Ações";
+  group: PaletteGroup;
   run: () => void;
 };
+
+const SEARCH_LIMITS = { transactions: 5, accounts: 3, categories: 3, goals: 3 };
 
 function normalize(value: string) {
   return value
@@ -60,11 +89,17 @@ export function CommandPalette({
   onNewTransfer,
   onOpenHelp,
   onImportStatement,
+  onQuickCreate,
+  onEditTransaction,
 }: CommandPaletteProps) {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const transactions = useFinanceStore(useShallow((s) => s.transactions));
+  const accounts = useFinanceStore(useShallow((s) => s.accounts));
+  const categories = useFinanceStore(useShallow((s) => s.categories));
+  const goals = useFinanceStore(useShallow((s) => s.goals));
 
   const actions = useMemo<PaletteAction[]>(
     () => [
@@ -144,11 +179,125 @@ export function CommandPalette({
     [navigate, onNewTransaction, onNewTransfer, onOpenHelp, onImportStatement],
   );
 
+  // Ação de criação rápida a partir de linguagem natural ("mercado 54,90 ontem").
+  const quickCreateAction = useMemo<PaletteAction | null>(() => {
+    const parsed = parseNaturalEntry(query);
+    if (!parsed) return null;
+
+    const suggested = suggestCategory(parsed.title);
+    const category = categories.find(
+      (candidate) =>
+        candidate.id === suggested && candidate.kind === parsed.type,
+    );
+
+    const dateLabel = format(parseISO(parsed.date), "dd MMM", { locale: ptBR });
+    return {
+      id: "quick-create",
+      label: `${parsed.type === "income" ? "Nova receita" : "Nova despesa"}: ${parsed.title}`,
+      description: [
+        formatCurrency(parsed.amount),
+        dateLabel,
+        category?.name,
+      ]
+        .filter(Boolean)
+        .join(" · "),
+      icon: Sparkles,
+      group: "Criar",
+      run: () =>
+        onQuickCreate({
+          type: parsed.type,
+          title: parsed.title,
+          amount: formatTransactionAmount(parsed.amount),
+          date: parsed.date,
+          categoryId: category?.id ?? "",
+        }),
+    };
+  }, [query, categories, onQuickCreate]);
+
+  // Busca global: transações, contas, categorias e metas.
+  const searchActions = useMemo<PaletteAction[]>(() => {
+    const term = normalize(query);
+    if (!term) return [];
+
+    const results: PaletteAction[] = [];
+
+    const matchedTransactions = transactions
+      .filter((transaction) => normalize(transaction.title).includes(term))
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .slice(0, SEARCH_LIMITS.transactions);
+    for (const transaction of matchedTransactions) {
+      const sign =
+        transaction.type === "income"
+          ? "+"
+          : transaction.type === "transfer"
+            ? "⇄"
+            : "−";
+      results.push({
+        id: `txn-${transaction.id}`,
+        label: transaction.title,
+        description: `${format(parseISO(transaction.date), "dd MMM yyyy", {
+          locale: ptBR,
+        })} · ${sign} ${formatCurrency(transaction.amount)}`,
+        icon: ArrowRightLeft,
+        group: "Transações",
+        run: () => onEditTransaction(transaction),
+      });
+    }
+
+    for (const account of accounts
+      .filter((account) =>
+        normalize(`${account.name} ${account.institution}`).includes(term),
+      )
+      .slice(0, SEARCH_LIMITS.accounts)) {
+      results.push({
+        id: `acc-${account.id}`,
+        label: account.name,
+        description: `Conta · ${account.institution}`,
+        icon: Wallet,
+        iconName: account.icon,
+        group: "Contas",
+        run: () => navigate("/contas"),
+      });
+    }
+
+    for (const category of categories
+      .filter((category) => normalize(category.name).includes(term))
+      .slice(0, SEARCH_LIMITS.categories)) {
+      results.push({
+        id: `cat-${category.id}`,
+        label: category.name,
+        description:
+          category.kind === "expense"
+            ? "Categoria de despesa — ver transações"
+            : "Categoria de receita — ver transações",
+        icon: getFinanceIconOption(category.icon).icon,
+        group: "Categorias",
+        run: () =>
+          navigate("/transacoes", { state: { categoryId: category.id } }),
+      });
+    }
+
+    for (const goal of goals
+      .filter((goal) => normalize(goal.name).includes(term))
+      .slice(0, SEARCH_LIMITS.goals)) {
+      results.push({
+        id: `goal-${goal.id}`,
+        label: goal.name,
+        description: `Meta · ${formatCurrency(goal.targetAmount)}`,
+        icon: Flag,
+        group: "Metas",
+        run: () => navigate("/metas"),
+      });
+    }
+
+    return results;
+  }, [query, transactions, accounts, categories, goals, navigate, onEditTransaction]);
+
   const filteredActions = useMemo(() => {
     const term = normalize(query);
     if (!term) return actions;
 
-    return actions.filter((action) => {
+    const matchedStatic = actions.filter((action) => {
       const haystack = normalize(
         [
           action.label,
@@ -159,7 +308,13 @@ export function CommandPalette({
       );
       return haystack.includes(term);
     });
-  }, [actions, query]);
+
+    return [
+      ...(quickCreateAction ? [quickCreateAction] : []),
+      ...searchActions,
+      ...matchedStatic,
+    ];
+  }, [actions, query, quickCreateAction, searchActions]);
 
   useEffect(() => {
     if (!open) return;
@@ -252,13 +407,13 @@ export function CommandPalette({
                 setSelectedIndex(0);
               }}
               onKeyDown={handleKeyDown}
-              placeholder="Buscar rota ou ação"
+              placeholder="Buscar tudo — ou digite “mercado 54,90 ontem”"
               className="h-9 border-0 bg-transparent pl-9 pr-3 font-mono text-xs ui-focus-ring-inset"
             />
           </div>
           <div className="mt-2 flex items-center justify-between gap-3 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
             <span>Esc fecha</span>
-            <span>Ctrl/Cmd N nova transação</span>
+            <span>valor + data criam lançamento</span>
           </div>
         </DialogHeader>
 
@@ -301,7 +456,15 @@ export function CommandPalette({
                           )}
                         >
                           <span className="grid h-8 w-8 shrink-0 place-items-center border border-border bg-background">
-                            <Icon className="h-4 w-4" strokeWidth={1.5} />
+                            {action.iconName ? (
+                              <FinanceIcon
+                                name={action.iconName}
+                                className="h-4 w-4"
+                                strokeWidth={1.5}
+                              />
+                            ) : (
+                              <Icon className="h-4 w-4" strokeWidth={1.5} />
+                            )}
                           </span>
 
                           <div className="min-w-0 flex-1">

@@ -6,7 +6,20 @@ import { Button } from "@/components/ui/button";
 import { BackupSection } from "@/components/shared/BackupSection";
 import { ImportStatementModal } from "@/components/shared/ImportStatementModal";
 import { ShortcutsHelp } from "@/components/shared/ShortcutsHelp";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useTheme } from "@/hooks/useTheme";
+import {
+  currencyOptions,
+  getCurrencyCode,
+  setCurrencyCode,
+  type CurrencyCode,
+} from "@/lib/currency";
 import { cn } from "@/lib/utils";
 import { isTauri } from "@/lib/db";
 import { checkForUpdate, getAppVersion, type UpdateInfo } from "@/lib/updates";
@@ -104,16 +117,26 @@ export function SettingsPage() {
       <SettingsSection label="Formato">
         <SettingRow
           label="Moeda"
-          description="Moeda usada em todos os valores do aplicativo."
+          description="Moeda usada em todos os valores do aplicativo. Trocar recarrega a interface."
         >
-          <div className="flex items-center gap-3">
-            <span className="font-mono text-sm tabular-nums">
-              BRL — Real Brasileiro (R$)
-            </span>
-            <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/60">
-              padrão
-            </span>
-          </div>
+          <Select
+            value={getCurrencyCode()}
+            onValueChange={(value) => {
+              setCurrencyCode(value as CurrencyCode);
+              window.location.reload();
+            }}
+          >
+            <SelectTrigger className="w-56 font-mono text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {currencyOptions.map((option) => (
+                <SelectItem key={option.code} value={option.code}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </SettingRow>
 
         <SettingRow

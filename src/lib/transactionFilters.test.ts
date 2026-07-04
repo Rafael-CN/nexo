@@ -12,6 +12,8 @@ import type { Transaction } from "@/types";
 const defaultFilters: TransactionFilters = {
   query: "",
   type: "all",
+  categoryId: "",
+  accountId: "",
   startDate: "",
   endDate: "",
   sort: "date-desc",
@@ -58,6 +60,38 @@ describe("transaction filters", () => {
     expect(totals.expense).toBe(100);
     expect(totals.net).toBe(300);
     expect(totals.count).toBe(3);
+  });
+
+  it("filters by category and by account (including transfer destination)", () => {
+    const transactions = [
+      tx({ id: "food", categoryId: "cat-food", accountId: "acc-1" }),
+      tx({ id: "home", categoryId: "cat-home", accountId: "acc-2" }),
+      tx({
+        id: "transfer-in",
+        type: "transfer",
+        categoryId: "",
+        accountId: "acc-2",
+        transferAccountId: "acc-1",
+      }),
+    ];
+
+    expect(
+      filterTransactions(transactions, {
+        ...defaultFilters,
+        categoryId: "cat-food",
+      }).map((t) => t.id),
+    ).toEqual(["food"]);
+
+    expect(
+      filterTransactions(transactions, {
+        ...defaultFilters,
+        accountId: "acc-1",
+      }).map((t) => t.id),
+    ).toEqual(["food", "transfer-in"]);
+
+    expect(
+      hasActiveTransactionFilters({ ...defaultFilters, categoryId: "cat-food" }),
+    ).toBe(true);
   });
 
   it("matches text without requiring accents", () => {
