@@ -1,4 +1,4 @@
-import { ArrowRightLeft, Repeat } from "lucide-react";
+import { ArrowRightLeft, Repeat, StickyNote } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { Transaction } from "@/types";
@@ -62,6 +62,15 @@ export function TransactionRow({ transaction, onClick }: TransactionRowProps) {
               className="h-3 w-3 shrink-0 text-muted-foreground"
               strokeWidth={1.5}
             />
+          )}
+          {transaction.notes && (
+            <StickyNote
+              className="h-3 w-3 shrink-0 text-muted-foreground"
+              strokeWidth={1.5}
+              aria-label={`Nota: ${transaction.notes}`}
+            >
+              <title>{transaction.notes}</title>
+            </StickyNote>
           )}
         </div>
         <p className="selectable-text truncate font-mono text-[11px] text-muted-foreground">

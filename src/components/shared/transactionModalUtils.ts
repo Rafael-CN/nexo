@@ -1,4 +1,5 @@
 import { addMonths, format, parseISO } from "date-fns";
+import { currencyFormatter } from "@/lib/format";
 import type {
   Account,
   Category,
@@ -18,28 +19,24 @@ export interface TransactionModalFormState {
   categoryId: string;
   transferAccountId: string;
   installments: string;
+  notes: string;
   recurrenceFrequency: RecurrenceRule["frequency"] | "none";
   recurrenceInterval: string;
   recurrenceNoEnd: boolean;
   recurrenceUntil: string;
 }
 
-const brlCurrencyFormatter = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL",
-});
-
 export function formatCurrencyInputValue(value: string) {
   const digits = value.replace(/\D/g, "");
   if (!digits) return "";
 
-  return brlCurrencyFormatter.format(Number(digits) / 100);
+  return currencyFormatter.format(Number(digits) / 100);
 }
 
 export function formatTransactionAmount(value: number) {
   if (!Number.isFinite(value) || value <= 0) return "";
 
-  return brlCurrencyFormatter.format(value);
+  return currencyFormatter.format(value);
 }
 
 export function parseCurrencyInputValue(value: string) {
@@ -99,6 +96,7 @@ export function buildTransactionForm(
     categoryId: transaction?.categoryId ?? "",
     transferAccountId: transaction?.transferAccountId ?? "",
     installments: "1",
+    notes: transaction?.notes ?? "",
     recurrenceFrequency: rule?.frequency ?? "none",
     recurrenceInterval: rule ? String(rule.interval) : "1",
     recurrenceNoEnd: !rule?.until,

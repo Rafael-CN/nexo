@@ -13,6 +13,10 @@ export type TransactionSort = "date-desc" | "date-asc" | "amount-desc" | "amount
 export type TransactionFilters = {
   query: string;
   type: TransactionTypeFilter;
+  /** Vazio = todas as categorias. */
+  categoryId: string;
+  /** Vazio = todas as contas (origem ou destino de transferência). */
+  accountId: string;
   startDate: string;
   endDate: string;
   sort: TransactionSort;
@@ -35,6 +39,16 @@ export function filterTransactions(
     if (query && !normalize(transaction.title).includes(query)) return false;
     if (filters.startDate && transaction.date < filters.startDate) return false;
     if (filters.endDate && transaction.date > filters.endDate) return false;
+    if (filters.categoryId && transaction.categoryId !== filters.categoryId) {
+      return false;
+    }
+    if (
+      filters.accountId &&
+      transaction.accountId !== filters.accountId &&
+      transaction.transferAccountId !== filters.accountId
+    ) {
+      return false;
+    }
 
     switch (filters.type) {
       case "income":
@@ -101,6 +115,8 @@ export function hasActiveTransactionFilters(filters: TransactionFilters) {
   return (
     filters.query.trim() !== "" ||
     filters.type !== "all" ||
+    filters.categoryId !== "" ||
+    filters.accountId !== "" ||
     filters.startDate !== "" ||
     filters.endDate !== ""
   );

@@ -200,10 +200,20 @@ pub fn apply_backup(
     Ok(summary)
 }
 
-pub fn build_transactions_csv(conn: &Connection) -> CmdResult<String> {
+pub fn build_transactions_csv(
+    conn: &Connection,
+    start_date: Option<&str>,
+    end_date: Option<&str>,
+) -> CmdResult<String> {
     let accounts = query_accounts(conn)?;
     let categories = query_categories(conn)?;
     let mut transactions = query_transactions(conn)?;
+    if let Some(start) = start_date {
+        transactions.retain(|txn| txn.date.as_str() >= start);
+    }
+    if let Some(end) = end_date {
+        transactions.retain(|txn| txn.date.as_str() <= end);
+    }
     transactions.sort_by(|a, b| a.date.cmp(&b.date).then_with(|| a.title.cmp(&b.title)));
 
     let account_name = |id: &str| -> String {
@@ -300,9 +310,14 @@ pub fn import_backup(
 }
 
 #[tauri::command]
-pub fn export_transactions_csv(state: State<DbState>, path: String) -> CmdResult<()> {
+pub fn export_transactions_csv(
+    state: State<DbState>,
+    path: String,
+    start_date: Option<String>,
+    end_date: Option<String>,
+) -> CmdResult<()> {
     let conn = state.0.lock().map_err(e)?;
-    let csv = build_transactions_csv(&conn)?;
+    let csv = build_transactions_csv(&conn, start_date.as_deref(), end_date.as_deref())?;
     // BOM para o Excel reconhecer UTF-8.
     let contents = format!("\u{feff}{csv}");
     std::fs::write(&path, contents)
@@ -397,12 +412,16 @@ mod tests {
         let backup = parse_backup(&sample_backup_json()).expect("parse");
         apply_backup(&mut conn, &backup.data, "replace").expect("apply");
 
-        let csv = build_transactions_csv(&conn).expect("csv");
+        let csv = build_transactions_csv(&conn, None, None).expect("csv");
         let lines: Vec<&str> = csv.trim_end().split("\r\n").collect();
         assert_eq!(lines.len(), 3);
         assert!(lines[0].starts_with("data;titulo;valor"));
         assert!(lines[1].contains("100,00"));
         assert!(lines[2].contains("transferencia"));
         assert!(lines[2].contains("Reserva"));
+
+        let filtered = build_transactions_csv(&conn, Some("2026-07-02"), Some("2026-07-02"))
+            .expect("filtered csv");
+        assert_eq!(filtered.trim_end().split("\r\n").count(), 2);
     }
 }

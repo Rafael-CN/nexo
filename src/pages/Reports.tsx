@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useShallow } from "zustand/react/shallow";
-import { format, parseISO } from "date-fns";
+import { invoke } from "@tauri-apps/api/core";
+import { save } from "@tauri-apps/plugin-dialog";
+import { format, parseISO, startOfMonth, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   ArrowDownLeft,
   ArrowUpRight,
   CalendarClock,
+  FileDown,
   PiggyBank,
   Repeat,
   Sparkles,
@@ -44,6 +47,12 @@ import {
   type ReportPeriodPreset,
 } from "@/lib/reports";
 import { getFinanceIconOption } from "@/components/shared/IconPicker";
+import {
+  buildTransactionsCsv,
+  downloadTextFile,
+  suggestedCsvFileName,
+} from "@/lib/backup";
+import { isTauri } from "@/lib/db";
 import { useFinanceStore } from "@/store/useFinanceStore";
 
 const DEFAULT_PRESET: ReportPeriodPreset = "current-month";
@@ -57,7 +66,9 @@ export function ReportsPage() {
   const navigate = useNavigate();
   const transactions = useFinanceStore(useShallow((s) => s.transactions));
   const categories = useFinanceStore(useShallow((s) => s.categories));
+  const accounts = useFinanceStore(useShallow((s) => s.accounts));
   const { expanded } = useProjection();
+  const [exportNote, setExportNote] = useState<string | null>(null);
 
   // [ e ] percorrem os períodos sem depender do foco no controle segmentado.
   useEffect(() => {
@@ -144,6 +155,62 @@ export function ReportsPage() {
     () => filterTransactionsByPeriod(reportTransactions, period),
     [period, reportTransactions],
   );
+
+  // Tendência: 12 meses de histórico real (sem projeções), independente do período.
+  const trend = useMemo<CashflowChartPoint[]>(() => {
+    const now = new Date();
+    return Array.from({ length: 12 }, (_, index) => {
+      const month = startOfMonth(subMonths(now, 11 - index));
+      const prefix = format(month, "yyyy-MM");
+      let inflow = 0;
+      let outflow = 0;
+      for (const transaction of transactions) {
+        if (!transaction.date.startsWith(prefix)) continue;
+        if (transaction.type === "income") inflow += transaction.amount;
+        if (transaction.type === "expense") outflow += transaction.amount;
+      }
+      return {
+        label: format(month, "MMM yy", { locale: ptBR }),
+        inflow,
+        outflow,
+      };
+    });
+  }, [transactions]);
+
+  async function handleExportPeriodCsv() {
+    setExportNote(null);
+    try {
+      const fileName = suggestedCsvFileName();
+      if (isTauri) {
+        const path = await save({
+          defaultPath: fileName,
+          filters: [{ name: "CSV", extensions: ["csv"] }],
+        });
+        if (!path) return;
+        await invoke("export_transactions_csv", {
+          path,
+          startDate: period.startIso,
+          endDate: period.endIso,
+        });
+      } else {
+        const csv = buildTransactionsCsv({
+          accounts,
+          categories,
+          recurrenceRules: [],
+          goals: [],
+          transactions: transactions.filter(
+            (transaction) =>
+              transaction.date >= period.startIso &&
+              transaction.date <= period.endIso,
+          ),
+        });
+        downloadTextFile(fileName, `\ufeff${csv}`, "text/csv");
+      }
+      setExportNote("CSV do período exportado.");
+    } catch (err) {
+      setExportNote(err instanceof Error ? err.message : String(err));
+    }
+  }
 
   const hasData = periodTransactions.some(
     (transaction) => transaction.type !== "transfer",
@@ -238,9 +305,25 @@ export function ReportsPage() {
             }))}
             onValueChange={(value) => setPreset(value as ReportPeriodPreset)}
           />
-          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">
-            [ e ] trocam o período
-          </p>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 rounded-sm px-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground hover:text-foreground"
+              onClick={handleExportPeriodCsv}
+            >
+              <FileDown className="h-3 w-3" strokeWidth={1.5} />
+              Exportar CSV
+            </Button>
+            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">
+              [ e ] trocam o período
+            </p>
+          </div>
+          {exportNote && (
+            <p role="status" className="font-mono text-[10px] text-muted-foreground">
+              {exportNote}
+            </p>
+          )}
         </div>
       </section>
 
@@ -274,6 +357,15 @@ export function ReportsPage() {
               headerSlot={
                 <KindToggle value={rankingKind} onChange={setRankingKind} />
               }
+              onItemSelect={(item) =>
+                navigate("/transacoes", {
+                  state: {
+                    categoryId: item.id,
+                    startDate: period.startIso,
+                    endDate: period.endIso,
+                  },
+                })
+              }
             />
 
             <TopCategoryPanel
@@ -281,6 +373,10 @@ export function ReportsPage() {
               onOpenCalendar={() => navigate("/calendario")}
             />
           </section>
+
+          {trend.some((point) => point.inflow > 0 || point.outflow > 0) && (
+            <CashflowChart title="Tendência 12 meses" points={trend} />
+          )}
         </>
       )}
     </div>
@@ -447,6 +543,7 @@ function buildRankingItems(
         : null;
 
     return {
+      id: item.categoryId !== "uncategorized" ? item.categoryId : undefined,
       label: item.name,
       amount: item.total,
       share: item.percentage * 100,

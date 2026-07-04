@@ -3,6 +3,8 @@ import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export interface CategoryRankingItem {
+  /** Identificador para drill-down; linhas sem id não são clicáveis. */
+  id?: string;
   label: string;
   amount: number;
   /** Participação nas saídas/entradas do período, em % (0–100). */
@@ -19,6 +21,8 @@ export interface CategoryRankingProps {
   className?: string;
   headerSlot?: React.ReactNode;
   emptyLabel?: string;
+  /** Torna as linhas com id clicáveis (drill-down). */
+  onItemSelect?: (item: CategoryRankingItem) => void;
 }
 
 const toneFillMap: Record<NonNullable<CategoryRankingItem["tone"]>, string> = {
@@ -34,6 +38,7 @@ export function CategoryRanking({
   className,
   headerSlot,
   emptyLabel = "Nada registrado no período.",
+  onItemSelect,
 }: CategoryRankingProps) {
   const maxAmount = Math.max(...items.map((item) => item.amount), 1);
 
@@ -56,11 +61,24 @@ export function CategoryRanking({
           items.map((item, index) => {
             const Icon = item.icon;
             const ratio = Math.max(0, Math.min(1, item.amount / maxAmount));
+            const clickable = !!onItemSelect && !!item.id;
+            const Row = clickable ? "button" : "div";
 
             return (
-              <div
+              <Row
                 key={`${item.label}-${index}`}
-                className="space-y-2 border-b border-border px-5 py-3.5 last:border-b-0"
+                {...(clickable
+                  ? {
+                      type: "button" as const,
+                      onClick: () => onItemSelect?.(item),
+                      title: `Ver transações de ${item.label}`,
+                    }
+                  : {})}
+                className={cn(
+                  "w-full space-y-2 border-b border-border px-5 py-3.5 text-left last:border-b-0",
+                  clickable &&
+                    "transition-colors hover:bg-accent/30 ui-focus-ring-inset",
+                )}
               >
                 <div className="flex items-baseline justify-between gap-4">
                   <div className="flex min-w-0 items-center gap-2">
@@ -96,7 +114,7 @@ export function CategoryRanking({
                     {item.share.toFixed(1)}%
                   </span>
                 </div>
-              </div>
+              </Row>
             );
           })
         )}
