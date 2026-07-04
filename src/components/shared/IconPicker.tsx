@@ -420,13 +420,17 @@ export function IconPicker({
   disabled?: boolean;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [activeGroup, setActiveGroup] = useState<FinanceIconGroup | "all">("all");
   const [activeIndex, setActiveIndex] = useState(0);
   const selectedOption = getFinanceIconOption(value);
   const SelectedIcon = selectedOption.icon;
+
+  const GRID_COLUMNS = 5;
 
   const filteredOptions = useMemo(() => {
     const term = normalize(query);
@@ -485,13 +489,27 @@ export function IconPicker({
     setActiveIndex((current) => Math.min(current, flatOptions.length - 1));
   }, [flatOptions.length, open]);
 
-  function closePicker() {
+  // Mantém o ícone destacado visível enquanto as setas navegam.
+  useEffect(() => {
+    if (!open) return;
+    const focusedValue = flatOptions[activeIndex]?.value;
+    if (!focusedValue) return;
+    listRef.current
+      ?.querySelector(`[data-icon-option="${focusedValue}"]`)
+      ?.scrollIntoView({ block: "nearest" });
+  }, [activeIndex, flatOptions, open]);
+
+  function closePicker(returnFocus = true) {
     setOpen(false);
+    if (returnFocus) {
+      window.requestAnimationFrame(() => triggerRef.current?.focus());
+    }
   }
 
   function selectIcon(option: IconOption) {
     onChange(option.value);
     setOpen(false);
+    window.requestAnimationFrame(() => triggerRef.current?.focus());
   }
 
   function openPicker() {
@@ -518,6 +536,16 @@ export function IconPicker({
     }
   }
 
+  function cycleGroup(direction: 1 | -1) {
+    const currentIndex = pickerGroups.findIndex(
+      (group) => group.value === activeGroup,
+    );
+    const next =
+      (currentIndex + direction + pickerGroups.length) % pickerGroups.length;
+    setActiveGroup(pickerGroups[next].value);
+    setActiveIndex(0);
+  }
+
   function handleSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Escape") {
       event.preventDefault();
@@ -530,15 +558,43 @@ export function IconPicker({
       return;
     }
 
+    if (event.key === "PageDown" || event.key === "PageUp") {
+      event.preventDefault();
+      cycleGroup(event.key === "PageDown" ? 1 : -1);
+      return;
+    }
+
     if (event.key === "ArrowDown") {
       event.preventDefault();
       setActiveIndex((current) =>
-        flatOptions.length === 0 ? 0 : Math.min(current + 1, flatOptions.length - 1),
+        flatOptions.length === 0
+          ? 0
+          : Math.min(current + GRID_COLUMNS, flatOptions.length - 1),
       );
       return;
     }
 
     if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveIndex((current) => Math.max(current - GRID_COLUMNS, 0));
+      return;
+    }
+
+    if (event.key === "ArrowRight") {
+      const input = event.currentTarget;
+      if (input.selectionStart !== input.value.length) return;
+      event.preventDefault();
+      setActiveIndex((current) =>
+        flatOptions.length === 0
+          ? 0
+          : Math.min(current + 1, flatOptions.length - 1),
+      );
+      return;
+    }
+
+    if (event.key === "ArrowLeft") {
+      const input = event.currentTarget;
+      if (input.selectionStart !== 0) return;
       event.preventDefault();
       setActiveIndex((current) => Math.max(current - 1, 0));
       return;
@@ -568,6 +624,7 @@ export function IconPicker({
   return (
     <div ref={rootRef} className="relative">
       <button
+        ref={triggerRef}
         type="button"
         disabled={disabled}
         onClick={togglePicker}
@@ -598,7 +655,7 @@ export function IconPicker({
         <PickerPopover
           anchorRef={rootRef}
           open={open}
-          onClose={closePicker}
+          onClose={() => closePicker(false)}
           preferredWidth={360}
           preferredHeight={420}
           className="flex flex-col"
@@ -643,6 +700,7 @@ export function IconPicker({
           </div>
 
           <div
+            ref={listRef}
             className="min-h-0 flex-1 overflow-y-auto"
             style={{
               maxHeight: "max(72px, calc(var(--picker-popover-max-height, 420px) - 112px))",
@@ -664,7 +722,7 @@ export function IconPicker({
                     <div className="px-1 pb-2 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                       {group.label}
                     </div>
-                    <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-5">
+                    <div className="grid grid-cols-5 gap-1.5">
                       {group.options.map((option) => {
                         const Icon = option.icon;
                         const active = option.value === value;
@@ -676,6 +734,8 @@ export function IconPicker({
                             key={option.value}
                             type="button"
                             tabIndex={-1}
+                            data-icon-option={option.value}
+                            onMouseDown={(event) => event.preventDefault()}
                             onClick={() => selectIcon(option)}
                             onMouseEnter={() =>
                               setActiveIndex(

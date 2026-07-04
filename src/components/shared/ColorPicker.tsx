@@ -1,21 +1,29 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronDown, Palette } from "lucide-react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
+import { Check, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { PickerPopover } from "@/components/shared/pickerPopover";
 
+const GRID_COLUMNS = 6;
+
 const quickColors = [
   { value: "#111827", label: "Grafite" },
-  { value: "#334155", label: "Ardosia" },
+  { value: "#334155", label: "Ardósia" },
   { value: "#52525B", label: "Zinco" },
   { value: "#64748B", label: "Neblina" },
-  { value: "#0F766E", label: "Petroleo" },
+  { value: "#0F766E", label: "Petróleo" },
   { value: "#2563EB", label: "Cobalto" },
-  { value: "#4F46E5", label: "Indigo" },
+  { value: "#4F46E5", label: "Índigo" },
   { value: "#7C3AED", label: "Violeta" },
   { value: "#BE185D", label: "Vinho" },
   { value: "#C2410C", label: "Terracota" },
-  { value: "#B45309", label: "Ambar" },
+  { value: "#B45309", label: "Âmbar" },
   { value: "#166534", label: "Oliva" },
 ] as const;
 
@@ -38,10 +46,6 @@ function normalizeHex(value: string) {
   return null;
 }
 
-function swatchTone(value: string) {
-  return value.toUpperCase();
-}
-
 function isDarkColor(value: string) {
   const hex = normalizeHex(value);
   if (!hex) return false;
@@ -57,31 +61,38 @@ function isDarkColor(value: string) {
 function ColorSwatch({
   value,
   active = false,
+  className,
 }: {
   value: string;
   active?: boolean;
+  className?: string;
 }) {
   const dark = isDarkColor(value);
 
   return (
     <span
       className={cn(
-        "relative grid h-5 w-5 shrink-0 place-items-center border border-border transition-transform",
-        active && "scale-[1.02] ring-1 ring-inset ring-foreground/20",
+        "relative grid h-5 w-5 shrink-0 place-items-center border border-border",
+        className,
       )}
       style={{ backgroundColor: value }}
       aria-hidden
     >
       {active && (
-            <Check
-              className={cn("h-3 w-3", dark ? "text-white" : "text-black")}
-              strokeWidth={2}
-            />
+        <Check
+          className={cn("h-3 w-3", dark ? "text-white" : "text-black")}
+          strokeWidth={2}
+        />
       )}
     </span>
   );
 }
 
+/**
+ * Seletor de cor com o mesmo padrão de teclado dos outros pickers do app:
+ * o campo de hex mantém o foco, as setas movem o destaque na paleta,
+ * Enter confirma (destaque ou hex digitado) e Esc fecha.
+ */
 export function ColorPicker({
   id,
   value,
@@ -96,46 +107,113 @@ export function ColorPicker({
   className?: string;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const customInputRef = useRef<HTMLInputElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const hexInputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(value);
+  const [activeIndex, setActiveIndex] = useState(-1);
 
-  const current = useMemo(() => {
-    return normalizeHex(value) ?? value.toUpperCase();
-  }, [value]);
+  const current = useMemo(
+    () => normalizeHex(value) ?? value.toUpperCase(),
+    [value],
+  );
+  const highlighted = activeIndex >= 0 ? quickColors[activeIndex] : null;
 
   useEffect(() => {
-    if (open) {
-      setDraft(current);
-      requestAnimationFrame(() => customInputRef.current?.focus());
-    }
+    if (!open) return;
+
+    setDraft(current);
+    setActiveIndex(
+      quickColors.findIndex((color) => color.value.toUpperCase() === current),
+    );
+    const frame = window.requestAnimationFrame(() => {
+      hexInputRef.current?.focus();
+      hexInputRef.current?.select();
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [current, open]);
 
-  function closePicker() {
+  function closePicker(returnFocus = true) {
     setOpen(false);
     setDraft(current);
+    if (returnFocus) {
+      window.requestAnimationFrame(() => triggerRef.current?.focus());
+    }
   }
 
-  function openPicker() {
-    if (disabled) return;
-    setOpen((currentOpen) => !currentOpen);
+  function selectColor(hex: string) {
+    onChange(hex.toUpperCase());
+    setOpen(false);
+    window.requestAnimationFrame(() => triggerRef.current?.focus());
   }
 
   function applyDraft() {
     const normalized = normalizeHex(draft);
     if (!normalized) return false;
-
-    onChange(normalized);
-    setDraft(normalized);
-    setOpen(false);
+    selectColor(normalized);
     return true;
   }
 
   function handleDraftChange(next: string) {
     setDraft(next);
+    setActiveIndex(-1);
     const normalized = normalizeHex(next);
     if (normalized) {
       onChange(normalized);
+    }
+  }
+
+  function moveHighlight(delta: number) {
+    setActiveIndex((currentIndex) => {
+      if (currentIndex < 0) {
+        return delta > 0 ? 0 : quickColors.length - 1;
+      }
+      const next = currentIndex + delta;
+      if (next < 0 || next >= quickColors.length) return currentIndex;
+      return next;
+    });
+  }
+
+  function handleHexKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    switch (event.key) {
+      case "ArrowRight":
+      case "ArrowLeft": {
+        // Só navega na paleta quando o cursor não está editando o texto.
+        const input = event.currentTarget;
+        const atEdge =
+          event.key === "ArrowRight"
+            ? input.selectionStart === input.value.length
+            : input.selectionStart === 0;
+        if (!atEdge && activeIndex < 0) return;
+        event.preventDefault();
+        moveHighlight(event.key === "ArrowRight" ? 1 : -1);
+        return;
+      }
+      case "ArrowDown":
+        event.preventDefault();
+        moveHighlight(GRID_COLUMNS);
+        return;
+      case "ArrowUp":
+        event.preventDefault();
+        moveHighlight(-GRID_COLUMNS);
+        return;
+      case "Enter":
+        event.preventDefault();
+        if (highlighted) {
+          selectColor(highlighted.value);
+        } else if (!applyDraft()) {
+          setDraft(current);
+        }
+        return;
+      case "Escape":
+        event.preventDefault();
+        closePicker();
+        return;
+      case "Tab":
+        setOpen(false);
+        return;
+      default:
+        return;
     }
   }
 
@@ -143,9 +221,16 @@ export function ColorPicker({
     <div ref={rootRef} className={cn("relative", className)}>
       <button
         id={id}
+        ref={triggerRef}
         type="button"
         disabled={disabled}
-        onClick={openPicker}
+        onClick={() => !disabled && setOpen((state) => !state)}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+            event.preventDefault();
+            setOpen(true);
+          }
+        }}
         aria-haspopup="dialog"
         aria-expanded={open}
         className={cn(
@@ -154,13 +239,16 @@ export function ColorPicker({
         )}
       >
         <span className="flex min-w-0 items-center gap-2.5">
-          <ColorSwatch value={current} active={open} />
+          <ColorSwatch value={current} />
           <span className="min-w-0 truncate font-mono text-xs uppercase tracking-[0.12em] text-foreground">
             {current}
           </span>
         </span>
         <ChevronDown
-          className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")}
+          className={cn(
+            "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+            open && "rotate-180",
+          )}
           strokeWidth={1.5}
         />
       </button>
@@ -169,99 +257,87 @@ export function ColorPicker({
         <PickerPopover
           anchorRef={rootRef}
           open={open}
-          onClose={closePicker}
+          onClose={() => closePicker(false)}
           preferredWidth={288}
-          preferredHeight={348}
+          preferredHeight={320}
           className="p-3"
         >
-          <div className="flex items-center justify-between gap-3">
+          <div className="relative">
+            <span
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
+              aria-hidden
+            >
+              <ColorSwatch
+                value={normalizeHex(draft) ?? current}
+                className="h-4 w-4"
+              />
+            </span>
+            <Input
+              ref={hexInputRef}
+              value={draft}
+              onChange={(event) => handleDraftChange(event.target.value)}
+              onKeyDown={handleHexKeyDown}
+              spellCheck={false}
+              autoCapitalize="off"
+              autoComplete="off"
+              autoCorrect="off"
+              inputMode="text"
+              placeholder="#RRGGBB"
+              aria-label="Cor personalizada em hexadecimal"
+              className="h-9 border-border pl-10 font-mono text-xs uppercase tabular-nums ui-focus-ring-inset"
+            />
+          </div>
+
+          <div className="mt-3 flex items-center justify-between gap-3">
             <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
               Paleta
             </p>
-            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-              {current}
+            <span className="truncate font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+              {highlighted?.label ?? "setas navegam · enter aplica"}
             </span>
           </div>
 
-          <div className="mt-3 grid grid-cols-6 gap-2">
-            {quickColors.map((color) => {
-              const active = current === swatchTone(color.value);
+          <div className="mt-2 grid grid-cols-6 gap-1.5" role="listbox" aria-label="Cores da paleta">
+            {quickColors.map((color, index) => {
+              const selected = current === color.value.toUpperCase();
+              const focused = index === activeIndex;
+
               return (
                 <button
                   key={color.value}
                   type="button"
+                  role="option"
+                  aria-selected={selected}
                   tabIndex={-1}
                   onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => {
-                    onChange(color.value);
-                    setDraft(color.value);
-                    setOpen(false);
-                  }}
-                  className="group flex flex-col items-center gap-1"
-                  aria-label={color.label}
+                  onMouseEnter={() => setActiveIndex(index)}
+                  onClick={() => selectColor(color.value)}
                   title={color.label}
+                  aria-label={color.label}
+                  className={cn(
+                    "grid place-items-center border p-1 transition-colors",
+                    focused
+                      ? "border-foreground/50 bg-accent"
+                      : "border-transparent hover:border-border",
+                  )}
                 >
-                  <ColorSwatch value={color.value} active={active} />
+                  <span
+                    className="relative grid h-7 w-full min-w-7 place-items-center border border-border"
+                    style={{ backgroundColor: color.value }}
+                  >
+                    {selected && (
+                      <Check
+                        className={cn(
+                          "h-3.5 w-3.5",
+                          isDarkColor(color.value) ? "text-white" : "text-black",
+                        )}
+                        strokeWidth={2}
+                      />
+                    )}
+                  </span>
                 </button>
               );
             })}
-          </div>
-
-          <div className="mt-3 border-t border-border pt-3">
-            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-              Personalizada
-            </p>
-            <div className="relative mt-2">
-              <span
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
-                aria-hidden
-              >
-                <span
-                  className="grid h-4 w-4 place-items-center border border-border"
-                  style={{ backgroundColor: draft }}
-                >
-                  <Palette
-                    className={cn(
-                      "h-2.5 w-2.5",
-                      isDarkColor(draft) ? "text-white" : "text-black",
-                    )}
-                    strokeWidth={1.75}
-                  />
-                </span>
-              </span>
-              <Input
-                ref={customInputRef}
-                value={draft}
-                onChange={(event) => handleDraftChange(event.target.value)}
-                onBlur={() => {
-                  if (!applyDraft()) {
-                    setDraft(current);
-                  }
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    if (!applyDraft()) {
-                      setDraft(current);
-                    }
-                  }
-                  if (event.key === "Tab") {
-                    setOpen(false);
-                  }
-                  if (event.key === "Escape") {
-                    event.preventDefault();
-                    closePicker();
-                  }
-                }}
-                spellCheck={false}
-                autoCapitalize="off"
-                autoComplete="off"
-                autoCorrect="off"
-                inputMode="text"
-                placeholder="#RRGGBB"
-                className="h-9 border-border pl-10 font-mono text-xs uppercase tabular-nums"
-              />
-            </div>
           </div>
         </PickerPopover>
       )}
