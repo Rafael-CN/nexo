@@ -52,6 +52,8 @@ const groups: ShortcutGroup[] = [
       { keys: ["Setas"], label: "Mover o dia selecionado" },
       { keys: ["Shift", "Setas"], label: "Estender a seleção" },
       { keys: ["Enter"], label: "Novo lançamento no dia" },
+      { keys: ["X"], label: "Recortar lançamento do dia" },
+      { keys: ["V"], label: "Soltar no dia selecionado" },
       { keys: ["T"], label: "Voltar para hoje" },
       { keys: ["PgUp / PgDn"], label: "Mês anterior / seguinte" },
     ],
