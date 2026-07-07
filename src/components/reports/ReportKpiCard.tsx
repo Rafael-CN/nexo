@@ -7,6 +7,8 @@ export type KpiTone = "neutral" | "positive" | "negative" | "warning";
 export interface ReportKpiCardProps {
   label: string;
   value: string;
+  /** Marca o valor como monetário — borrado no modo sigilo. */
+  money?: boolean;
   delta?: {
     value: string;
     direction?: "up" | "down" | "flat";
@@ -34,6 +36,7 @@ const toneDeltaMap: Record<KpiTone, string> = {
 export function ReportKpiCard({
   label,
   value,
+  money = false,
   delta,
   note,
   icon: Icon,
@@ -70,7 +73,12 @@ export function ReportKpiCard({
       </div>
 
       <div className="space-y-1.5">
-        <p className="selectable-text truncate font-mono text-2xl font-normal tracking-tight">
+        <p
+          className={cn(
+            "selectable-text truncate font-mono text-2xl font-normal tabular-nums tracking-tight",
+            money && "money",
+          )}
+        >
           {value}
         </p>
         <div className="flex min-h-[20px] items-center gap-2 text-[11px] tabular-nums">

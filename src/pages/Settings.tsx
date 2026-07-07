@@ -1,9 +1,10 @@
 import { useState, type ReactNode } from "react";
-import { Database, Keyboard, Moon, RefreshCw, Sun, Upload } from "lucide-react";
+import { Database, Eye, EyeOff, Keyboard, Moon, RefreshCw, Sun, Upload } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
 import { BackupSection } from "@/components/shared/BackupSection";
+import { SectionHeader } from "@/components/shared/SectionHeader";
 import { ImportStatementModal } from "@/components/shared/ImportStatementModal";
 import { ShortcutsHelp } from "@/components/shared/ShortcutsHelp";
 import {
@@ -23,12 +24,13 @@ import {
 import { cn } from "@/lib/utils";
 import { isTauri } from "@/lib/db";
 import { checkForUpdate, getAppVersion, type UpdateInfo } from "@/lib/updates";
-
-const labelClass =
-  "font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground";
+import { usePrivacyStore } from "@/store/usePrivacyStore";
+import { dsHeroValue, dsSectionLabel } from "@/lib/designSystem";
 
 export function SettingsPage() {
   const { theme, setTheme } = useTheme();
+  const privacyEnabled = usePrivacyStore((s) => s.enabled);
+  const setPrivacy = usePrivacyStore((s) => s.setEnabled);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [importStatementOpen, setImportStatementOpen] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<
@@ -63,8 +65,8 @@ export function SettingsPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-10">
       <section className="border-b border-border pb-8">
-        <p className={labelClass}>Nexo / configurações</p>
-        <h1 className="mt-3 font-mono text-4xl font-light tracking-tight md:text-5xl">
+        <p className={dsSectionLabel}>Nexo / configurações</p>
+        <h1 className={`mt-3 ${dsHeroValue}`}>
           Preferências
         </h1>
         <p className="mt-2 font-mono text-xs text-muted-foreground">
@@ -92,6 +94,29 @@ export function SettingsPage() {
             >
               <Moon className="h-3.5 w-3.5" strokeWidth={1.5} />
               Escuro
+            </ThemeButton>
+          </div>
+        </SettingRow>
+
+        <SettingRow
+          label="Modo sigilo"
+          description="Borra todos os valores monetários — útil em telas compartilhadas. Atalho: Ctrl/Cmd H."
+        >
+          <div className="flex items-center border border-border">
+            <ThemeButton
+              active={!privacyEnabled}
+              onClick={() => setPrivacy(false)}
+              className="border-r border-border"
+            >
+              <Eye className="h-3.5 w-3.5" strokeWidth={1.5} />
+              Visível
+            </ThemeButton>
+            <ThemeButton
+              active={privacyEnabled}
+              onClick={() => setPrivacy(true)}
+            >
+              <EyeOff className="h-3.5 w-3.5" strokeWidth={1.5} />
+              Borrado
             </ThemeButton>
           </div>
         </SettingRow>
@@ -304,10 +329,7 @@ function SettingsSection({
 }) {
   return (
     <section className="space-y-0">
-      <div className="mb-3 flex items-center gap-3">
-        <p className={labelClass}>{label}</p>
-        <div className="h-px flex-1 bg-border" />
-      </div>
+      <SectionHeader className="mb-3" label={label} />
       <div className="border-t border-border">{children}</div>
     </section>
   );

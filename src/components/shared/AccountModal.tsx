@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { KbdGroup } from "@/components/ui/kbd";
 import { Label } from "@/components/ui/label";
 import { NumberInput } from "@/components/ui/number-input";
 import { ColorPicker } from "@/components/shared/ColorPicker";
@@ -20,6 +21,7 @@ import {
 } from "@/components/shared/SegmentedToggle";
 import { parseBrAmount } from "@/lib/statement";
 import { useFinanceStore } from "@/store/useFinanceStore";
+import { toast } from "@/store/useToastStore";
 import type { Account, AccountType } from "@/types";
 
 interface Props {
@@ -48,8 +50,6 @@ const accountTypes = [
   { value: "investment", label: "Invest." },
 ] as const satisfies readonly { value: AccountType; label: string }[];
 
-const labelClass =
-  "text-[10px] uppercase tracking-[0.12em] text-muted-foreground";
 
 function buildForm(account?: Account | null): FormState {
   return {
@@ -155,10 +155,15 @@ export function AccountModal({ open, onOpenChange, account }: Props) {
 
   async function handleDelete() {
     if (!account) return;
+    const snapshot = { ...account };
     try {
       setSaving(true);
       await removeAccount(account.id);
       onOpenChange(false);
+      toast(`Conta "${snapshot.name}" excluída.`, {
+        actionLabel: "Desfazer",
+        onAction: () => addAccount(snapshot),
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -189,13 +194,11 @@ export function AccountModal({ open, onOpenChange, account }: Props) {
                 value={form.type}
                 onChange={(value) => set("type", value)}
               />
-              <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                Ctrl Tab
-              </span>
+              <KbdGroup keys={["Ctrl", "Tab"]} />
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="account-balance" className={labelClass}>
+              <Label htmlFor="account-balance">
                 {form.type === "credit" ? "Saldo base (fatura em aberto usa negativo)" : "Saldo base"}
               </Label>
               <NumberInput
@@ -208,7 +211,7 @@ export function AccountModal({ open, onOpenChange, account }: Props) {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="account-name" className={labelClass}>
+            <Label htmlFor="account-name">
               Nome
             </Label>
             <Input
@@ -223,7 +226,7 @@ export function AccountModal({ open, onOpenChange, account }: Props) {
 
           <div className="grid grid-cols-[1fr_96px] gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="account-institution" className={labelClass}>
+              <Label htmlFor="account-institution">
                 Instituição
               </Label>
               <Input
@@ -235,7 +238,7 @@ export function AccountModal({ open, onOpenChange, account }: Props) {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="account-last-four" className={labelClass}>
+              <Label htmlFor="account-last-four">
                 Final
               </Label>
               <Input
@@ -252,7 +255,7 @@ export function AccountModal({ open, onOpenChange, account }: Props) {
           {form.type === "credit" && (
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="account-closing-day" className={labelClass}>
+                <Label htmlFor="account-closing-day">
                   Fechamento (dia)
                 </Label>
                 <NumberInput
@@ -265,7 +268,7 @@ export function AccountModal({ open, onOpenChange, account }: Props) {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="account-due-day" className={labelClass}>
+                <Label htmlFor="account-due-day">
                   Vencimento (dia)
                 </Label>
                 <NumberInput
@@ -282,7 +285,7 @@ export function AccountModal({ open, onOpenChange, account }: Props) {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="account-color" className={labelClass}>
+              <Label htmlFor="account-color">
                 Cor
               </Label>
               <ColorPicker
@@ -294,7 +297,7 @@ export function AccountModal({ open, onOpenChange, account }: Props) {
               />
             </div>
             <div className="space-y-1.5">
-              <Label className={labelClass}>Ícone</Label>
+              <Label>Ícone</Label>
               <IconPicker
                 value={form.icon}
                 onChange={(value) => set("icon", value)}

@@ -183,6 +183,12 @@
     @apply focus-visible:outline-none;
   }
 
+  /* Modo sigilo (Ctrl+H): borra todos os valores monetários marcados. */
+  [data-privacy="true"] .money {
+    filter: blur(6px);
+    user-select: none;
+  }
+
   /* Helper para números financeiros */
   .tabular-mono {
     font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco,

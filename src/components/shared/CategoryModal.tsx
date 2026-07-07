@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { KbdGroup } from "@/components/ui/kbd";
 import { Label } from "@/components/ui/label";
 import { ColorPicker } from "@/components/shared/ColorPicker";
 import { ConfirmDeleteButton } from "@/components/shared/ConfirmDeleteButton";
@@ -23,6 +24,7 @@ import {
   parseCurrencyInputValue,
 } from "@/components/shared/transactionModalUtils";
 import { useFinanceStore } from "@/store/useFinanceStore";
+import { toast } from "@/store/useToastStore";
 import type { Category, CategoryKind } from "@/types";
 
 interface Props {
@@ -44,8 +46,6 @@ const kindOptions = [
   { value: "income", label: "Receita" },
 ] as const satisfies readonly { value: CategoryKind; label: string }[];
 
-const labelClass =
-  "text-[10px] uppercase tracking-[0.12em] text-muted-foreground";
 
 function buildForm(category?: Category | null): FormState {
   return {
@@ -131,10 +131,15 @@ export function CategoryModal({ open, onOpenChange, category }: Props) {
 
   async function handleDelete() {
     if (!category) return;
+    const snapshot = { ...category };
     try {
       setSaving(true);
       await removeCategory(category.id);
       onOpenChange(false);
+      toast(`Categoria "${snapshot.name}" excluída.`, {
+        actionLabel: "Desfazer",
+        onAction: () => addCategory(snapshot),
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -168,9 +173,7 @@ export function CategoryModal({ open, onOpenChange, category }: Props) {
                   value={form.kind}
                   onChange={(value) => set("kind", value)}
                 />
-                <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                  Ctrl Tab
-                </span>
+                <KbdGroup keys={["Ctrl", "Tab"]} />
               </div>
             </div>
 
@@ -197,7 +200,7 @@ export function CategoryModal({ open, onOpenChange, category }: Props) {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="category-name" className={labelClass}>
+            <Label htmlFor="category-name">
               Nome
             </Label>
             <Input
@@ -212,7 +215,7 @@ export function CategoryModal({ open, onOpenChange, category }: Props) {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="category-color" className={labelClass}>
+              <Label htmlFor="category-color">
                 Cor
               </Label>
               <ColorPicker
@@ -224,7 +227,7 @@ export function CategoryModal({ open, onOpenChange, category }: Props) {
               />
             </div>
             <div className="space-y-1.5">
-              <Label className={labelClass}>Ícone</Label>
+              <Label>Ícone</Label>
               <IconPicker
                 value={form.icon}
                 onChange={(value) => set("icon", value)}
@@ -235,7 +238,7 @@ export function CategoryModal({ open, onOpenChange, category }: Props) {
 
           {form.kind === "expense" && (
             <div className="space-y-1.5">
-              <Label htmlFor="category-budget" className={labelClass}>
+              <Label htmlFor="category-budget">
                 Orçamento mensal — opcional
               </Label>
               <CurrencyInput

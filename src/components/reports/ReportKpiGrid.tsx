@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 export interface ReportKpiItem {
   label: string;
   value: string;
+  /** Marca o valor como monetário — borrado no modo sigilo. */
+  money?: boolean;
   delta?: {
     value: string;
     direction?: "up" | "down" | "flat";

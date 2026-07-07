@@ -30,6 +30,8 @@ import { isEditableElement } from "@/lib/keyboardShortcuts";
 import { useFinanceStore } from "@/store/useFinanceStore";
 import { useProjection } from "@/hooks/useProjection";
 import type { Transaction } from "@/types";
+import { SectionHeader } from "@/components/shared/SectionHeader";
+import { dsHeroOverline, dsHeroValue } from "@/lib/designSystem";
 
 const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
 
@@ -231,10 +233,10 @@ export function CalendarPage() {
     <div className="space-y-10">
       <section className="flex flex-col gap-6 border-b border-border pb-8 xl:flex-row xl:items-end xl:justify-between">
         <div className="space-y-3">
-          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+          <p className={dsHeroOverline}>
             Projeção mensal
           </p>
-          <h1 className="font-mono text-4xl font-light capitalize tracking-tight md:text-5xl">
+          <h1 className={`capitalize ${dsHeroValue}`}>
             {format(viewMonth, "MMMM yyyy", { locale: ptBR })}
           </h1>
           <p className="font-mono text-xs text-muted-foreground">
@@ -468,7 +470,7 @@ function ProjectionMetric({
       <p>{label}</p>
       <p
         className={cn(
-          "mt-1 text-xs tabular-nums text-foreground",
+          "money mt-1 text-xs tabular-nums text-foreground",
           value < 0 && "text-destructive",
         )}
       >
@@ -499,12 +501,7 @@ function SelectionSummary({ summary }: { summary: SelectedRangeSummary }) {
 
   return (
     <section className="space-y-4">
-      <div className="flex items-center gap-3">
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-          Período selecionado
-        </p>
-        <div className="h-px flex-1 bg-border" />
-      </div>
+      <SectionHeader label="Período selecionado" />
 
       <div className="grid grid-cols-1 gap-px overflow-hidden border border-border bg-background md:grid-cols-4">
         <SelectionMetric
@@ -515,16 +512,19 @@ function SelectionSummary({ summary }: { summary: SelectedRangeSummary }) {
           label="Saldo ao final"
           value={formatCurrency(summary.balance)}
           negative={summary.balance < 0}
+          money
         />
         <SelectionMetric
           label="Entradas"
           value={`+${formatCurrency(summary.income)}`}
           accent="success"
+          money
         />
         <SelectionMetric
           label="Saídas"
           value={`-${formatCurrency(summary.expense)}`}
           accent="destructive"
+          money
         />
       </div>
 
@@ -550,7 +550,7 @@ function SelectionSummary({ summary }: { summary: SelectedRangeSummary }) {
               </div>
               <span
                 className={cn(
-                  "selectable-text font-mono tabular-nums",
+                  "selectable-text money font-mono tabular-nums",
                   transaction.type === "income"
                     ? "text-success"
                     : transaction.type === "transfer"
@@ -583,11 +583,13 @@ function SelectionMetric({
   value,
   negative,
   accent,
+  money = false,
 }: {
   label: string;
   value: string;
   negative?: boolean;
   accent?: "success" | "destructive";
+  money?: boolean;
 }) {
   return (
     <div className="min-h-[88px] bg-background p-4">
@@ -597,6 +599,7 @@ function SelectionMetric({
       <p
         className={cn(
           "selectable-text mt-2 truncate font-mono text-sm tabular-nums",
+          money && "money",
           negative && "text-destructive",
           accent === "success" && "text-success",
           accent === "destructive" && "text-destructive",

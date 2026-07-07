@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag do release (ex: v0.2.0)"
+        description: "Tag do release (ex: v0.3.0)"
         required: true
         type: string
 
@@ -15,8 +15,71 @@ permissions:
   contents: write
 
 jobs:
+  prepare:
+    name: Tag e changelog
+    runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      version: ${{ steps.meta.outputs.version }}
+      changelog: ${{ steps.changelog.outputs.body }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolver tag e versão
+        id: meta
+        run: |
+          TAG="${{ inputs.tag || github.ref_name }}"
+          if ! echo "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Tag inválida: '$TAG' (esperado vX.Y.Z)" >&2
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      # No disparo manual a tag ainda não existe: cria e publica aqui.
+      # Push com GITHUB_TOKEN não redispara este workflow (sem recursão).
+      - name: Criar tag no repositório (workflow_dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          TAG="${{ steps.meta.outputs.tag }}"
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "Tag $TAG já existe — mantendo."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a "$TAG" -m "Nexo $TAG"
+            git push origin "refs/tags/$TAG"
+          fi
+
+      - name: Gerar changelog desde a tag anterior
+        id: changelog
+        run: |
+          TAG="${{ steps.meta.outputs.tag }}"
+          PREV=$(git tag --sort=-v:refname | grep -Ev "^$TAG\$" | head -n 1 || true)
+          if [ -n "$PREV" ]; then
+            RANGE="$PREV..HEAD"
+            HEADER="## Mudanças desde $PREV"
+          else
+            RANGE="HEAD"
+            HEADER="## Mudanças"
+          fi
+          {
+            echo "body<<NEXO_CHANGELOG_EOF"
+            echo "$HEADER"
+            echo ""
+            git log "$RANGE" --no-merges --pretty=format:"- %s (%h)" | head -n 80
+            echo ""
+            echo ""
+            echo "---"
+            echo "Instaladores gerados automaticamente para Windows, macOS e Linux."
+            echo "NEXO_CHANGELOG_EOF"
+          } >> "$GITHUB_OUTPUT"
+
   build:
     name: Instaladores (${{ matrix.platform }})
+    needs: prepare
     strategy:
       fail-fast: false
       matrix:
@@ -59,6 +122,33 @@ jobs:
         with:
           workspaces: src-tauri
 
+      # Os nomes dos artefatos vêm da versão nos manifests, não da tag.
+      # Sincronizar aqui garante que a tag vX.Y.Z sempre gera Nexo_X.Y.Z_*.
+      - name: Sincronizar versão dos manifests com a tag
+        shell: bash
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          node - <<'EOF'
+          const fs = require("fs");
+          const version = process.env.VERSION;
+
+          for (const path of ["package.json", "src-tauri/tauri.conf.json"]) {
+            const data = JSON.parse(fs.readFileSync(path, "utf8"));
+            data.version = version;
+            fs.writeFileSync(path, JSON.stringify(data, null, 2) + "\n");
+          }
+
+          const cargoPath = "src-tauri/Cargo.toml";
+          const cargo = fs.readFileSync(cargoPath, "utf8");
+          fs.writeFileSync(
+            cargoPath,
+            cargo.replace(/^version = ".*"$/m, `version = "${version}"`),
+          );
+
+          console.log(`Manifests sincronizados para ${version}`);
+          EOF
+
       - name: Instalar dependências
         run: npm ci
 
@@ -67,9 +157,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ inputs.tag || github.ref_name }}
-          releaseName: "Nexo ${{ inputs.tag || github.ref_name }}"
-          releaseBody: "Instaladores gerados automaticamente. Veja as mudanças no histórico de commits."
+          tagName: ${{ needs.prepare.outputs.tag }}
+          releaseName: "Nexo ${{ needs.prepare.outputs.tag }}"
+          releaseBody: ${{ needs.prepare.outputs.changelog }}
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}

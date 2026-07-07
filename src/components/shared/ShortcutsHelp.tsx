@@ -5,7 +5,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { KbdGroup } from "@/components/ui/kbd";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { SectionHeader } from "@/components/shared/SectionHeader";
 
 interface Props {
   open: boolean;
@@ -29,6 +31,7 @@ const groups: ShortcutGroup[] = [
       { keys: ["Ctrl/Cmd", "K"], label: "Busca e comandos" },
       { keys: ["Ctrl/Cmd", "N"], label: "Nova transação" },
       { keys: ["Ctrl/Cmd", "T"], label: "Nova transferência" },
+      { keys: ["Ctrl/Cmd", "H"], label: "Modo sigilo (borrar valores)" },
       { keys: ["Ctrl/Cmd", "1–7"], label: "Navegar entre páginas" },
       { keys: ["Ctrl/Cmd", ","], label: "Configurações" },
       { keys: ["?"], label: "Esta ajuda" },
@@ -81,12 +84,7 @@ export function ShortcutsHelp({ open, onOpenChange }: Props) {
           <div className="space-y-6 px-6 py-5">
             {groups.map((group) => (
               <section key={group.title} className="space-y-2">
-                <div className="flex items-center gap-3">
-                  <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                    {group.title}
-                  </p>
-                  <div className="h-px flex-1 bg-border" />
-                </div>
+                <SectionHeader label={group.title} />
                 <div className="border border-border">
                   {group.entries.map((entry) => (
                     <div
@@ -94,16 +92,7 @@ export function ShortcutsHelp({ open, onOpenChange }: Props) {
                       className="flex items-center justify-between gap-4 border-b border-border px-4 py-2.5 last:border-b-0"
                     >
                       <p className="text-sm text-foreground">{entry.label}</p>
-                      <span className="flex shrink-0 items-center gap-1">
-                        {entry.keys.map((key) => (
-                          <kbd
-                            key={key}
-                            className="inline-flex h-5 min-w-5 items-center justify-center border border-border bg-accent/40 px-1.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground"
-                          >
-                            {key}
-                          </kbd>
-                        ))}
-                      </span>
+                      <KbdGroup keys={entry.keys} />
                     </div>
                   ))}
                 </div>

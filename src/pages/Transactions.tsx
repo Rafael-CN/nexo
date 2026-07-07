@@ -4,6 +4,7 @@ import { useShallow } from "zustand/react/shallow";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ArrowDownUp, Filter, Plus, RotateCcw, Search } from "lucide-react";
+import { AnimatedCurrency } from "@/components/shared/AnimatedCurrency";
 import { TransactionRow } from "@/components/shared/TransactionRow";
 import { TransactionModal } from "@/components/shared/TransactionModal";
 import { DatePicker } from "@/components/shared/DatePicker";
@@ -30,6 +31,7 @@ import {
 } from "@/lib/transactionFilters";
 import { isEditableElement } from "@/lib/keyboardShortcuts";
 import type { Transaction } from "@/types";
+import { dsHeroOverline, dsHeroValue } from "@/lib/designSystem";
 
 const defaultFilters: TransactionFilters = {
   query: "",
@@ -167,18 +169,18 @@ export function TransactionsPage() {
     <div className="space-y-10">
       <section className="flex flex-col gap-6 border-b border-border pb-10 md:flex-row md:items-end md:justify-between">
         <div className="space-y-3">
-          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+          <p className={dsHeroOverline}>
             Transações ({totals.count})
           </p>
-          <h1 className="selectable-text font-mono text-4xl font-light tracking-tight md:text-5xl">
-            {formatCurrency(totals.net)}
+          <h1 className={`selectable-text ${dsHeroValue}`}>
+            <AnimatedCurrency value={totals.net} />
           </h1>
           <p className="font-mono text-xs text-muted-foreground">
-            <span className="selectable-text text-success">
+            <span className="selectable-text money text-success">
               +{formatCurrency(totals.income)}
             </span>
             <span className="px-2">·</span>
-            <span className="selectable-text text-destructive">
+            <span className="selectable-text money text-destructive">
               −{formatCurrency(totals.expense)}
             </span>
           </p>
@@ -355,11 +357,11 @@ export function TransactionsPage() {
             return (
               <div key={date} className="space-y-3">
                 <div className="flex items-baseline gap-3">
-                  <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                  <p className={dsHeroOverline}>
                     {format(parsed, "EEE, dd MMM yyyy", { locale: ptBR })}
                   </p>
                   <div className="h-px flex-1 bg-border" />
-                  <span className="selectable-text font-mono text-[11px] tabular-nums text-muted-foreground">
+                  <span className="selectable-text money font-mono text-[11px] tabular-nums text-muted-foreground">
                     {dayTotal >= 0 ? "+" : "−"}
                     {formatCurrency(Math.abs(dayTotal))}
                   </span>

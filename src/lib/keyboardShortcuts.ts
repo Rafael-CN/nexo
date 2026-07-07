@@ -85,6 +85,7 @@ export function isGlobalShortcutEvent(event: KeyboardEvent) {
     "mod+k",
     "mod+n",
     "mod+t",
+    "mod+h",
     "mod+,",
     "mod+1",
     "mod+2",

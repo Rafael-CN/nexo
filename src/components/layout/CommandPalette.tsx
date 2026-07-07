@@ -6,6 +6,7 @@ import { ptBR } from "date-fns/locale";
 import {
   ArrowRightLeft,
   Check,
+  EyeOff,
   FileUp,
   Flag,
   Keyboard,
@@ -38,6 +39,7 @@ import { appRoutes } from "@/lib/navigation";
 import { suggestCategory } from "@/lib/statement";
 import { cn } from "@/lib/utils";
 import { useFinanceStore } from "@/store/useFinanceStore";
+import { usePrivacyStore } from "@/store/usePrivacyStore";
 import type { Transaction } from "@/types";
 
 type CommandPaletteProps = {
@@ -155,6 +157,16 @@ export function CommandPalette({
         keywords: ["ajuda", "teclado", "shortcuts"],
         group: "Ações" as const,
         run: onOpenHelp,
+      },
+      {
+        id: "modo-sigilo",
+        label: "Alternar modo sigilo",
+        description: "Borrar/revelar valores monetários",
+        icon: EyeOff,
+        shortcut: "H",
+        keywords: ["privacidade", "esconder", "borrar", "valores", "sigilo"],
+        group: "Ações" as const,
+        run: () => usePrivacyStore.getState().toggle(),
       },
       {
         id: "configuracoes",
@@ -478,7 +490,16 @@ export function CommandPalette({
                                 </span>
                               )}
                             </div>
-                            <p className="truncate font-mono text-[11px] text-muted-foreground">
+                            <p
+                              className={cn(
+                                "truncate font-mono text-[11px] text-muted-foreground",
+                                // Resultados com valores monetários respeitam o modo sigilo.
+                                (group === "Transações" ||
+                                  group === "Metas" ||
+                                  group === "Criar") &&
+                                  "money",
+                              )}
+                            >
                               {action.description}
                             </p>
                           </div>

@@ -7,7 +7,9 @@ import {
   CalendarClock,
   Target,
 } from "lucide-react";
+import { AnimatedCurrency } from "@/components/shared/AnimatedCurrency";
 import { OverdueRecurrences } from "@/components/shared/OverdueRecurrences";
+import { SectionHeader } from "@/components/shared/SectionHeader";
 import { StatCard } from "@/components/shared/StatCard";
 import { TransactionRow } from "@/components/shared/TransactionRow";
 import { Button } from "@/components/ui/button";
@@ -22,6 +24,7 @@ import { useProjection } from "@/hooks/useProjection";
 import { formatCurrency } from "@/lib/format";
 import { resolveGoal } from "@/lib/goals";
 import type { Goal, Transaction } from "@/types";
+import { dsHeroOverline, dsHeroValue } from "@/lib/designSystem";
 
 const UPCOMING_LIMIT = 8;
 const DAYS_14 = 14;
@@ -84,6 +87,7 @@ export function DashboardPage() {
           <StatCard
             label="Entradas"
             value={formatCurrency(monthFlow.income)}
+            money
             delta={buildMonthlyDelta(
               monthFlow.income,
               previousMonthFlow.income,
@@ -97,6 +101,7 @@ export function DashboardPage() {
           <StatCard
             label="Saídas"
             value={formatCurrency(monthFlow.expense)}
+            money
             delta={buildMonthlyDelta(
               monthFlow.expense,
               previousMonthFlow.expense,
@@ -191,11 +196,11 @@ function HeroBalance({
   return (
     <section className="flex flex-col gap-8 border-b border-border pb-10 md:flex-row md:items-end md:justify-between">
       <div className="space-y-3">
-        <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+        <p className={dsHeroOverline}>
           Saldo efetivo
         </p>
-        <h1 className="selectable-text font-mono text-5xl font-light tracking-tight md:text-6xl">
-          {formatCurrency(balance)}
+        <h1 className={`selectable-text ${dsHeroValue}`}>
+          <AnimatedCurrency value={balance} />
         </h1>
         <p className="font-mono text-xs text-muted-foreground">
           até hoje
@@ -214,7 +219,7 @@ function HeroBalance({
               <p className="selectable-text truncate font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                 {a.name}
               </p>
-              <p className="selectable-text mt-1 font-mono text-sm tabular-nums">
+              <p className="selectable-text money mt-1 font-mono text-sm tabular-nums">
                 {formatCurrency(a.balance)}
               </p>
             </div>
@@ -226,14 +231,7 @@ function HeroBalance({
 }
 
 function SectionDivider({ label }: { label: string }) {
-  return (
-    <div className="flex items-center gap-3">
-      <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-        {label}
-      </p>
-      <div className="h-px flex-1 bg-border" />
-    </div>
-  );
+  return <SectionHeader label={label} />;
 }
 
 function UpcomingLedger({ transactions }: { transactions: Transaction[] }) {
@@ -292,11 +290,11 @@ function GoalPanel({ goal }: { goal: Goal }) {
       <div className="flex flex-1 flex-col gap-5 border border-border p-5">
         <div className="space-y-1">
           <p className="selectable-text text-sm font-medium leading-tight">{goal.name}</p>
-          <p className="selectable-text font-mono text-3xl font-light tabular-nums tracking-tight">
+          <p className="selectable-text money font-mono text-3xl font-light tabular-nums tracking-tight">
             {formatCurrency(goal.currentAmount)}
           </p>
           <p className="selectable-text font-mono text-[11px] text-muted-foreground">
-            meta {formatCurrency(goal.targetAmount)}
+            meta <span className="money">{formatCurrency(goal.targetAmount)}</span>
           </p>
         </div>
 
@@ -310,7 +308,7 @@ function GoalPanel({ goal }: { goal: Goal }) {
           <div className="flex items-baseline justify-between font-mono text-[11px]">
             <span className="selectable-text tabular-nums">{progress}% atingido</span>
             <span className="selectable-text tabular-nums text-muted-foreground">
-              faltam {formatCurrency(remaining)}
+              faltam <span className="money">{formatCurrency(remaining)}</span>
             </span>
           </div>
         </div>

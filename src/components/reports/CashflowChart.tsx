@@ -1,5 +1,6 @@
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { SectionHeader } from "@/components/shared/SectionHeader";
 
 export interface CashflowChartPoint {
   label: string;
@@ -30,23 +31,19 @@ export function CashflowChart({
 
   return (
     <section className={cn("space-y-3", className)}>
-      <div className="flex items-center gap-3">
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-          {title}
-        </p>
-        <div className="h-px flex-1 bg-border" />
+      <SectionHeader label={title}>
         <p className="font-mono text-[10px] tabular-nums text-muted-foreground">
-          <span className="text-success">+{formatCurrency(totalInflow, true)}</span>
+          <span className="money text-success">+{formatCurrency(totalInflow, true)}</span>
           <span className="px-1.5">·</span>
-          <span className="text-destructive">
+          <span className="money text-destructive">
             −{formatCurrency(totalOutflow, true)}
           </span>
           <span className="px-1.5">·</span>
-          <span className={cn(net < 0 && "text-destructive")}>
+          <span className={cn("money", net < 0 && "text-destructive")}>
             = {formatCurrency(net, true)}
           </span>
         </p>
-      </div>
+      </SectionHeader>
 
       <div className="border border-border bg-background p-5">
         <div className="flex h-44 items-stretch gap-[3px]">

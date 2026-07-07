@@ -8,7 +8,6 @@ import {
   Calculator,
   Car,
   Check,
-  ChevronDown,
   CircleDollarSign,
   Coins,
   CreditCard,
@@ -45,8 +44,14 @@ import {
   Film,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { dsFieldLabel } from "@/lib/designSystem";
 import { cn } from "@/lib/utils";
-import { PickerPopover } from "@/components/shared/pickerPopover";
+import {
+  PickerField,
+  PickerPopover,
+  PickerPopoverFooter,
+  PickerPopoverHeader,
+} from "@/components/shared/pickerPopover";
 
 type FinanceIconGroup =
   | "base"
@@ -623,33 +628,20 @@ export function IconPicker({
 
   return (
     <div ref={rootRef} className="relative">
-      <button
+      <PickerField
         ref={triggerRef}
-        type="button"
+        open={open}
         disabled={disabled}
         onClick={togglePicker}
         onKeyDown={handleTriggerKeyDown}
-        aria-haspopup="dialog"
-        aria-expanded={open}
         aria-label={`Selecionar ícone. Atual: ${selectedOption.label}`}
-        className={cn(
-          "flex h-9 w-full items-center gap-2.5 border border-border bg-transparent px-3 text-left text-sm transition-colors ui-focus-ring disabled:cursor-not-allowed disabled:opacity-50",
-          open && "border-foreground",
-        )}
-      >
-        <span className="grid h-5 w-5 shrink-0 place-items-center text-muted-foreground">
-          <SelectedIcon className="h-4 w-4" strokeWidth={1.5} />
-        </span>
-
-        <span className="min-w-0 flex-1 truncate font-mono text-xs uppercase tracking-[0.12em]">
-          {selectedOption.label}
-        </span>
-
-        <ChevronDown
-          className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")}
-          strokeWidth={1.5}
-        />
-      </button>
+        leading={
+          <span className="grid h-5 w-5 place-items-center text-muted-foreground">
+            <SelectedIcon className="h-4 w-4" strokeWidth={1.5} />
+          </span>
+        }
+        value={selectedOption.label}
+      />
 
       {open && !disabled && (
         <PickerPopover
@@ -660,7 +652,7 @@ export function IconPicker({
           preferredHeight={420}
           className="flex flex-col"
         >
-          <div className="shrink-0 border-b border-border px-3 py-3">
+          <PickerPopoverHeader>
             <div className="relative">
               <Search
                 className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
@@ -672,7 +664,7 @@ export function IconPicker({
                 onChange={(event) => setQuery(event.target.value)}
                 onKeyDown={handleSearchKeyDown}
                 placeholder="Buscar ícone"
-                className="h-9 border-border bg-background pl-9 pr-3 font-mono text-xs ui-focus-ring-inset"
+                className="bg-background pl-9 pr-3 font-mono text-xs ui-focus-ring-inset"
               />
             </div>
 
@@ -697,13 +689,13 @@ export function IconPicker({
                 );
               })}
             </div>
-          </div>
+          </PickerPopoverHeader>
 
           <div
             ref={listRef}
             className="min-h-0 flex-1 overflow-y-auto"
             style={{
-              maxHeight: "max(72px, calc(var(--picker-popover-max-height, 420px) - 112px))",
+              maxHeight: "max(72px, calc(var(--picker-popover-max-height, 420px) - 150px))",
             }}
           >
             <div className="p-2">
@@ -719,7 +711,7 @@ export function IconPicker({
               ) : (
                 groupedOptions.map((group) => (
                   <div key={group.group} className="pb-3 last:pb-0">
-                    <div className="px-1 pb-2 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                    <div className={cn("px-1 pb-2", dsFieldLabel)}>
                       {group.label}
                     </div>
                     <div className="grid grid-cols-5 gap-1.5">
@@ -782,6 +774,14 @@ export function IconPicker({
               )}
             </div>
           </div>
+
+          <PickerPopoverFooter
+            keys={[
+              ["↕↔", "navega"],
+              ["PgUp/Dn", "grupo"],
+              ["↵", "aplica"],
+            ]}
+          />
         </PickerPopover>
       )}
     </div>

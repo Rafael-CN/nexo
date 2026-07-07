@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { KbdGroup } from "@/components/ui/kbd";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { NumberInput } from "@/components/ui/number-input";
@@ -30,6 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useFinanceStore } from "@/store/useFinanceStore";
+import { toast } from "@/store/useToastStore";
 import { cn } from "@/lib/utils";
 import type {
   RecurrenceRule,
@@ -74,8 +76,6 @@ const recurrenceOptions: {
   { value: "yearly", label: "Anual" },
 ];
 
-const labelClass =
-  "text-[10px] uppercase tracking-[0.12em] text-muted-foreground";
 
 export function TransactionModal({
   open,
@@ -359,12 +359,21 @@ export function TransactionModal({
 
   async function handleDeleteSeries() {
     if (installmentSeries.length === 0) return;
+    const snapshot = [...installmentSeries];
     try {
       setSaving(true);
-      for (const txn of installmentSeries) {
+      for (const txn of snapshot) {
         await removeTransaction(txn.id);
       }
       onOpenChange(false);
+      toast(`Série excluída (${snapshot.length} parcelas).`, {
+        actionLabel: "Desfazer",
+        onAction: async () => {
+          for (const txn of snapshot) {
+            await addTransaction(txn);
+          }
+        },
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -374,6 +383,8 @@ export function TransactionModal({
 
   async function handleDelete() {
     if (!transaction) return;
+    const snapshot = { ...transaction };
+    const rule = currentRule ? { ...currentRule } : null;
     try {
       setSaving(true);
       const recurrenceId = transaction.recurrenceId;
@@ -385,6 +396,15 @@ export function TransactionModal({
         await removeRecurrenceRule(recurrenceId);
       }
       onOpenChange(false);
+      toast("Transação excluída.", {
+        actionLabel: "Desfazer",
+        onAction: async () => {
+          if (rule && shouldRemoveUnusedRule) {
+            await addRecurrenceRule(rule);
+          }
+          await addTransaction(snapshot);
+        },
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -694,12 +714,10 @@ export function TransactionModal({
                   value={form.type}
                   onChange={handleTypeChange}
                 />
-                <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                  Ctrl Tab
-                </span>
+                <KbdGroup keys={["Ctrl", "Tab"]} />
               </div>
               <div className="text-right">
-                <p className={labelClass}>{isTransfer ? "Rota" : "Conta"}</p>
+                <p>{isTransfer ? "Rota" : "Conta"}</p>
                 <p className="mt-1 truncate text-xs text-foreground">
                   {isTransfer
                     ? `${selectedAccount?.name ?? "?"} → ${
@@ -711,7 +729,7 @@ export function TransactionModal({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="txn-amount" className={labelClass}>
+              <Label htmlFor="txn-amount">
                 Valor
               </Label>
               <CurrencyInput
@@ -730,7 +748,7 @@ export function TransactionModal({
 
           <div className="grid gap-3 md:grid-cols-[1.4fr_0.9fr]">
             <div className="space-y-1.5">
-              <Label htmlFor="txn-title" className={labelClass}>
+              <Label htmlFor="txn-title">
                 Título
               </Label>
               <Input
@@ -742,7 +760,7 @@ export function TransactionModal({
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="txn-date" className={labelClass}>
+              <Label htmlFor="txn-date">
                 Data
               </Label>
               <DatePicker
@@ -757,7 +775,7 @@ export function TransactionModal({
 
           <div className="grid gap-3 md:grid-cols-[0.95fr_1.05fr]">
             <div className="space-y-1.5">
-              <Label className={labelClass}>
+              <Label>
                 {isTransfer ? "De (origem)" : "Conta"}
               </Label>
               <Select
@@ -792,7 +810,7 @@ export function TransactionModal({
 
             {isTransfer ? (
               <div className="space-y-1.5">
-                <Label className={labelClass}>Para (destino)</Label>
+                <Label>Para (destino)</Label>
                 <Select
                   open={destinationSelectOpen}
                   onOpenChange={setDestinationSelectOpen}
@@ -828,7 +846,7 @@ export function TransactionModal({
               </div>
             ) : (
               <div className="space-y-1.5">
-                <Label className={labelClass}>Categoria</Label>
+                <Label>Categoria</Label>
                 <CategoryPicker
                   inputRef={categoryInputRef}
                   categories={categories}
@@ -857,7 +875,7 @@ export function TransactionModal({
             )}
           >
             <div className="space-y-1.5">
-              <Label className={labelClass}>Recorrência</Label>
+              <Label>Recorrência</Label>
               <Select
                 open={recurrenceSelectOpen}
                 onOpenChange={setRecurrenceSelectOpen}
@@ -893,7 +911,7 @@ export function TransactionModal({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="txn-recurrence-interval" className={labelClass}>
+              <Label htmlFor="txn-recurrence-interval">
                 Intervalo
               </Label>
               <NumberInput
@@ -908,7 +926,7 @@ export function TransactionModal({
             </div>
             {form.type === "expense" && !isEdit && (
               <div className="space-y-1.5">
-                <Label htmlFor="txn-installments" className={labelClass}>
+                <Label htmlFor="txn-installments">
                   Parcelas
                 </Label>
                 <NumberInput
@@ -933,7 +951,7 @@ export function TransactionModal({
           )}
 
           <div className="space-y-1.5">
-            <Label htmlFor="txn-notes" className={labelClass}>
+            <Label htmlFor="txn-notes">
               Notas — opcional
             </Label>
             <Input
@@ -962,7 +980,7 @@ export function TransactionModal({
 
               {!form.recurrenceNoEnd && (
                 <div className="space-y-1.5">
-                  <Label htmlFor="txn-recurrence-until" className={labelClass}>
+                  <Label htmlFor="txn-recurrence-until">
                     Repetir até
                   </Label>
                   <DatePicker

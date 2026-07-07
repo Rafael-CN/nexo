@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useFinanceStore } from "@/store/useFinanceStore";
+import { toast } from "@/store/useToastStore";
 import type { Goal } from "@/types";
 
 interface Props {
@@ -46,8 +47,6 @@ interface FormState {
   paused: boolean;
 }
 
-const labelClass =
-  "text-[10px] uppercase tracking-[0.12em] text-muted-foreground";
 
 function buildForm(g?: Goal | null): FormState {
   return {
@@ -141,10 +140,15 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
 
   async function handleDelete() {
     if (!goal) return;
+    const snapshot = { ...goal };
     try {
       setSaving(true);
       await removeGoal(goal.id);
       onOpenChange(false);
+      toast(`Meta "${snapshot.name}" excluída.`, {
+        actionLabel: "Desfazer",
+        onAction: () => addGoal(snapshot),
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -169,7 +173,7 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
 
         <div className="space-y-5 px-6 py-5">
           <div className="space-y-1.5 border border-success/20 bg-success/5 p-4">
-            <Label htmlFor="goal-target" className={labelClass}>
+            <Label htmlFor="goal-target">
               Meta
             </Label>
             <CurrencyInput
@@ -184,7 +188,7 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
 
           <div className="grid gap-3 md:grid-cols-[1.2fr_1fr]">
             <div className="space-y-1.5">
-              <Label htmlFor="goal-name" className={labelClass}>
+              <Label htmlFor="goal-name">
                 Nome
               </Label>
               <Input
@@ -196,7 +200,7 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="goal-deadline" className={labelClass}>
+              <Label htmlFor="goal-deadline">
                 Prazo — opcional
               </Label>
               <DatePicker
@@ -209,7 +213,7 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="goal-desc" className={labelClass}>
+            <Label htmlFor="goal-desc">
               Descrição — opcional
             </Label>
             <Input
@@ -223,7 +227,7 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className={labelClass}>Conta vinculada</Label>
+              <Label>Conta vinculada</Label>
               <Select
                 value={form.accountId}
                 onValueChange={(v) => set("accountId", v === "_none" ? "" : v)}
@@ -242,7 +246,7 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="goal-contrib" className={labelClass}>
+              <Label htmlFor="goal-contrib">
                 Contribuição mensal
               </Label>
               <CurrencyInput
@@ -256,7 +260,7 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="goal-current" className={labelClass}>
+            <Label htmlFor="goal-current">
               {hasLinkedAccount ? "Acumulado — automático" : "Acumulado"}
             </Label>
             <CurrencyInput

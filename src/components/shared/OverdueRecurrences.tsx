@@ -127,7 +127,7 @@ export function OverdueRecurrences() {
             <div className="flex shrink-0 items-center gap-2">
               <span
                 className={cn(
-                  "selectable-text font-mono text-xs tabular-nums",
+                  "selectable-text money font-mono text-xs tabular-nums",
                   txn.type === "income" ? "text-success" : "text-foreground",
                 )}
               >

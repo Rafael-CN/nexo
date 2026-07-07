@@ -3,7 +3,9 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ArrowRightLeft, Plus, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AnimatedCurrency } from "@/components/shared/AnimatedCurrency";
 import { AccountModal } from "@/components/shared/AccountModal";
+import { SectionHeader } from "@/components/shared/SectionHeader";
 import { CategoryModal } from "@/components/shared/CategoryModal";
 import { TransactionModal } from "@/components/shared/TransactionModal";
 import { FinanceIcon } from "@/components/shared/IconPicker";
@@ -17,6 +19,7 @@ import { getInvoiceSummary, type InvoiceSummary } from "@/lib/invoice";
 import { selectTotalBalance, useFinanceStore } from "@/store/useFinanceStore";
 import type { Account, AccountType, Category } from "@/types";
 import { cn } from "@/lib/utils";
+import { dsHeroOverline, dsHeroValue } from "@/lib/designSystem";
 
 const typeMeta: Record<AccountType, { label: string; fallbackIcon: string }> = {
   checking: { label: "Corrente", fallbackIcon: "wallet" },
@@ -90,11 +93,11 @@ export function AccountsPage() {
     <div className="space-y-10">
       <section className="flex flex-col gap-6 border-b border-border pb-10 md:flex-row md:items-end md:justify-between">
         <div className="space-y-3">
-          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+          <p className={dsHeroOverline}>
             Saldo efetivo
           </p>
-          <h1 className="selectable-text font-mono text-5xl font-light tracking-tight md:text-6xl">
-            {formatCurrency(totalBalance)}
+          <h1 className={`selectable-text ${dsHeroValue}`}>
+            <AnimatedCurrency value={totalBalance} />
           </h1>
           <p className="font-mono text-xs text-muted-foreground">
             {accounts.length} contas cadastradas
@@ -124,12 +127,7 @@ export function AccountsPage() {
       </section>
 
       <section>
-        <div className="mb-4 flex items-center gap-3">
-          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-            Contas ({accounts.length})
-          </p>
-          <div className="h-px flex-1 bg-border" />
-        </div>
+        <SectionHeader className="mb-4" label={`Contas (${accounts.length})`} />
 
         {accounts.length === 0 ? (
           <EmptyPanel
@@ -167,11 +165,10 @@ export function AccountsPage() {
       </section>
 
       <section>
-        <div className="mb-4 flex items-center gap-3">
-          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-            Categorias ({categories.length})
-          </p>
-          <div className="h-px flex-1 bg-border" />
+        <SectionHeader
+          className="mb-4"
+          label={`Categorias (${categories.length})`}
+        >
           <Button
             variant="outline"
             size="sm"
@@ -181,7 +178,7 @@ export function AccountsPage() {
             <Plus className="h-3.5 w-3.5" strokeWidth={2} />
             Nova categoria
           </Button>
-        </div>
+        </SectionHeader>
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           <CategoryGroup
@@ -276,7 +273,7 @@ function AccountCard({
         </p>
         <p
           className={cn(
-            "selectable-text font-mono text-2xl font-normal tabular-nums tracking-tight",
+            "selectable-text money font-mono text-2xl font-normal tabular-nums tracking-tight",
             isNegative && "text-destructive",
           )}
         >
@@ -292,7 +289,7 @@ function AccountCard({
               Aberta · fecha{" "}
               {format(parseISO(invoice.open.end), "dd MMM", { locale: ptBR })}
             </span>
-            <span className="selectable-text tabular-nums">
+            <span className="selectable-text money tabular-nums">
               {formatCurrency(invoice.open.total)}
             </span>
           </div>
@@ -306,7 +303,7 @@ function AccountCard({
             <span className="flex items-center gap-2">
               <span
                 className={cn(
-                  "selectable-text tabular-nums",
+                  "selectable-text money tabular-nums",
                   invoice.closed.total > 0 && "text-warning",
                 )}
               >
@@ -337,7 +334,7 @@ function AccountCard({
             {account.lastFour ? `.... ${account.lastFour}` : meta.label}
           </span>
           <span className="selectable-text font-mono text-[10px] uppercase tracking-wider text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
-            Base {formatCurrency(account.balance, true)}
+            Base <span className="money">{formatCurrency(account.balance, true)}</span>
           </span>
         </div>
       )}

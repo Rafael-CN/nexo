@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import { AlertTriangle, ArrowRight, CheckCircle2, Info, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SectionHeader } from "@/components/shared/SectionHeader";
 
 export interface InsightItem {
   title: string;
@@ -37,13 +38,9 @@ export function InsightList({
 }: InsightListProps) {
   return (
     <section className={cn("space-y-3", className)}>
-      <div className="flex items-center gap-3">
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-          {title}
-        </p>
-        <div className="h-px flex-1 bg-border" />
+      <SectionHeader label={title}>
         <Sparkles className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.5} />
-      </div>
+      </SectionHeader>
 
       <div className="overflow-hidden border border-border bg-background">
         {items.map((item, index) => {
