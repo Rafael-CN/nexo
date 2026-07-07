@@ -24,6 +24,12 @@ pub struct Account {
     /// Dia do vencimento da fatura (apenas cartões de crédito).
     #[serde(rename = "dueDay", default)]
     pub due_day: Option<i64>,
+    /// Conta arquivada: fora dos totais e seletores, histórico preservado.
+    #[serde(default)]
+    pub archived: bool,
+    /// Posição manual na listagem de contas.
+    #[serde(rename = "sortOrder", default)]
+    pub sort_order: i64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

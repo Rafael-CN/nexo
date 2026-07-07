@@ -8,6 +8,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { DashboardPage } from "@/pages/Dashboard";
 import { CalendarPage } from "@/pages/Calendar";
 import { AccountsPage } from "@/pages/Accounts";
+import { AccountDetailPage } from "@/pages/AccountDetail";
 import { TransactionsPage } from "@/pages/Transactions";
 import { GoalsPage } from "@/pages/Goals";
 import { ReportsPage } from "@/pages/Reports";
@@ -22,6 +23,7 @@ const router = createBrowserRouter([
       { index: true, element: <DashboardPage /> },
       { path: "calendario", element: <CalendarPage /> },
       { path: "contas", element: <AccountsPage /> },
+      { path: "contas/:accountId", element: <AccountDetailPage /> },
       { path: "transacoes", element: <TransactionsPage /> },
       { path: "metas", element: <GoalsPage /> },
       { path: "relatorios", element: <ReportsPage /> },

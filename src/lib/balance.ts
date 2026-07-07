@@ -47,9 +47,32 @@ export function getTotalCurrentBalance(
   transactions: Transaction[],
   asOf = new Date(),
 ): number {
+  // Contas arquivadas ficam fora do saldo efetivo.
   return accounts.reduce(
     (total, account) =>
-      total + getCurrentAccountBalance(account, transactions, asOf),
+      account.archived
+        ? total
+        : total + getCurrentAccountBalance(account, transactions, asOf),
     0,
   );
+}
+
+/** Contas ativas ordenadas pela posição manual (sortOrder) e nome. */
+export function sortActiveAccounts<T extends Account>(accounts: T[]): T[] {
+  return [...accounts]
+    .filter((account) => !account.archived)
+    .sort(
+      (a, b) =>
+        (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.name.localeCompare(b.name),
+    );
+}
+
+/** Contas arquivadas, na mesma regra de ordenação. */
+export function sortArchivedAccounts<T extends Account>(accounts: T[]): T[] {
+  return [...accounts]
+    .filter((account) => account.archived)
+    .sort(
+      (a, b) =>
+        (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.name.localeCompare(b.name),
+    );
 }

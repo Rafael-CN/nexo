@@ -1,7 +1,15 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ArrowRightLeft, Plus, Receipt } from "lucide-react";
+import {
+  ArchiveRestore,
+  ArrowLeft,
+  ArrowRight,
+  ArrowRightLeft,
+  Plus,
+  Receipt,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AnimatedCurrency } from "@/components/shared/AnimatedCurrency";
 import { AccountModal } from "@/components/shared/AccountModal";
@@ -13,10 +21,15 @@ import {
   formatTransactionAmount,
   type TransactionModalFormState,
 } from "@/components/shared/transactionModalUtils";
-import { getCurrentAccountBalances } from "@/lib/balance";
+import {
+  getCurrentAccountBalances,
+  sortActiveAccounts,
+  sortArchivedAccounts,
+} from "@/lib/balance";
 import { formatCurrency } from "@/lib/format";
 import { getInvoiceSummary, type InvoiceSummary } from "@/lib/invoice";
 import { selectTotalBalance, useFinanceStore } from "@/store/useFinanceStore";
+import { toast } from "@/store/useToastStore";
 import type { Account, AccountType, Category } from "@/types";
 import { cn } from "@/lib/utils";
 import { dsHeroOverline, dsHeroValue } from "@/lib/designSystem";
@@ -33,11 +46,46 @@ export function AccountsPage() {
   const accounts = useFinanceStore((s) => s.accounts);
   const categories = useFinanceStore((s) => s.categories);
   const transactions = useFinanceStore((s) => s.transactions);
+  const updateAccount = useFinanceStore((s) => s.updateAccount);
   const totalBalance = useFinanceStore(selectTotalBalance);
+  const navigate = useNavigate();
   const accountBalances = useMemo(
     () => getCurrentAccountBalances(accounts, transactions),
     [accounts, transactions],
   );
+  const activeAccounts = useMemo(() => sortActiveAccounts(accounts), [accounts]);
+  const archivedAccounts = useMemo(
+    () => sortArchivedAccounts(accounts),
+    [accounts],
+  );
+
+  /** F2: troca a posição da conta com a vizinha e persiste a ordem. */
+  async function moveAccount(account: Account, direction: -1 | 1) {
+    const index = activeAccounts.findIndex((a) => a.id === account.id);
+    const targetIndex = index + direction;
+    if (index < 0 || targetIndex < 0 || targetIndex >= activeAccounts.length) {
+      return;
+    }
+    const reordered = [...activeAccounts];
+    [reordered[index], reordered[targetIndex]] = [
+      reordered[targetIndex],
+      reordered[index],
+    ];
+    // Normaliza sortOrder = posição para toda conta que mudou de lugar.
+    for (const [position, item] of reordered.entries()) {
+      if ((item.sortOrder ?? 0) !== position) {
+        await updateAccount(item.id, { sortOrder: position });
+      }
+    }
+  }
+
+  async function unarchiveAccount(account: Account) {
+    await updateAccount(account.id, { archived: false });
+    toast(`Conta "${account.name}" reativada.`, {
+      actionLabel: "Desfazer",
+      onAction: () => updateAccount(account.id, { archived: true }),
+    });
+  }
 
   const [accountModalOpen, setAccountModalOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
@@ -50,7 +98,10 @@ export function AccountsPage() {
   function openPayInvoice(account: Account, summary: InvoiceSummary) {
     const amount = summary.closed.total > 0 ? summary.closed.total : summary.open.total;
     const sourceAccount = accounts.find(
-      (candidate) => candidate.type !== "credit" && candidate.id !== account.id,
+      (candidate) =>
+        candidate.type !== "credit" &&
+        !candidate.archived &&
+        candidate.id !== account.id,
     );
     setInvoiceDraft({
       type: "transfer",
@@ -71,11 +122,6 @@ export function AccountsPage() {
 
   function openNewAccount() {
     setEditingAccount(null);
-    setAccountModalOpen(true);
-  }
-
-  function openEditAccount(account: Account) {
-    setEditingAccount(account);
     setAccountModalOpen(true);
   }
 
@@ -100,7 +146,9 @@ export function AccountsPage() {
             <AnimatedCurrency value={totalBalance} />
           </h1>
           <p className="font-mono text-xs text-muted-foreground">
-            {accounts.length} contas cadastradas
+            {activeAccounts.length} contas ativas
+            {archivedAccounts.length > 0 &&
+              ` · ${archivedAccounts.length} arquivadas`}
           </p>
         </div>
 
@@ -127,11 +175,14 @@ export function AccountsPage() {
       </section>
 
       <section>
-        <SectionHeader className="mb-4" label={`Contas (${accounts.length})`} />
+        <SectionHeader
+          className="mb-4"
+          label={`Contas (${activeAccounts.length})`}
+        />
 
-        {accounts.length === 0 ? (
+        {activeAccounts.length === 0 ? (
           <EmptyPanel
-            title="Nenhuma conta cadastrada"
+            title="Nenhuma conta ativa"
             description="Crie sua primeira conta para acompanhar saldos e lançamentos."
             actionLabel="Nova conta"
             onAction={openNewAccount}
@@ -139,14 +190,17 @@ export function AccountsPage() {
         ) : (
           <>
             <div className="grid grid-cols-1 gap-px overflow-hidden border border-border bg-transparent md:grid-cols-2 xl:grid-cols-3">
-              {accounts.map((account) => (
+              {activeAccounts.map((account, index) => (
                 <AccountCard
                   key={account.id}
                   account={account}
                   effectiveBalance={accountBalances.get(account.id) ?? account.balance}
                   invoice={getInvoiceSummary(account, transactions)}
-                  onEdit={() => openEditAccount(account)}
+                  onOpen={() => navigate(`/contas/${account.id}`)}
                   onPayInvoice={(summary) => openPayInvoice(account, summary)}
+                  canMoveBack={index > 0}
+                  canMoveForward={index < activeAccounts.length - 1}
+                  onMove={(direction) => void moveAccount(account, direction)}
                 />
               ))}
             </div>
@@ -163,6 +217,58 @@ export function AccountsPage() {
           </>
         )}
       </section>
+
+      {archivedAccounts.length > 0 && (
+        <section>
+          <SectionHeader
+            className="mb-4"
+            label={`Arquivadas (${archivedAccounts.length})`}
+          />
+          <div className="border border-border bg-background">
+            {archivedAccounts.map((account) => (
+              <div
+                key={account.id}
+                className="flex items-center justify-between gap-4 border-b border-border px-4 py-3 last:border-b-0"
+              >
+                <button
+                  type="button"
+                  onClick={() => navigate(`/contas/${account.id}`)}
+                  className="flex min-w-0 items-center gap-3 text-left opacity-70 transition-opacity hover:opacity-100 ui-focus-ring"
+                >
+                  <FinanceIcon
+                    name={account.icon ?? typeMeta[account.type].fallbackIcon}
+                    className="h-4 w-4 shrink-0 text-muted-foreground"
+                  />
+                  <span className="min-w-0">
+                    <span className="selectable-text block truncate text-sm">
+                      {account.name}
+                    </span>
+                    <span className="selectable-text block truncate font-mono text-[11px] text-muted-foreground">
+                      {account.institution} · {typeMeta[account.type].label}
+                    </span>
+                  </span>
+                </button>
+                <span className="flex shrink-0 items-center gap-3">
+                  <span className="selectable-text money font-mono text-sm tabular-nums text-muted-foreground">
+                    {formatCurrency(
+                      accountBalances.get(account.id) ?? account.balance,
+                    )}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 gap-1.5 rounded-sm px-2 text-[10px] uppercase tracking-wider"
+                    onClick={() => void unarchiveAccount(account)}
+                  >
+                    <ArchiveRestore className="h-3 w-3" strokeWidth={1.5} />
+                    Reativar
+                  </Button>
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section>
         <SectionHeader
@@ -225,14 +331,20 @@ function AccountCard({
   account,
   effectiveBalance,
   invoice,
-  onEdit,
+  onOpen,
   onPayInvoice,
+  canMoveBack,
+  canMoveForward,
+  onMove,
 }: {
   account: Account;
   effectiveBalance: number;
   invoice: InvoiceSummary | null;
-  onEdit: () => void;
+  onOpen: () => void;
   onPayInvoice: (summary: InvoiceSummary) => void;
+  canMoveBack: boolean;
+  canMoveForward: boolean;
+  onMove: (direction: -1 | 1) => void;
 }) {
   const meta = typeMeta[account.type];
   const isNegative = effectiveBalance < 0;
@@ -242,10 +354,20 @@ function AccountCard({
       role="button"
       tabIndex={0}
       className="group flex min-h-[180px] cursor-pointer flex-col gap-5 bg-background p-5 text-left transition-colors hover:bg-accent/30 ui-focus-ring-inset"
-      onClick={onEdit}
+      onClick={onOpen}
       onKeyDown={(event) => {
         if (event.key === "Enter" && event.target === event.currentTarget) {
-          onEdit();
+          onOpen();
+          return;
+        }
+        // F2: Shift+setas reordenam o card sem sair do teclado.
+        if (event.shiftKey && event.key === "ArrowLeft" && canMoveBack) {
+          event.preventDefault();
+          onMove(-1);
+        }
+        if (event.shiftKey && event.key === "ArrowRight" && canMoveForward) {
+          event.preventDefault();
+          onMove(1);
         }
       }}
     >
@@ -262,8 +384,38 @@ function AccountCard({
             </p>
           </div>
         </div>
-        <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-          {meta.label}
+        <span className="flex shrink-0 items-center gap-1">
+          <span className="hidden items-center gap-0.5 group-focus-within:flex group-hover:flex">
+            <button
+              type="button"
+              tabIndex={-1}
+              aria-label="Mover conta para trás"
+              disabled={!canMoveBack}
+              onClick={(event) => {
+                event.stopPropagation();
+                onMove(-1);
+              }}
+              className="grid h-5 w-5 place-items-center border border-border text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"
+            >
+              <ArrowLeft className="h-3 w-3" strokeWidth={1.5} />
+            </button>
+            <button
+              type="button"
+              tabIndex={-1}
+              aria-label="Mover conta para frente"
+              disabled={!canMoveForward}
+              onClick={(event) => {
+                event.stopPropagation();
+                onMove(1);
+              }}
+              className="grid h-5 w-5 place-items-center border border-border text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"
+            >
+              <ArrowRight className="h-3 w-3" strokeWidth={1.5} />
+            </button>
+          </span>
+          <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+            {meta.label}
+          </span>
         </span>
       </div>
 
