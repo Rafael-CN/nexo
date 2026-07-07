@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { sortActiveAccounts } from "@/lib/balance";
 import { useFinanceStore } from "@/store/useFinanceStore";
 import { formatCurrency } from "@/lib/format";
 import {
@@ -51,7 +52,8 @@ const labelClass =
   "text-[10px] uppercase tracking-[0.12em] text-muted-foreground";
 
 export function ImportStatementModal({ open, onOpenChange }: Props) {
-  const accounts = useFinanceStore(useShallow((s) => s.accounts));
+  const allAccounts = useFinanceStore(useShallow((s) => s.accounts));
+  const accounts = useMemo(() => sortActiveAccounts(allAccounts), [allAccounts]);
   const categories = useFinanceStore(useShallow((s) => s.categories));
   const transactions = useFinanceStore(useShallow((s) => s.transactions));
   const addTransaction = useFinanceStore((s) => s.addTransaction);

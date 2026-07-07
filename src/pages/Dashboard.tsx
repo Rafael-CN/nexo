@@ -13,7 +13,7 @@ import { SectionHeader } from "@/components/shared/SectionHeader";
 import { StatCard } from "@/components/shared/StatCard";
 import { TransactionRow } from "@/components/shared/TransactionRow";
 import { Button } from "@/components/ui/button";
-import { getCurrentAccountBalances } from "@/lib/balance";
+import { getCurrentAccountBalances, sortActiveAccounts } from "@/lib/balance";
 import {
   getTodayIso,
   selectMonthFlow,
@@ -69,7 +69,7 @@ export function DashboardPage() {
     const goal = selectPrimaryGoal(goals);
     return goal ? resolveGoal(goal, accounts, transactions) : null;
   }, [goals, accounts, transactions]);
-  const accountSummaries = accounts.map((account) => ({
+  const accountSummaries = sortActiveAccounts(accounts).map((account) => ({
     ...account,
     balance: accountBalances.get(account.id) ?? account.balance,
   }));

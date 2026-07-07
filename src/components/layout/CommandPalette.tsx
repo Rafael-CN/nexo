@@ -264,11 +264,11 @@ export function CommandPalette({
       results.push({
         id: `acc-${account.id}`,
         label: account.name,
-        description: `Conta · ${account.institution}`,
+        description: `Conta · ${account.institution}${account.archived ? " · arquivada" : ""}`,
         icon: Wallet,
         iconName: account.icon,
         group: "Contas",
-        run: () => navigate("/contas"),
+        run: () => navigate(`/contas/${account.id}`),
       });
     }
 

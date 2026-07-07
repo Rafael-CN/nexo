@@ -18,6 +18,10 @@ export interface Account {
   closingDay?: number;
   /** Dia do vencimento da fatura (1-31) — apenas cartões de crédito. */
   dueDay?: number;
+  /** Conta arquivada: fora dos totais e seletores, histórico preservado. */
+  archived?: boolean;
+  /** Posição manual na listagem de contas. */
+  sortOrder?: number;
 }
 
 export type TransactionType = "income" | "expense" | "transfer";

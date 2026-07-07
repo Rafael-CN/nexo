@@ -38,6 +38,7 @@ import {
   type TransactionSort,
   type TransactionTypeFilter,
 } from "@/lib/transactionFilters";
+import { sortActiveAccounts } from "@/lib/balance";
 import { isEditableElement } from "@/lib/keyboardShortcuts";
 import { toast } from "@/store/useToastStore";
 import { cn } from "@/lib/utils";
@@ -708,7 +709,7 @@ export function TransactionsPage() {
               <SelectValue placeholder="Conta →" />
             </SelectTrigger>
             <SelectContent>
-              {accounts.map((account) => (
+              {sortActiveAccounts(accounts).map((account) => (
                 <SelectItem key={account.id} value={account.id}>
                   {account.name}
                 </SelectItem>

@@ -30,8 +30,9 @@ fn entity_exists(conn: &Connection, table: &str, id: &str) -> CmdResult<bool> {
 pub(crate) fn query_accounts(conn: &Connection) -> CmdResult<Vec<Account>> {
     let mut stmt = conn
         .prepare(
-            "SELECT id, name, institution, type, balance, color, icon, last_four, closing_day, due_day
-             FROM accounts",
+            "SELECT id, name, institution, type, balance, color, icon, last_four, closing_day, due_day, archived, sort_order
+             FROM accounts
+             ORDER BY sort_order, name",
         )
         .map_err(e)?;
     let rows = stmt
@@ -47,6 +48,8 @@ pub(crate) fn query_accounts(conn: &Connection) -> CmdResult<Vec<Account>> {
                 last_four: row.get(7)?,
                 closing_day: row.get(8)?,
                 due_day: row.get(9)?,
+                archived: row.get(10)?,
+                sort_order: row.get(11)?,
             })
         })
         .map_err(e)?;
@@ -86,8 +89,8 @@ pub fn get_categories(state: State<DbState>) -> CmdResult<Vec<Category>> {
 
 pub(crate) fn insert_account(conn: &Connection, account: &Account) -> CmdResult<usize> {
     conn.execute(
-        "INSERT OR IGNORE INTO accounts (id, name, institution, type, balance, color, icon, last_four, closing_day, due_day)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",
+        "INSERT OR IGNORE INTO accounts (id, name, institution, type, balance, color, icon, last_four, closing_day, due_day, archived, sort_order)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12)",
         rusqlite::params![
             account.id,
             account.name,
@@ -98,7 +101,9 @@ pub(crate) fn insert_account(conn: &Connection, account: &Account) -> CmdResult<
             account.icon,
             account.last_four,
             account.closing_day,
-            account.due_day
+            account.due_day,
+            account.archived,
+            account.sort_order
         ],
     )
     .map_err(e)
@@ -119,7 +124,7 @@ pub fn update_account(state: State<DbState>, account: Account) -> CmdResult<()> 
     account.validate()?;
     let conn = state.0.lock().map_err(e)?;
     conn.execute(
-        "UPDATE accounts SET name=?2, institution=?3, type=?4, balance=?5, color=?6, icon=?7, last_four=?8, closing_day=?9, due_day=?10
+        "UPDATE accounts SET name=?2, institution=?3, type=?4, balance=?5, color=?6, icon=?7, last_four=?8, closing_day=?9, due_day=?10, archived=?11, sort_order=?12
          WHERE id=?1",
         rusqlite::params![
             account.id,
@@ -131,7 +136,9 @@ pub fn update_account(state: State<DbState>, account: Account) -> CmdResult<()> 
             account.icon,
             account.last_four,
             account.closing_day,
-            account.due_day
+            account.due_day,
+            account.archived,
+            account.sort_order
         ],
     )
     .map_err(e)?;

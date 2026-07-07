@@ -44,7 +44,9 @@ export function GoalsPage() {
     if (!goal.accountId) return;
     const sourceAccount = accounts.find(
       (candidate) =>
-        candidate.type !== "credit" && candidate.id !== goal.accountId,
+        candidate.type !== "credit" &&
+        !candidate.archived &&
+        candidate.id !== goal.accountId,
     );
     setContributionDraft({
       type: "transfer",
@@ -336,6 +338,8 @@ function GoalCard({
           </p>
         )}
 
+        <ContributionHistory accountId={goal.accountId} />
+
         <div className="flex items-center justify-end gap-1 pt-1">
           {goal.accountId && (
             <Button
@@ -358,6 +362,49 @@ function GoalCard({
           </Button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** G1: últimos aportes (transferências recebidas) da conta vinculada. */
+function ContributionHistory({ accountId }: { accountId?: string }) {
+  const transactions = useFinanceStore(useShallow((s) => s.transactions));
+
+  const contributions = useMemo(() => {
+    if (!accountId) return [];
+    const todayIso = format(new Date(), "yyyy-MM-dd");
+    return transactions
+      .filter(
+        (t) =>
+          t.type === "transfer" &&
+          t.transferAccountId === accountId &&
+          t.date <= todayIso,
+      )
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .slice(0, 3);
+  }, [transactions, accountId]);
+
+  if (contributions.length === 0) return null;
+
+  return (
+    <div className="space-y-1 border-t border-border pt-3">
+      <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+        Últimos aportes
+      </p>
+      {contributions.map((t) => (
+        <p
+          key={t.id}
+          className="flex items-baseline justify-between gap-3 font-mono text-[11px]"
+        >
+          <span className="selectable-text truncate text-muted-foreground">
+            {format(parseISO(t.date), "dd MMM yyyy", { locale: ptBR })} ·{" "}
+            {t.title}
+          </span>
+          <span className="selectable-text money shrink-0 tabular-nums text-success">
+            +{formatCurrency(t.amount)}
+          </span>
+        </p>
+      ))}
     </div>
   );
 }

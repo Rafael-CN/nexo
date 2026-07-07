@@ -156,7 +156,9 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
     }
   }
 
-  const liquidAccounts = accounts.filter((a) => a.type !== "credit");
+  const liquidAccounts = accounts.filter(
+    (a) => a.type !== "credit" && !a.archived,
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

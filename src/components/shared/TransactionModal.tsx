@@ -30,6 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { sortActiveAccounts } from "@/lib/balance";
 import { useFinanceStore } from "@/store/useFinanceStore";
 import { toast } from "@/store/useToastStore";
 import { cn } from "@/lib/utils";
@@ -85,7 +86,9 @@ export function TransactionModal({
   initialType,
   initialDraft,
 }: Props) {
-  const accounts = useFinanceStore(useShallow((s) => s.accounts));
+  const allAccounts = useFinanceStore(useShallow((s) => s.accounts));
+  // Contas arquivadas ficam fora dos seletores de lançamento.
+  const accounts = useMemo(() => sortActiveAccounts(allAccounts), [allAccounts]);
   const categories = useFinanceStore(useShallow((s) => s.categories));
   const transactions = useFinanceStore(useShallow((s) => s.transactions));
   const recurrenceRules = useFinanceStore(useShallow((s) => s.recurrenceRules));
