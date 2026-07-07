@@ -9,9 +9,17 @@ import { cn } from "@/lib/utils";
 interface TransactionRowProps {
   transaction: Transaction;
   onClick?: () => void;
+  /** Linha faz parte de uma seleção múltipla (Espaço / Ctrl+clique). */
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }
 
-export function TransactionRow({ transaction, onClick }: TransactionRowProps) {
+export function TransactionRow({
+  transaction,
+  onClick,
+  selected = false,
+  onToggleSelect,
+}: TransactionRowProps) {
   const categories = useFinanceStore((s) => s.categories);
   const accounts = useFinanceStore((s) => s.accounts);
 
@@ -31,11 +39,22 @@ export function TransactionRow({ transaction, onClick }: TransactionRowProps) {
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
       data-txn-row={onClick ? "" : undefined}
-      onClick={onClick}
+      data-txn-id={transaction.id}
+      aria-selected={onToggleSelect ? selected : undefined}
+      onClick={(e) => {
+        // Ctrl/Cmd+clique alterna a seleção; clique simples abre a edição.
+        if (onToggleSelect && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          onToggleSelect();
+          return;
+        }
+        onClick?.();
+      }}
       onKeyDown={onClick ? (e) => e.key === "Enter" && onClick() : undefined}
       className={cn(
         "group grid grid-cols-[88px_minmax(0,1fr)_auto] items-center gap-4 border-b border-border px-3 py-3 transition-colors last:border-b-0 hover:bg-accent/30 ui-focus-ring-inset",
         onClick && "cursor-pointer",
+        selected && "bg-muted ring-1 ring-inset ring-foreground/20 hover:bg-muted",
       )}
     >
       <div className="space-y-1">

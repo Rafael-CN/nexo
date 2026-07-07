@@ -3,13 +3,22 @@ import { useLocation } from "react-router-dom";
 import { useShallow } from "zustand/react/shallow";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ArrowDownUp, Filter, Plus, RotateCcw, Search } from "lucide-react";
+import {
+  ArrowDownUp,
+  Filter,
+  Plus,
+  RotateCcw,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
 import { AnimatedCurrency } from "@/components/shared/AnimatedCurrency";
 import { TransactionRow } from "@/components/shared/TransactionRow";
 import { TransactionModal } from "@/components/shared/TransactionModal";
 import { DatePicker } from "@/components/shared/DatePicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Kbd } from "@/components/ui/kbd";
 import {
   Select,
   SelectContent,
@@ -30,8 +39,10 @@ import {
   type TransactionTypeFilter,
 } from "@/lib/transactionFilters";
 import { isEditableElement } from "@/lib/keyboardShortcuts";
+import { toast } from "@/store/useToastStore";
+import { cn } from "@/lib/utils";
 import type { Transaction } from "@/types";
-import { dsHeroOverline, dsHeroValue } from "@/lib/designSystem";
+import { dsHeroOverline, dsHeroValue, dsShadow } from "@/lib/designSystem";
 
 const defaultFilters: TransactionFilters = {
   query: "",
@@ -51,13 +62,28 @@ export type TransactionsPageState = Partial<
   >
 >;
 
+/** Grupos de dias renderizados por página (a lista cresce sob demanda). */
+const GROUPS_PAGE_SIZE = 12;
+
 export function TransactionsPage() {
   const transactions = useFinanceStore(useShallow((s) => s.transactions));
   const categories = useFinanceStore(useShallow((s) => s.categories));
   const accounts = useFinanceStore(useShallow((s) => s.accounts));
+  const addTransaction = useFinanceStore((s) => s.addTransaction);
+  const removeTransaction = useFinanceStore((s) => s.removeTransaction);
+  const updateTransaction = useFinanceStore((s) => s.updateTransaction);
   const location = useLocation();
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
+  const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  // Refs espelham o estado para o listener global de teclado não re-vincular.
+  const flatRef = useRef<Transaction[]>([]);
+  const selectedIdsRef = useRef<ReadonlySet<string>>(new Set());
+  const deleteWithUndoRef = useRef<(items: Transaction[]) => Promise<void>>(
+    async () => {},
+  );
 
   const incomingState = (location.state ?? null) as TransactionsPageState | null;
   const hasIncomingFilters =
@@ -76,8 +102,15 @@ export function TransactionsPage() {
   const searchRef = useRef<HTMLInputElement>(null);
 
   // Teclado: "/" foca a busca (abrindo os filtros se preciso),
-  // F alterna os filtros e as setas percorrem as linhas da lista.
+  // F alterna os filtros, setas percorrem as linhas e, com uma linha
+  // focada: Espaço seleciona, E edita, Delete exclui (com desfazer).
   useEffect(() => {
+    function focusedTxnId(): string | null {
+      const el = document.activeElement;
+      if (!(el instanceof HTMLElement)) return null;
+      return el.dataset.txnId ?? null;
+    }
+
     function handleKeyDown(event: KeyboardEvent) {
       if (event.defaultPrevented) return;
       if (modalOpen) return;
@@ -105,6 +138,50 @@ export function TransactionsPage() {
       if ((event.key === "f" || event.key === "F") && !event.repeat) {
         event.preventDefault();
         setFiltersOpen((open) => !open);
+        return;
+      }
+
+      // Espaço alterna a seleção da linha focada (C1).
+      if (event.key === " ") {
+        const id = focusedTxnId();
+        if (!id) return;
+        event.preventDefault();
+        toggleSelect(id);
+        return;
+      }
+
+      // E edita a linha focada (C5).
+      if ((event.key === "e" || event.key === "E") && !event.repeat) {
+        const id = focusedTxnId();
+        const target = id ? flatRef.current.find((t) => t.id === id) : null;
+        if (!target) return;
+        event.preventDefault();
+        openEdit(target);
+        return;
+      }
+
+      // Delete/Backspace exclui a seleção — ou a linha focada (C5).
+      if (event.key === "Delete" || event.key === "Backspace") {
+        const selected = flatRef.current.filter((t) =>
+          selectedIdsRef.current.has(t.id),
+        );
+        if (selected.length > 0) {
+          event.preventDefault();
+          void deleteWithUndoRef.current(selected);
+          return;
+        }
+        const id = focusedTxnId();
+        const target = id ? flatRef.current.find((t) => t.id === id) : null;
+        if (!target) return;
+        event.preventDefault();
+        void deleteWithUndoRef.current([target]);
+        return;
+      }
+
+      // Esc limpa a seleção ativa.
+      if (event.key === "Escape" && selectedIdsRef.current.size > 0) {
+        event.preventDefault();
+        setSelectedIds(new Set());
         return;
       }
 
@@ -155,15 +232,178 @@ export function TransactionsPage() {
 
   const activeFilters = hasActiveTransactionFilters(filters);
 
-  const { groups, totals } = useMemo(() => {
+  const { groups, totals, flat } = useMemo(() => {
     const filtered = filterTransactions(transactions, filters);
     const sorted = sortTransactions(filtered, filters.sort);
 
     return {
       groups: groupTransactionsByDate(sorted),
       totals: calculateTransactionTotals(filtered),
+      flat: sorted,
     };
   }, [transactions, filters]);
+
+  // Seleção só vale para linhas visíveis: poda ids que saíram do filtro.
+  useEffect(() => {
+    setSelectedIds((current) => {
+      if (current.size === 0) return current;
+      const visible = new Set(flat.map((t) => t.id));
+      const next = new Set([...current].filter((id) => visible.has(id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [flat]);
+
+  function toggleSelect(id: string) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  const selectedTransactions = useMemo(
+    () => flat.filter((t) => selectedIds.has(t.id)),
+    [flat, selectedIds],
+  );
+
+  flatRef.current = flat;
+  selectedIdsRef.current = selectedIds;
+
+  async function deleteWithUndo(items: Transaction[]) {
+    if (items.length === 0) return;
+    const snapshots = items.map((t) => ({ ...t }));
+    for (const t of snapshots) await removeTransaction(t.id);
+    setSelectedIds(new Set());
+    toast(
+      snapshots.length === 1
+        ? `"${snapshots[0].title}" excluída.`
+        : `${snapshots.length} transações excluídas.`,
+      {
+        actionLabel: "Desfazer",
+        onAction: async () => {
+          for (const snapshot of snapshots) await addTransaction(snapshot);
+        },
+      },
+    );
+  }
+
+  deleteWithUndoRef.current = deleteWithUndo;
+
+  async function applyBatchPatch(
+    patch: Pick<Partial<Transaction>, "categoryId" | "accountId">,
+  ) {
+    // Categoria não se aplica a transferências.
+    const targets =
+      patch.categoryId !== undefined
+        ? selectedTransactions.filter((t) => t.type !== "transfer")
+        : selectedTransactions;
+    if (targets.length === 0) return;
+
+    const snapshots = targets.map((t) => ({ ...t }));
+    for (const t of targets) await updateTransaction(t.id, patch);
+    setSelectedIds(new Set());
+    toast(
+      `${targets.length} ${targets.length === 1 ? "transação atualizada" : "transações atualizadas"}.`,
+      {
+        actionLabel: "Desfazer",
+        onAction: async () => {
+          for (const snapshot of snapshots) {
+            await updateTransaction(snapshot.id, snapshot);
+          }
+        },
+      },
+    );
+  }
+
+  // Lista cresce sob demanda (C6): grupos extras entram quando a
+  // sentinela fica visível — mantém a página leve com milhares de linhas.
+  const [visibleGroupCount, setVisibleGroupCount] = useState(GROUPS_PAGE_SIZE);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setVisibleGroupCount(GROUPS_PAGE_SIZE);
+  }, [filters]);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        setVisibleGroupCount((count) => count + GROUPS_PAGE_SIZE);
+      }
+    });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [groups.length, visibleGroupCount]);
+
+  const visibleGroups = useMemo(
+    () => groups.slice(0, visibleGroupCount),
+    [groups, visibleGroupCount],
+  );
+  const hiddenGroupCount = Math.max(0, groups.length - visibleGroupCount);
+
+  // Chips dos filtros ativos (C3): visíveis mesmo com o painel fechado.
+  const filterChips = useMemo(() => {
+    const typeLabels: Record<TransactionTypeFilter, string> = {
+      all: "",
+      income: "Receitas",
+      expense: "Despesas",
+      transfer: "Transferências",
+      projected: "Projetadas",
+      recurring: "Recorrentes",
+    };
+    const chips: { key: string; label: string; clear: () => void }[] = [];
+
+    if (filters.query.trim()) {
+      chips.push({
+        key: "query",
+        label: `busca: ${filters.query.trim()}`,
+        clear: () => updateFilters({ query: "" }),
+      });
+    }
+    if (filters.type !== "all") {
+      chips.push({
+        key: "type",
+        label: typeLabels[filters.type],
+        clear: () => updateFilters({ type: "all" }),
+      });
+    }
+    if (filters.categoryId) {
+      chips.push({
+        key: "category",
+        label:
+          categories.find((c) => c.id === filters.categoryId)?.name ??
+          "Categoria",
+        clear: () => updateFilters({ categoryId: "" }),
+      });
+    }
+    if (filters.accountId) {
+      chips.push({
+        key: "account",
+        label:
+          accounts.find((a) => a.id === filters.accountId)?.name ?? "Conta",
+        clear: () => updateFilters({ accountId: "" }),
+      });
+    }
+    if (filters.startDate) {
+      chips.push({
+        key: "start",
+        label: `de ${format(parseISO(filters.startDate), "dd/MM/yyyy")}`,
+        clear: () => updateFilters({ startDate: "" }),
+      });
+    }
+    if (filters.endDate) {
+      chips.push({
+        key: "end",
+        label: `até ${format(parseISO(filters.endDate), "dd/MM/yyyy")}`,
+        clear: () => updateFilters({ endDate: "" }),
+      });
+    }
+
+    return chips;
+  }, [filters, categories, accounts]);
 
   return (
     <div className="space-y-10">
@@ -342,11 +582,38 @@ export function TransactionsPage() {
         </section>
       )}
 
+      {filterChips.length > 0 && (
+        <section className="flex flex-wrap items-center gap-2">
+          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+            Filtrando
+          </span>
+          {filterChips.map((chip) => (
+            <button
+              key={chip.key}
+              type="button"
+              onClick={chip.clear}
+              title="Remover filtro"
+              className="flex items-center gap-1.5 border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-foreground transition-colors hover:border-foreground/40 hover:bg-accent/40 ui-focus-ring"
+            >
+              {chip.label}
+              <X className="h-3 w-3 text-muted-foreground" strokeWidth={1.5} />
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setFilters(defaultFilters)}
+            className="px-1 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground ui-focus-ring"
+          >
+            limpar tudo
+          </button>
+        </section>
+      )}
+
       <section className="space-y-8">
         {groups.length === 0 ? (
           <EmptyTransactions filtered={activeFilters} onNew={openNew} />
         ) : (
-          groups.map(([date, list]) => {
+          visibleGroups.map(([date, list]) => {
             const parsed = parseISO(date);
             const dayTotal = list.reduce((s, t) => {
               if (t.type === "income") return s + t.amount;
@@ -372,6 +639,8 @@ export function TransactionsPage() {
                       key={t.id}
                       transaction={t}
                       onClick={() => openEdit(t)}
+                      selected={selectedIds.has(t.id)}
+                      onToggleSelect={() => toggleSelect(t.id)}
                     />
                   ))}
                 </div>
@@ -379,7 +648,95 @@ export function TransactionsPage() {
             );
           })
         )}
+
+        {hiddenGroupCount > 0 && (
+          <div ref={sentinelRef} className="flex justify-center py-2">
+            <button
+              type="button"
+              onClick={() =>
+                setVisibleGroupCount((count) => count + GROUPS_PAGE_SIZE)
+              }
+              className="border border-border px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground ui-focus-ring"
+            >
+              Mostrar mais dias ({hiddenGroupCount} restantes)
+            </button>
+          </div>
+        )}
       </section>
+
+      {selectedTransactions.length > 0 && (
+        <div
+          className={cn(
+            "fixed bottom-5 left-1/2 z-40 flex -translate-x-1/2 flex-wrap items-center gap-2 border border-border bg-background px-4 py-2.5",
+            dsShadow,
+            "animate-in fade-in-0 slide-in-from-bottom-2 duration-150",
+          )}
+        >
+          <span className="font-mono text-[11px] uppercase tracking-[0.14em]">
+            {selectedTransactions.length}{" "}
+            {selectedTransactions.length === 1 ? "selecionada" : "selecionadas"}
+          </span>
+          <div className="h-4 w-px bg-border" aria-hidden />
+
+          <Select
+            value=""
+            onValueChange={(value) => void applyBatchPatch({ categoryId: value })}
+          >
+            <SelectTrigger
+              className="h-7 w-40 font-mono text-[11px]"
+              aria-label="Mover seleção para categoria"
+            >
+              <SelectValue placeholder="Categoria →" />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map((category) => (
+                <SelectItem key={category.id} value={category.id}>
+                  {category.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            value=""
+            onValueChange={(value) => void applyBatchPatch({ accountId: value })}
+          >
+            <SelectTrigger
+              className="h-7 w-40 font-mono text-[11px]"
+              aria-label="Mover seleção para conta"
+            >
+              <SelectValue placeholder="Conta →" />
+            </SelectTrigger>
+            <SelectContent>
+              {accounts.map((account) => (
+                <SelectItem key={account.id} value={account.id}>
+                  {account.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1.5 rounded-sm px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+            onClick={() => void deleteWithUndo(selectedTransactions)}
+          >
+            <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+            Excluir
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1.5 rounded-sm px-2 text-xs text-muted-foreground"
+            onClick={() => setSelectedIds(new Set())}
+          >
+            Limpar
+            <Kbd>Esc</Kbd>
+          </Button>
+        </div>
+      )}
 
       <TransactionModal
         open={modalOpen}

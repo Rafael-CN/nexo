@@ -61,6 +61,12 @@ const groups: ShortcutGroup[] = [
     entries: [
       { keys: ["/"], label: "Buscar por título" },
       { keys: ["F"], label: "Mostrar / ocultar filtros" },
+      { keys: ["Setas"], label: "Percorrer as linhas" },
+      { keys: ["Espaço"], label: "Selecionar / desmarcar linha" },
+      { keys: ["Ctrl/Cmd", "Clique"], label: "Selecionar com o mouse" },
+      { keys: ["E"], label: "Editar linha focada" },
+      { keys: ["Del"], label: "Excluir seleção ou linha (com desfazer)" },
+      { keys: ["Esc"], label: "Limpar seleção" },
     ],
   },
   {
