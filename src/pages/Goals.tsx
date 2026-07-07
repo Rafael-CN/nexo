@@ -4,6 +4,7 @@ import { differenceInMonths, format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ArrowRightLeft, Flag, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AnimatedCurrency } from "@/components/shared/AnimatedCurrency";
 import { GoalModal } from "@/components/shared/GoalModal";
 import { TransactionModal } from "@/components/shared/TransactionModal";
 import {
@@ -16,6 +17,8 @@ import { resolveGoals, type ResolvedGoal } from "@/lib/goals";
 import { cn } from "@/lib/utils";
 import type { Goal } from "@/types";
 import type { ReactNode } from "react";
+import { SectionHeader } from "@/components/shared/SectionHeader";
+import { dsHeroOverline, dsHeroValue } from "@/lib/designSystem";
 
 export function GoalsPage() {
   const goals = useFinanceStore(useShallow((s) => s.goals));
@@ -90,15 +93,15 @@ export function GoalsPage() {
     <div className="space-y-10">
       <section className="flex flex-col gap-6 border-b border-border pb-10 md:flex-row md:items-end md:justify-between">
         <div className="space-y-3">
-          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+          <p className={dsHeroOverline}>
             Metas financeiras ({summary.count})
           </p>
-          <h1 className="selectable-text font-mono text-5xl font-light tracking-tight md:text-6xl">
-            {formatCurrency(summary.totalCurrent)}
+          <h1 className={`selectable-text ${dsHeroValue}`}>
+            <AnimatedCurrency value={summary.totalCurrent} />
           </h1>
           <p className="font-mono text-xs text-muted-foreground">
             de{" "}
-            <span className="selectable-text tabular-nums">
+            <span className="selectable-text money tabular-nums">
               {formatCurrency(summary.totalTarget)}
             </span>{" "}
             total
@@ -114,12 +117,7 @@ export function GoalsPage() {
       </section>
 
       <section>
-        <div className="mb-4 flex items-center gap-3">
-          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-            Suas metas
-          </p>
-          <div className="h-px flex-1 bg-border" />
-        </div>
+        <SectionHeader className="mb-4" label="Suas metas" />
 
         {sorted.length === 0 ? (
           <EmptyPanel
@@ -241,11 +239,11 @@ function GoalCard({
         <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
           Acumulado
         </p>
-        <p className="selectable-text font-mono text-2xl font-normal tabular-nums tracking-tight">
+        <p className="selectable-text money font-mono text-2xl font-normal tabular-nums tracking-tight">
           {formatCurrency(goal.currentAmount)}
         </p>
         <p className="selectable-text font-mono text-[11px] text-muted-foreground">
-          meta {formatCurrency(goal.targetAmount)}
+          meta <span className="money">{formatCurrency(goal.targetAmount)}</span>
         </p>
       </div>
 
@@ -264,7 +262,7 @@ function GoalCard({
             {progress}% atingido
           </span>
           <span className="selectable-text tabular-nums text-muted-foreground">
-            faltam {formatCurrency(remaining)}
+            faltam <span className="money">{formatCurrency(remaining)}</span>
           </span>
         </div>
       </div>
@@ -310,15 +308,20 @@ function GoalCard({
             {deadlineInfo.tight ? (
               <span className="text-destructive">
                 Contribuição insuficiente — precisaria de{" "}
-                {formatCurrency(
-                  Math.ceil(remaining / Math.max(deadlineInfo.monthsLeft, 1)),
-                )}
+                <span className="money">
+                  {formatCurrency(
+                    Math.ceil(remaining / Math.max(deadlineInfo.monthsLeft, 1)),
+                  )}
+                </span>
                 /mês
               </span>
             ) : (
               <span>
-                No ritmo de {formatCurrency(goal.monthlyContribution ?? 0)}/mês,
-                meta em {monthsToGoal} meses
+                No ritmo de{" "}
+                <span className="money">
+                  {formatCurrency(goal.monthlyContribution ?? 0)}
+                </span>
+                /mês, meta em {monthsToGoal} meses
               </span>
             )}
           </p>
@@ -365,12 +368,7 @@ function OverallProgress({ goals }: { goals: Goal[] }) {
 
   return (
     <section className="space-y-3">
-      <div className="flex items-center gap-3">
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-          Resumo por meta
-        </p>
-        <div className="h-px flex-1 bg-border" />
-      </div>
+      <SectionHeader label="Resumo por meta" />
 
       <div className="border-t border-border">
         {active.map((goal) => {

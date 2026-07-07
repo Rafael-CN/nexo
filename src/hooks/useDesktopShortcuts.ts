@@ -10,6 +10,7 @@ type DesktopShortcutHandlers = {
   onOpenNewTransaction: () => void;
   onOpenNewTransfer: () => void;
   onOpenHelp: () => void;
+  onTogglePrivacy: () => void;
   onOpenSettings: () => void;
   onNavigateToIndex: (index: number) => void;
   onClosePalette: () => void;
@@ -24,6 +25,7 @@ export function useDesktopShortcuts({
   onOpenNewTransaction,
   onOpenNewTransfer,
   onOpenHelp,
+  onTogglePrivacy,
   onOpenSettings,
   onNavigateToIndex,
   onClosePalette,
@@ -65,6 +67,12 @@ export function useDesktopShortcuts({
         return;
       }
 
+      if (key === "h") {
+        event.preventDefault();
+        onTogglePrivacy();
+        return;
+      }
+
       if (key === ",") {
         event.preventDefault();
         onOpenSettings();
@@ -85,6 +93,7 @@ export function useDesktopShortcuts({
     onOpenNewTransaction,
     onOpenNewTransfer,
     onOpenHelp,
+    onTogglePrivacy,
     onOpenPalette,
     onOpenSettings,
     isCommandPaletteOpen,

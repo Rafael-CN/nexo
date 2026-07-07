@@ -11,6 +11,7 @@ import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { ImportStatementModal } from "@/components/shared/ImportStatementModal";
 import { Onboarding } from "@/components/shared/Onboarding";
 import { ShortcutsHelp } from "@/components/shared/ShortcutsHelp";
+import { Toaster } from "@/components/shared/Toaster";
 import { TransactionModal } from "@/components/shared/TransactionModal";
 import { UpdateBanner } from "@/components/shared/UpdateBanner";
 import { useDesktopShortcuts } from "@/hooks/useDesktopShortcuts";
@@ -28,6 +29,7 @@ import {
   type UpdateInfo,
 } from "@/lib/updates";
 import { useFinanceStore } from "@/store/useFinanceStore";
+import { usePrivacyStore } from "@/store/usePrivacyStore";
 
 export function AppLayout() {
   const initialize = useFinanceStore((s) => s.initialize);
@@ -105,6 +107,7 @@ export function AppLayout() {
     setTransactionModalOpen(false);
   }, []);
   const openSettings = useCallback(() => navigate("/configuracoes"), [navigate]);
+  const togglePrivacy = usePrivacyStore((s) => s.toggle);
   const navigateToIndex = useCallback(
     (index: number) => {
       const route = appRoutes[index];
@@ -160,6 +163,7 @@ export function AppLayout() {
     onOpenNewTransaction: openNewTransaction,
     onOpenNewTransfer: openNewTransfer,
     onOpenHelp: openShortcutsHelp,
+    onTogglePrivacy: togglePrivacy,
     onOpenSettings: openSettings,
     onNavigateToIndex: navigateToIndex,
     onClosePalette: closeCommandPalette,
@@ -267,6 +271,7 @@ export function AppLayout() {
           onDismiss={handleDismissUpdate}
         />
       )}
+      <Toaster />
     </TooltipProvider>
   );
 }

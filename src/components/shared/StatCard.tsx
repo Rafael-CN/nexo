@@ -4,6 +4,8 @@ import { cn } from "@/lib/utils";
 interface StatCardProps {
   label: string;
   value: string;
+  /** Marca o valor como monetário — borrado no modo sigilo. */
+  money?: boolean;
   delta?: { value: string; positive?: boolean };
   icon?: LucideIcon;
   accent?: "primary" | "success" | "warning" | "destructive" | "neutral";
@@ -21,6 +23,7 @@ const dotMap: Record<NonNullable<StatCardProps["accent"]>, string> = {
 export function StatCard({
   label,
   value,
+  money = false,
   delta,
   icon: Icon,
   accent = "neutral",
@@ -52,7 +55,12 @@ export function StatCard({
       </div>
 
       <div className="min-h-[52px] space-y-1.5">
-        <p className="selectable-text truncate font-mono text-2xl font-normal tracking-tight">
+        <p
+          className={cn(
+            "selectable-text truncate font-mono text-2xl font-normal tabular-nums tracking-tight",
+            money && "money",
+          )}
+        >
           {value}
         </p>
         {delta && (

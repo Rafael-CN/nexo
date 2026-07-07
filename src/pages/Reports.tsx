@@ -26,6 +26,7 @@ import {
   type ReportKpiItem,
 } from "@/components/reports";
 import { Button } from "@/components/ui/button";
+import { AnimatedCurrency } from "@/components/shared/AnimatedCurrency";
 import { useProjection } from "@/hooks/useProjection";
 import { formatCurrency } from "@/lib/format";
 import { isEditableElement } from "@/lib/keyboardShortcuts";
@@ -54,6 +55,8 @@ import {
 } from "@/lib/backup";
 import { isTauri } from "@/lib/db";
 import { useFinanceStore } from "@/store/useFinanceStore";
+import { SectionHeader } from "@/components/shared/SectionHeader";
+import { dsHeroOverline, dsHeroValue } from "@/lib/designSystem";
 
 const DEFAULT_PRESET: ReportPeriodPreset = "current-month";
 const RANKING_LIMIT = 6;
@@ -231,6 +234,7 @@ export function ReportsPage() {
     {
       label: "Entradas",
       value: formatCurrency(summary.income),
+      money: true,
       delta: buildDelta(comparison.incomeDeltaPct),
       icon: ArrowUpRight,
       tone: "positive",
@@ -238,6 +242,7 @@ export function ReportsPage() {
     {
       label: "Saídas",
       value: formatCurrency(summary.expense),
+      money: true,
       delta: buildDelta(comparison.expenseDeltaPct),
       icon: ArrowDownLeft,
       tone:
@@ -262,6 +267,7 @@ export function ReportsPage() {
     {
       label: "Recorrentes",
       value: formatCurrency(recurringExpense),
+      money: true,
       note:
         summary.expense > 0
           ? `${formatPercent(recurringExpense / summary.expense)} das saídas`
@@ -278,16 +284,17 @@ export function ReportsPage() {
     <div className="space-y-10">
       <section className="flex flex-col gap-6 border-b border-border pb-10 xl:flex-row xl:items-end xl:justify-between">
         <div className="space-y-3">
-          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+          <p className={dsHeroOverline}>
             Resultado do período
           </p>
           <h1
             className={cn(
-              "selectable-text font-mono text-4xl font-light tracking-tight md:text-5xl",
+              "selectable-text",
+              dsHeroValue,
               summary.net < 0 && "text-destructive",
             )}
           >
-            {formatCurrency(summary.net)}
+            <AnimatedCurrency value={summary.net} />
           </h1>
           <p className="font-mono text-xs text-muted-foreground">
             {period.label}
@@ -426,12 +433,7 @@ function TopCategoryPanel({
 }) {
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-          Maior saída
-        </p>
-        <div className="h-px flex-1 bg-border" />
-      </div>
+      <SectionHeader label="Maior saída" />
 
       <div className="space-y-5 border border-border bg-background p-5">
         <div className="flex items-start justify-between gap-4">
@@ -440,7 +442,7 @@ function TopCategoryPanel({
               {item ? item.name : "Sem despesas no período"}
             </p>
             {item && (
-              <p className="selectable-text mt-1 font-mono text-2xl font-light tabular-nums tracking-tight">
+              <p className="selectable-text money mt-1 font-mono text-2xl font-light tabular-nums tracking-tight">
                 {formatCurrency(item.total)}
               </p>
             )}
@@ -466,10 +468,12 @@ function TopCategoryPanel({
             <MiniMetric
               label="Recorrente"
               value={formatCurrency(item.recurringTotal, true)}
+              money
             />
             <MiniMetric
               label="Previsto"
               value={formatCurrency(item.projectedTotal, true)}
+              money
             />
           </div>
         )}
@@ -489,13 +493,26 @@ function TopCategoryPanel({
   );
 }
 
-function MiniMetric({ label, value }: { label: string; value: string }) {
+function MiniMetric({
+  label,
+  value,
+  money = false,
+}: {
+  label: string;
+  value: string;
+  money?: boolean;
+}) {
   return (
     <div className="min-h-[72px] bg-background p-3.5">
       <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
         {label}
       </p>
-      <p className="selectable-text mt-1 truncate font-mono text-sm tabular-nums">
+      <p
+        className={cn(
+          "selectable-text mt-1 truncate font-mono text-sm tabular-nums",
+          money && "money",
+        )}
+      >
         {value}
       </p>
     </div>

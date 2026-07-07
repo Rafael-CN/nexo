@@ -20,7 +20,10 @@ import { ptBR } from "date-fns/locale";
 import { CalendarDays, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { PickerPopover } from "@/components/shared/pickerPopover";
+import {
+  PickerPopover,
+  PickerPopoverFooter,
+} from "@/components/shared/pickerPopover";
 
 const WEEKDAYS = ["D", "S", "T", "Q", "Q", "S", "S"];
 
@@ -143,10 +146,10 @@ export function DatePicker({
           open={open}
           onClose={() => setOpen(false)}
           preferredWidth={248}
-          preferredHeight={340}
-          className="p-2"
+          preferredHeight={360}
+          className="flex flex-col"
         >
-          <div className="mb-2 flex items-center justify-between">
+          <div className="flex items-center justify-between px-2 pt-2">
             <Button
               type="button"
               variant="ghost"
@@ -170,7 +173,7 @@ export function DatePicker({
             </Button>
           </div>
 
-          <div className="grid grid-cols-7 gap-px bg-border border border-border">
+          <div className="m-2 grid grid-cols-7 gap-px bg-border border border-border">
             {WEEKDAYS.map((weekday, index) => (
               <div
                 key={`${weekday}-${index}`}
@@ -202,21 +205,21 @@ export function DatePicker({
             })}
           </div>
 
-          <div className="mt-2 flex items-center justify-between">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              tabIndex={-1}
-              className="px-2 font-mono text-[10px] uppercase tracking-wider"
-              onClick={() => selectDate(new Date())}
-            >
-              Hoje
-            </Button>
-            <span className="font-mono text-[10px] text-muted-foreground">
-              Digite ou selecione
-            </span>
-          </div>
+          <PickerPopoverFooter
+            leading={
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                tabIndex={-1}
+                className="h-6 px-2 font-mono text-[10px] uppercase tracking-wider"
+                onClick={() => selectDate(new Date())}
+              >
+                Hoje
+              </Button>
+            }
+            note="digite ou selecione"
+          />
         </PickerPopover>
       )}
     </div>

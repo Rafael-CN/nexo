@@ -5,10 +5,16 @@ import {
   useState,
   type KeyboardEvent,
 } from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { dsFieldLabel } from "@/lib/designSystem";
 import { cn } from "@/lib/utils";
-import { PickerPopover } from "@/components/shared/pickerPopover";
+import {
+  PickerField,
+  PickerPopover,
+  PickerPopoverFooter,
+  PickerPopoverHeader,
+} from "@/components/shared/pickerPopover";
 
 const GRID_COLUMNS = 6;
 
@@ -219,10 +225,10 @@ export function ColorPicker({
 
   return (
     <div ref={rootRef} className={cn("relative", className)}>
-      <button
+      <PickerField
         id={id}
         ref={triggerRef}
-        type="button"
+        open={open}
         disabled={disabled}
         onClick={() => !disabled && setOpen((state) => !state)}
         onKeyDown={(event) => {
@@ -231,27 +237,9 @@ export function ColorPicker({
             setOpen(true);
           }
         }}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        className={cn(
-          "flex h-9 w-full items-center justify-between border border-border bg-background px-3 text-sm transition-colors ui-focus-ring disabled:cursor-not-allowed disabled:opacity-50",
-          open && "border-foreground",
-        )}
-      >
-        <span className="flex min-w-0 items-center gap-2.5">
-          <ColorSwatch value={current} />
-          <span className="min-w-0 truncate font-mono text-xs uppercase tracking-[0.12em] text-foreground">
-            {current}
-          </span>
-        </span>
-        <ChevronDown
-          className={cn(
-            "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
-            open && "rotate-180",
-          )}
-          strokeWidth={1.5}
-        />
-      </button>
+        leading={<ColorSwatch value={current} />}
+        value={current}
+      />
 
       {open && (
         <PickerPopover
@@ -259,86 +247,94 @@ export function ColorPicker({
           open={open}
           onClose={() => closePicker(false)}
           preferredWidth={288}
-          preferredHeight={320}
-          className="p-3"
+          preferredHeight={340}
+          className="flex flex-col"
         >
-          <div className="relative">
-            <span
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
-              aria-hidden
-            >
-              <ColorSwatch
-                value={normalizeHex(draft) ?? current}
-                className="h-4 w-4"
+          <PickerPopoverHeader>
+            <div className="relative">
+              <span
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
+                aria-hidden
+              >
+                <ColorSwatch
+                  value={normalizeHex(draft) ?? current}
+                  className="h-4 w-4"
+                />
+              </span>
+              <Input
+                ref={hexInputRef}
+                value={draft}
+                onChange={(event) => handleDraftChange(event.target.value)}
+                onKeyDown={handleHexKeyDown}
+                spellCheck={false}
+                autoCapitalize="off"
+                autoComplete="off"
+                autoCorrect="off"
+                inputMode="text"
+                placeholder="#RRGGBB"
+                aria-label="Cor personalizada em hexadecimal"
+                className="pl-10 font-mono text-xs uppercase tabular-nums ui-focus-ring-inset"
               />
-            </span>
-            <Input
-              ref={hexInputRef}
-              value={draft}
-              onChange={(event) => handleDraftChange(event.target.value)}
-              onKeyDown={handleHexKeyDown}
-              spellCheck={false}
-              autoCapitalize="off"
-              autoComplete="off"
-              autoCorrect="off"
-              inputMode="text"
-              placeholder="#RRGGBB"
-              aria-label="Cor personalizada em hexadecimal"
-              className="h-9 border-border pl-10 font-mono text-xs uppercase tabular-nums ui-focus-ring-inset"
-            />
-          </div>
+            </div>
+          </PickerPopoverHeader>
 
-          <div className="mt-3 flex items-center justify-between gap-3">
-            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-              Paleta
-            </p>
-            <span className="truncate font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-              {highlighted?.label ?? "setas navegam · enter aplica"}
-            </span>
-          </div>
+          <div className="p-3">
+            <p className={dsFieldLabel}>Paleta</p>
+            <div
+              className="mt-2 grid grid-cols-6 gap-1.5"
+              role="listbox"
+              aria-label="Cores da paleta"
+            >
+              {quickColors.map((color, index) => {
+                const selected = current === color.value.toUpperCase();
+                const focused = index === activeIndex;
 
-          <div className="mt-2 grid grid-cols-6 gap-1.5" role="listbox" aria-label="Cores da paleta">
-            {quickColors.map((color, index) => {
-              const selected = current === color.value.toUpperCase();
-              const focused = index === activeIndex;
-
-              return (
-                <button
-                  key={color.value}
-                  type="button"
-                  role="option"
-                  aria-selected={selected}
-                  tabIndex={-1}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onMouseEnter={() => setActiveIndex(index)}
-                  onClick={() => selectColor(color.value)}
-                  title={color.label}
-                  aria-label={color.label}
-                  className={cn(
-                    "grid place-items-center border p-1 transition-colors",
-                    focused
-                      ? "border-foreground/50 bg-accent"
-                      : "border-transparent hover:border-border",
-                  )}
-                >
-                  <span
-                    className="relative grid h-7 w-full min-w-7 place-items-center border border-border"
-                    style={{ backgroundColor: color.value }}
-                  >
-                    {selected && (
-                      <Check
-                        className={cn(
-                          "h-3.5 w-3.5",
-                          isDarkColor(color.value) ? "text-white" : "text-black",
-                        )}
-                        strokeWidth={2}
-                      />
+                return (
+                  <button
+                    key={color.value}
+                    type="button"
+                    role="option"
+                    aria-selected={selected}
+                    tabIndex={-1}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onMouseEnter={() => setActiveIndex(index)}
+                    onClick={() => selectColor(color.value)}
+                    title={color.label}
+                    aria-label={color.label}
+                    className={cn(
+                      "grid place-items-center border p-1 transition-colors",
+                      focused
+                        ? "border-foreground/50 bg-accent"
+                        : "border-transparent hover:border-border",
                     )}
-                  </span>
-                </button>
-              );
-            })}
+                  >
+                    <span
+                      className="relative grid h-7 w-full min-w-7 place-items-center border border-border"
+                      style={{ backgroundColor: color.value }}
+                    >
+                      {selected && (
+                        <Check
+                          className={cn(
+                            "h-3.5 w-3.5",
+                            isDarkColor(color.value) ? "text-white" : "text-black",
+                          )}
+                          strokeWidth={2}
+                        />
+                      )}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
+
+          <PickerPopoverFooter
+            keys={[
+              ["↕↔", "navega"],
+              ["↵", "aplica"],
+            ]}
+            note={highlighted?.label ?? "ou digite o hex"}
+          />
         </PickerPopover>
       )}
     </div>

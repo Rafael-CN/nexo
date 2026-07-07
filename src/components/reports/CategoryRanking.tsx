@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { SectionHeader } from "@/components/shared/SectionHeader";
 
 export interface CategoryRankingItem {
   /** Identificador para drill-down; linhas sem id não são clicáveis. */
@@ -44,13 +45,9 @@ export function CategoryRanking({
 
   return (
     <section className={cn("space-y-3", className)}>
-      <div className="flex items-center gap-3">
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-          {title}
-        </p>
-        <div className="h-px flex-1 bg-border" />
+      <SectionHeader label={title}>
         {headerSlot}
-      </div>
+      </SectionHeader>
 
       <div className="overflow-hidden border border-border bg-background">
         {items.length === 0 ? (
@@ -95,7 +92,7 @@ export function CategoryRanking({
                       </span>
                     )}
                   </div>
-                  <p className="selectable-text shrink-0 font-mono text-[13px] tabular-nums">
+                  <p className="selectable-text money shrink-0 font-mono text-[13px] tabular-nums">
                     {formatCurrency(item.amount)}
                   </p>
                 </div>

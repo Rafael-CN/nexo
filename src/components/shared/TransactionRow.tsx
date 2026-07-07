@@ -92,7 +92,7 @@ export function TransactionRow({ transaction, onClick }: TransactionRowProps) {
 
       <p
         className={cn(
-          "selectable-text flex min-w-[112px] items-center justify-end gap-1.5 text-right font-mono text-sm tabular-nums",
+          "selectable-text money flex min-w-[112px] items-center justify-end gap-1.5 text-right font-mono text-sm tabular-nums",
           isIncome
             ? "text-success"
             : isTransfer
