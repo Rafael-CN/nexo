@@ -72,6 +72,7 @@ export function DashboardPage() {
   const accountSummaries = sortActiveAccounts(accounts).map((account) => ({
     ...account,
     balance: accountBalances.get(account.id) ?? account.balance,
+    excludedFromTotal: account.excludedFromTotal ?? false,
   }));
 
   return (
@@ -191,7 +192,12 @@ function HeroBalance({
   accounts,
 }: {
   balance: number;
-  accounts: { id: string; name: string; balance: number }[];
+  accounts: {
+    id: string;
+    name: string;
+    balance: number;
+    excludedFromTotal: boolean;
+  }[];
 }) {
   return (
     <section className="flex flex-col gap-8 border-b border-border pb-10 md:flex-row md:items-end md:justify-between">
@@ -218,6 +224,9 @@ function HeroBalance({
             >
               <p className="selectable-text truncate font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                 {a.name}
+                {a.excludedFromTotal && (
+                  <span className="text-muted-foreground/60"> · reserva</span>
+                )}
               </p>
               <p className="selectable-text money mt-1 font-mono text-sm tabular-nums">
                 {formatCurrency(a.balance)}

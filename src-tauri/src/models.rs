@@ -30,6 +30,9 @@ pub struct Account {
     /// Posição manual na listagem de contas.
     #[serde(rename = "sortOrder", default)]
     pub sort_order: i64,
+    /// Reserva/investimento: ativa e transacionável, mas fora do saldo efetivo.
+    #[serde(rename = "excludedFromTotal", default)]
+    pub excluded_from_total: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -333,4 +336,70 @@ fn is_valid_iso_date(value: &str) -> bool {
 
 fn is_leap_year(year: i32) -> bool {
     (year % 4 == 0 && year % 100 != 0) || year % 400 == 0
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Contrato do IPC: payloads do frontend podem omitir opcionais,
+    // mas nunca podem mandar null onde o campo é f64 obrigatório.
+    #[test]
+    fn goal_deserializes_without_optional_fields() {
+        let goal: Goal = serde_json::from_str(
+            r#"{
+                "id": "g-1",
+                "name": "Mudança",
+                "description": null,
+                "targetAmount": 10000.0,
+                "currentAmount": 0.0,
+                "accountId": "acc-1",
+                "status": "active"
+            }"#,
+        )
+        .expect("meta sem opcionais deve desserializar");
+
+        assert!(goal.validate().is_ok());
+        assert_eq!(goal.monthly_contribution, None);
+        assert_eq!(goal.deadline, None);
+    }
+
+    #[test]
+    fn goal_rejects_null_required_amount() {
+        // Regressão: NaN no frontend virava null no JSON e caía aqui.
+        let result = serde_json::from_str::<Goal>(
+            r#"{
+                "id": "g-1",
+                "name": "Mudança",
+                "description": null,
+                "targetAmount": 10000.0,
+                "currentAmount": null,
+                "status": "active"
+            }"#,
+        );
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn account_deserializes_without_v5_and_v6_fields() {
+        let account: Account = serde_json::from_str(
+            r##"{
+                "id": "acc-1",
+                "name": "Conta",
+                "institution": "Banco",
+                "type": "checking",
+                "balance": 100.0,
+                "color": "#123456",
+                "icon": null,
+                "lastFour": null
+            }"##,
+        )
+        .expect("conta antiga deve desserializar");
+
+        assert!(account.validate().is_ok());
+        assert!(!account.archived);
+        assert_eq!(account.sort_order, 0);
+        assert!(!account.excluded_from_total);
+    }
 }

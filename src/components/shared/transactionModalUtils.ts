@@ -39,18 +39,34 @@ export function formatTransactionAmount(value: number) {
   return currencyFormatter.format(value);
 }
 
-export function parseCurrencyInputValue(value: string) {
+/**
+ * Converte o texto do CurrencyInput em número — ou null quando vazio.
+ * Nunca retorna NaN: NaN vira null no JSON do IPC e explode no serde
+ * do Tauri ("invalid type: null, expected f64").
+ */
+export function parseCurrencyInputValue(value: string): number | null {
   const digits = value.replace(/\D/g, "");
-  if (!digits) return Number.NaN;
+  if (!digits) return null;
 
-  return Number(digits) / 100;
+  const parsed = Number(digits) / 100;
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 export function getDefaultTransactionAccountId(
   accounts: Account[],
   transactions: Transaction[],
 ) {
-  const latestTransaction = transactions.reduce<{
+  // Reservas (fora do saldo) não devem ser o default de um lançamento comum.
+  const preferred = accounts.filter(
+    (account) => !account.archived && !account.excludedFromTotal,
+  );
+  const pool = preferred.length > 0 ? preferred : accounts;
+  const poolIds = new Set(pool.map((account) => account.id));
+  const candidates = transactions.filter((transaction) =>
+    poolIds.has(transaction.accountId),
+  );
+
+  const latestTransaction = candidates.reduce<{
     transaction: Transaction | null;
     index: number;
   }>(
@@ -73,11 +89,11 @@ export function getDefaultTransactionAccountId(
   );
 
   const transactionAccountId = latestTransaction.transaction?.accountId;
-  if (transactionAccountId && accounts.some((account) => account.id === transactionAccountId)) {
+  if (transactionAccountId && poolIds.has(transactionAccountId)) {
     return transactionAccountId;
   }
 
-  return accounts[accounts.length - 1]?.id ?? "";
+  return pool[pool.length - 1]?.id ?? "";
 }
 
 export function buildTransactionForm(

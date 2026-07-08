@@ -42,17 +42,21 @@ export function getCurrentAccountBalances(
   );
 }
 
+/** Conta entra no saldo efetivo? Arquivadas e reservas ficam de fora. */
+export function isCountedInTotal(account: Account): boolean {
+  return !account.archived && !account.excludedFromTotal;
+}
+
 export function getTotalCurrentBalance(
   accounts: Account[],
   transactions: Transaction[],
   asOf = new Date(),
 ): number {
-  // Contas arquivadas ficam fora do saldo efetivo.
   return accounts.reduce(
     (total, account) =>
-      account.archived
-        ? total
-        : total + getCurrentAccountBalance(account, transactions, asOf),
+      isCountedInTotal(account)
+        ? total + getCurrentAccountBalance(account, transactions, asOf)
+        : total,
     0,
   );
 }

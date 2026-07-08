@@ -151,6 +151,9 @@ export function AccountDetailPage() {
             </Link>
             <span className="px-2">/</span>
             {typeLabels[account.type] ?? account.type}
+            {account.excludedFromTotal && (
+              <span className="px-2">· fora do saldo</span>
+            )}
             {account.archived && <span className="px-2">· arquivada</span>}
           </p>
           <div className="flex items-center gap-4">

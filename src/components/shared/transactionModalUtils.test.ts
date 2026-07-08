@@ -93,6 +93,31 @@ describe("transactionModalUtils", () => {
     expect(parseCurrencyInputValue("R$ 1.234,56")).toBe(1234.56);
   });
 
+  it("skips reserve accounts when picking the default account", () => {
+    const accounts = [
+      { id: "reserva", excludedFromTotal: true },
+      { id: "corrente" },
+    ] as Account[];
+    const txns = [
+      transaction("t-1", "2025-04-20", "corrente"),
+      transaction("t-2", "2025-04-25", "reserva"),
+    ];
+
+    // Último lançamento foi na reserva, mas o default deve ficar na corrente.
+    expect(getDefaultTransactionAccountId(accounts, txns)).toBe("corrente");
+    // Só reservas: usa o que houver.
+    expect(
+      getDefaultTransactionAccountId([accounts[0]], []),
+    ).toBe("reserva");
+  });
+
+  it("returns null (never NaN) for empty or non-numeric input", () => {
+    // NaN viraria null no JSON do IPC e o serde do Tauri rejeitaria.
+    expect(parseCurrencyInputValue("")).toBeNull();
+    expect(parseCurrencyInputValue("R$ ")).toBeNull();
+    expect(parseCurrencyInputValue("abc")).toBeNull();
+  });
+
   it("formats existing transaction amounts for editing", () => {
     const form = buildTransactionForm(transaction("t-1", "2025-04-21", "acc-1"));
 
