@@ -31,6 +31,7 @@ import {
 } from "@/lib/calendarSelection";
 import { isEditableElement } from "@/lib/keyboardShortcuts";
 import { useFinanceStore } from "@/store/useFinanceStore";
+import { usePaletteContext } from "@/store/usePaletteContextStore";
 import { useProjection } from "@/hooks/useProjection";
 import type { Transaction } from "@/types";
 import { SectionHeader } from "@/components/shared/SectionHeader";
@@ -129,6 +130,30 @@ export function CalendarPage() {
           transaction.isProjected && transaction.date.startsWith(monthPrefix),
       ).length,
     [allTransactions, monthPrefix],
+  );
+
+  usePaletteContext(
+    useMemo(
+      () => [
+        {
+          id: "calendar-today",
+          label: "Ir para hoje",
+          keywords: ["hoje", "atual"],
+          run: () => {
+            setViewMonth(startOfMonth(startOfToday()));
+            setSelection({ start: todayIso, end: todayIso });
+          },
+        },
+        {
+          id: "calendar-new-on-day",
+          label: "Novo lançamento no dia selecionado",
+          keywords: ["lançar", "novo", "dia"],
+          run: () => openTransactionModal(selection.end),
+        },
+      ],
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [selection.end, todayIso],
+    ),
   );
 
   function beginSelection(iso: string) {

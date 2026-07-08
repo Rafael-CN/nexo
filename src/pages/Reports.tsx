@@ -55,6 +55,7 @@ import {
 } from "@/lib/backup";
 import { isTauri } from "@/lib/db";
 import { useFinanceStore } from "@/store/useFinanceStore";
+import { usePaletteContext } from "@/store/usePaletteContextStore";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { dsHeroOverline, dsHeroValue } from "@/lib/designSystem";
 
@@ -179,6 +180,21 @@ export function ReportsPage() {
       };
     });
   }, [transactions]);
+
+  usePaletteContext(
+    useMemo(
+      () => [
+        {
+          id: "reports-export-csv",
+          label: "Exportar CSV do período",
+          keywords: ["exportar", "csv", "planilha"],
+          run: () => void handleExportPeriodCsv(),
+        },
+      ],
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [period.startIso, period.endIso],
+    ),
+  );
 
   async function handleExportPeriodCsv() {
     setExportNote(null);

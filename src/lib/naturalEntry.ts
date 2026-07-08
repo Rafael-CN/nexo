@@ -28,6 +28,17 @@ const DATE_WORDS: Record<string, number> = {
 };
 
 /**
+ * Em pt-BR "1.200" é milhar (1200), não decimal — normaliza antes do
+ * parser genérico, que trataria o ponto como separador americano.
+ */
+function parseAmountToken(token: string): number | null {
+  const normalized = /^\d{1,3}(\.\d{3})+$/.test(token)
+    ? token.replace(/\./g, "")
+    : token;
+  return parseBrAmount(normalized);
+}
+
+/**
  * Interpreta entradas rápidas como "mercado 54,90 ontem" ou
  * "+ salário 4.500 05/07": último token numérico vira o valor,
  * palavras de data (hoje/ontem/amanhã) ou dd/mm definem a data,
@@ -81,7 +92,7 @@ export function parseNaturalEntry(
     }
 
     if (amount === null && /\d/.test(token)) {
-      const parsed = parseBrAmount(token);
+      const parsed = parseAmountToken(token);
       if (parsed !== null && parsed > 0) {
         amount = parsed;
         amountIndex = index;
@@ -110,6 +121,87 @@ export function parseNaturalEntry(
     date: date ?? todayIso,
     type,
   };
+}
+
+export interface ParsedNaturalTransfer {
+  /** Texto livre que aponta a conta de destino (ex.: "reserva"). */
+  targetText: string;
+  amount: number;
+  /** ISO yyyy-MM-dd */
+  date: string;
+  /** "aporte" quando a intenção é contribuição; senão transferência. */
+  intent: "transfer" | "aporte";
+}
+
+const TRANSFER_WORDS = new Set(["transferir", "transfere", "transferencia", "mover"]);
+const APORTE_WORDS = new Set(["aporte", "aportar", "guardar"]);
+const CONNECTOR_WORDS = new Set(["de", "para", "pra", "na", "no", "a"]);
+
+/**
+ * Interpreta transferências em linguagem natural:
+ * "transferir 500 para reserva", "aporte 300 na reserva amanhã".
+ * Exige a palavra-chave, um valor e o texto do destino — o casamento
+ * com a conta acontece em quem chama (palette), que conhece o store.
+ */
+export function parseNaturalTransfer(
+  input: string,
+  todayIso = format(new Date(), "yyyy-MM-dd"),
+): ParsedNaturalTransfer | null {
+  const text = input.trim();
+  if (!text) return null;
+
+  const tokens = text.split(/\s+/);
+  const normalized = tokens.map((token) =>
+    token.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase(),
+  );
+
+  const keywordIndex = normalized.findIndex(
+    (token) => TRANSFER_WORDS.has(token) || APORTE_WORDS.has(token),
+  );
+  if (keywordIndex === -1) return null;
+  const intent = APORTE_WORDS.has(normalized[keywordIndex])
+    ? ("aporte" as const)
+    : ("transfer" as const);
+
+  let amount: number | null = null;
+  let amountIndex = -1;
+  let date: string | null = null;
+  let dateIndex = -1;
+
+  for (let index = tokens.length - 1; index >= 0; index -= 1) {
+    if (index === keywordIndex) continue;
+    const lower = normalized[index];
+
+    if (date === null && lower in DATE_WORDS) {
+      date = shiftDate(todayIso, DATE_WORDS[lower]);
+      dateIndex = index;
+      continue;
+    }
+
+    if (amount === null && /\d/.test(tokens[index])) {
+      const parsed = parseAmountToken(tokens[index]);
+      if (parsed !== null && parsed > 0) {
+        amount = parsed;
+        amountIndex = index;
+      }
+    }
+  }
+
+  if (amount === null) return null;
+
+  const targetText = tokens
+    .filter(
+      (_, index) =>
+        index !== keywordIndex &&
+        index !== amountIndex &&
+        index !== dateIndex &&
+        !CONNECTOR_WORDS.has(normalized[index]),
+    )
+    .join(" ")
+    .trim();
+  if (!targetText) return null;
+
+  return { targetText, amount, date: date ?? todayIso, intent };
 }
 
 function shiftDate(todayIso: string, days: number): string {
