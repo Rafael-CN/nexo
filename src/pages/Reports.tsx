@@ -219,6 +219,36 @@ export function ReportsPage() {
     (transaction) => transaction.type !== "transfer",
   );
   const topExpense = expenseRanking[0];
+  // E4: recorrentes do período agrupadas por regra, para o painel dedicado.
+  const recurringItems = useMemo<CategoryRankingItem[]>(() => {
+    const byRule = new Map<
+      string,
+      { label: string; total: number; count: number; kind: "income" | "expense" }
+    >();
+    for (const transaction of periodTransactions) {
+      if (!transaction.recurrenceId || transaction.type === "transfer") continue;
+      const key = transaction.recurrenceId;
+      const entry = byRule.get(key) ?? {
+        label: transaction.title,
+        total: 0,
+        count: 0,
+        kind: transaction.type,
+      };
+      entry.total += transaction.amount;
+      entry.count += 1;
+      byRule.set(key, entry);
+    }
+    const entries = [...byRule.values()].sort((a, b) => b.total - a.total);
+    const grandTotal = entries.reduce((sum, entry) => sum + entry.total, 0);
+    return entries.map((entry) => ({
+      label: entry.label,
+      amount: entry.total,
+      share: grandTotal > 0 ? (entry.total / grandTotal) * 100 : 0,
+      meta: `${entry.count}× · ${entry.kind === "income" ? "receita" : "despesa"}`,
+      tone: entry.kind === "income" ? ("positive" as const) : ("negative" as const),
+    }));
+  }, [periodTransactions]);
+
   const recurringExpense = useMemo(
     () =>
       periodTransactions
@@ -380,6 +410,31 @@ export function ReportsPage() {
               onOpenCalendar={() => navigate("/calendario")}
             />
           </section>
+
+          {recurringItems.length > 0 && (
+            <CategoryRanking
+              title={`Recorrentes do período (${recurringItems.length})`}
+              items={recurringItems}
+              headerSlot={
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 gap-1 px-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground hover:text-foreground"
+                  onClick={() =>
+                    navigate("/transacoes", {
+                      state: {
+                        type: "recurring",
+                        startDate: period.startIso,
+                        endDate: period.endIso,
+                      },
+                    })
+                  }
+                >
+                  Ver lançamentos →
+                </Button>
+              }
+            />
+          )}
 
           {trend.some((point) => point.inflow > 0 || point.outflow > 0) && (
             <CashflowChart title="Tendência 12 meses" points={trend} />

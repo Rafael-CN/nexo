@@ -65,7 +65,7 @@ type PaletteGroup =
 type PaletteAction = {
   id: string;
   label: string;
-  description: string;
+  description?: string;
   icon: LucideIcon;
   iconName?: string;
   shortcut?: string;
@@ -110,10 +110,6 @@ export function CommandPalette({
         .map((route) => ({
           id: route.path,
           label: route.label,
-          description:
-            route.path === "/"
-              ? "Abrir painel inicial"
-              : `Abrir ${route.title.toLowerCase()}`,
           icon: route.icon,
           shortcut: route.shortcut,
           keywords: route.keywords,
@@ -123,7 +119,6 @@ export function CommandPalette({
       {
         id: "nova-transacao",
         label: "Nova transação",
-        description: "Abrir modal de criação",
         icon: Plus,
         shortcut: "N",
         keywords: ["novo", "lançamento", "movimentação"],
@@ -133,7 +128,6 @@ export function CommandPalette({
       {
         id: "nova-transferencia",
         label: "Nova transferência",
-        description: "Mover dinheiro entre contas",
         icon: ArrowRightLeft,
         shortcut: "T",
         keywords: ["transferir", "mover", "entre contas"],
@@ -143,7 +137,7 @@ export function CommandPalette({
       {
         id: "importar-extrato",
         label: "Importar extrato",
-        description: "Trazer OFX ou CSV do banco com conciliação",
+        description: "OFX ou CSV com conciliação",
         icon: FileUp,
         keywords: ["ofx", "csv", "banco", "extrato", "conciliar"],
         group: "Ações" as const,
@@ -152,7 +146,6 @@ export function CommandPalette({
       {
         id: "atalhos",
         label: "Atalhos de teclado",
-        description: "Ver todos os atalhos disponíveis",
         icon: Keyboard,
         keywords: ["ajuda", "teclado", "shortcuts"],
         group: "Ações" as const,
@@ -171,7 +164,6 @@ export function CommandPalette({
       {
         id: "configuracoes",
         label: "Configurações",
-        description: "Abrir preferências do aplicativo",
         icon: Settings,
         shortcut: ",",
         keywords: ["tema", "preferências", "ajustes"],
@@ -181,7 +173,6 @@ export function CommandPalette({
       {
         id: "recarregar-dados",
         label: "Recarregar dados",
-        description: "Sincronizar novamente o estado local com a base ativa",
         icon: RefreshCw,
         keywords: ["atualizar", "recarregar", "sincronizar"],
         group: "Ações" as const,
@@ -313,7 +304,7 @@ export function CommandPalette({
       const haystack = normalize(
         [
           action.label,
-          action.description,
+          action.description ?? "",
           action.shortcut ?? "",
           ...(action.keywords ?? []),
         ].join(" "),
@@ -490,18 +481,20 @@ export function CommandPalette({
                                 </span>
                               )}
                             </div>
-                            <p
-                              className={cn(
-                                "truncate font-mono text-[11px] text-muted-foreground",
-                                // Resultados com valores monetários respeitam o modo sigilo.
-                                (group === "Transações" ||
-                                  group === "Metas" ||
-                                  group === "Criar") &&
-                                  "money",
-                              )}
-                            >
-                              {action.description}
-                            </p>
+                            {action.description && (
+                              <p
+                                className={cn(
+                                  "truncate font-mono text-[11px] text-muted-foreground",
+                                  // Valores monetários respeitam o modo sigilo.
+                                  (group === "Transações" ||
+                                    group === "Metas" ||
+                                    group === "Criar") &&
+                                    "money",
+                                )}
+                              >
+                                {action.description}
+                              </p>
+                            )}
                           </div>
 
                           {active && (

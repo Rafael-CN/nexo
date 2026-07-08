@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { dsPopoverSurface } from "@/lib/designSystem";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { SectionHeader } from "@/components/shared/SectionHeader";
@@ -19,6 +21,7 @@ export function CashflowChart({
   points,
   className,
 }: CashflowChartProps) {
+  const [hovered, setHovered] = useState<number | null>(null);
   const max = Math.max(
     1,
     ...points.map((point) => Math.max(point.inflow, point.outflow)),
@@ -28,6 +31,13 @@ export function CashflowChart({
   const net = totalInflow - totalOutflow;
   const firstLabel = points[0]?.label ?? "";
   const lastLabel = points[points.length - 1]?.label ?? "";
+
+  const hoveredPoint = hovered !== null ? points[hovered] : null;
+  // Mantém o tooltip dentro do gráfico mesmo nas colunas das bordas.
+  const hoveredLeft =
+    hovered !== null && points.length > 0
+      ? Math.min(88, Math.max(12, ((hovered + 0.5) / points.length) * 100))
+      : 50;
 
   return (
     <section className={cn("space-y-3", className)}>
@@ -45,8 +55,54 @@ export function CashflowChart({
         </p>
       </SectionHeader>
 
-      <div className="border border-border bg-background p-5">
-        <div className="flex h-44 items-stretch gap-[3px]">
+      <div className="relative border border-border bg-background p-5">
+        {/* E2: tooltip rico segue a coluna sob o cursor. */}
+        {hoveredPoint && (
+          <div
+            className={cn(
+              "pointer-events-none absolute top-3 z-10 min-w-[190px] -translate-x-1/2 p-3",
+              dsPopoverSurface,
+              "animate-in fade-in-0 zoom-in-95 duration-100",
+            )}
+            style={{ left: `${hoveredLeft}%` }}
+            role="status"
+          >
+            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+              {hoveredPoint.label}
+            </p>
+            <div className="mt-2 space-y-1 font-mono text-[11px] tabular-nums">
+              <p className="flex items-baseline justify-between gap-4">
+                <span className="text-muted-foreground">Entradas</span>
+                <span className="money text-success">
+                  +{formatCurrency(hoveredPoint.inflow)}
+                </span>
+              </p>
+              <p className="flex items-baseline justify-between gap-4">
+                <span className="text-muted-foreground">Saídas</span>
+                <span className="money text-destructive">
+                  −{formatCurrency(hoveredPoint.outflow)}
+                </span>
+              </p>
+              <p className="flex items-baseline justify-between gap-4 border-t border-border pt-1">
+                <span className="text-muted-foreground">Resultado</span>
+                <span
+                  className={cn(
+                    "money",
+                    hoveredPoint.inflow - hoveredPoint.outflow < 0 &&
+                      "text-destructive",
+                  )}
+                >
+                  {formatCurrency(hoveredPoint.inflow - hoveredPoint.outflow)}
+                </span>
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div
+          className="flex h-44 items-stretch gap-[3px]"
+          onMouseLeave={() => setHovered(null)}
+        >
           {points.map((point, index) => {
             const inflowHeight = (point.inflow / max) * 100;
             const outflowHeight = (point.outflow / max) * 100;
@@ -54,8 +110,11 @@ export function CashflowChart({
             return (
               <div
                 key={`${point.label}-${index}`}
-                className="group flex min-w-0 flex-1 flex-col"
-                title={`${point.label}\n+ ${formatCurrency(point.inflow)}\n− ${formatCurrency(point.outflow)}`}
+                className={cn(
+                  "group flex min-w-0 flex-1 flex-col",
+                  hovered === index && "bg-accent/40",
+                )}
+                onMouseEnter={() => setHovered(index)}
               >
                 <div className="flex flex-1 items-end justify-center">
                   <div

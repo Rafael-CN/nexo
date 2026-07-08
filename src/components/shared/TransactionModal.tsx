@@ -5,7 +5,6 @@ import { Copy } from "lucide-react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -696,16 +695,11 @@ export function TransactionModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl overflow-hidden" onKeyDown={handleModalKeyDown}>
+      <DialogContent aria-describedby={undefined} className="max-w-2xl overflow-hidden" onKeyDown={handleModalKeyDown}>
         <DialogHeader className="border-b border-border px-6 py-5 pb-4">
           <DialogTitle className="text-sm font-medium tracking-tight">
             {isEdit ? "Editar transação" : "Nova transação"}
           </DialogTitle>
-          <DialogDescription>
-            {isEdit
-              ? "Ajuste valor, conta, categoria e recorrência."
-              : "Registro rápido com foco no valor e nos atalhos de entrada."}
-          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5 px-6 py-5">

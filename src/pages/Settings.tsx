@@ -69,16 +69,10 @@ export function SettingsPage() {
         <h1 className={`mt-3 ${dsHeroValue}`}>
           Preferências
         </h1>
-        <p className="mt-2 font-mono text-xs text-muted-foreground">
-          Ajustes locais — salvos no dispositivo
-        </p>
       </section>
 
       <SettingsSection label="Aparência">
-        <SettingRow
-          label="Tema"
-          description="Alterna entre modo claro e escuro. Salvo automaticamente."
-        >
+        <SettingRow label="Tema">
           <div className="flex items-center border border-border">
             <ThemeButton
               active={theme === "light"}
@@ -100,7 +94,7 @@ export function SettingsPage() {
 
         <SettingRow
           label="Modo sigilo"
-          description="Borra todos os valores monetários — útil em telas compartilhadas. Atalho: Ctrl/Cmd H."
+          description="Borra os valores monetários. Ctrl/Cmd H."
         >
           <div className="flex items-center border border-border">
             <ThemeButton
@@ -125,7 +119,7 @@ export function SettingsPage() {
       <SettingsSection label="Teclado">
         <SettingRow
           label="Atalhos de teclado"
-          description="Todo o app é navegável sem mouse. Pressione ? em qualquer tela para consultar."
+          description="Pressione ? em qualquer tela."
         >
           <Button
             variant="outline"
@@ -142,7 +136,7 @@ export function SettingsPage() {
       <SettingsSection label="Formato">
         <SettingRow
           label="Moeda"
-          description="Moeda usada em todos os valores do aplicativo. Trocar recarrega a interface."
+          description="Trocar recarrega a interface."
         >
           <Select
             value={getCurrencyCode()}
@@ -164,10 +158,7 @@ export function SettingsPage() {
           </Select>
         </SettingRow>
 
-        <SettingRow
-          label="Idioma e datas"
-          description="Formato de datas e números usado na interface."
-        >
+        <SettingRow label="Idioma e datas">
           <div className="flex items-center gap-3">
             <span className="font-mono text-sm">
               pt-BR — Português Brasil
@@ -178,10 +169,7 @@ export function SettingsPage() {
           </div>
         </SettingRow>
 
-        <SettingRow
-          label="Fuso horário"
-          description="Usado para calcular datas de vencimento e projeções."
-        >
+        <SettingRow label="Fuso horário">
           <span className="font-mono text-sm text-muted-foreground">
             {Intl.DateTimeFormat().resolvedOptions().timeZone}
           </span>
@@ -191,7 +179,7 @@ export function SettingsPage() {
       <SettingsSection label="Dados">
         <SettingRow
           label="Importar extrato"
-          description="Importe transações de um arquivo OFX ou CSV exportado pelo seu banco, com revisão antes de salvar."
+          description="OFX ou CSV do banco, com revisão antes de salvar."
         >
           <Button
             variant="outline"
@@ -206,19 +194,13 @@ export function SettingsPage() {
 
         <BackupSection />
 
-        <SettingRow
-          label="Persistência local"
-          description="Os dados ficam no dispositivo, em SQLite. Exporte backups regularmente."
-        >
+        <SettingRow label="Persistência local">
           <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground/60">
             SQLite local
           </span>
         </SettingRow>
 
-        <SettingRow
-          label="Sincronização automática"
-          description="Conexão direta com instituições financeiras via Open Finance."
-        >
+        <SettingRow label="Sincronização automática">
           <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground/60">
             Em breve
           </span>
@@ -260,7 +242,7 @@ export function SettingsPage() {
 
         <SettingRow
           label="Atualizações"
-          description="Consulta os releases publicados no GitHub e baixa o instalador da versão nova."
+          description="Busca novos releases no GitHub."
         >
           <div className="flex items-center gap-3">
             {updateStatus.state === "current" && (

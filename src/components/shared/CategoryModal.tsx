@@ -2,7 +2,6 @@ import { useEffect, useState, type KeyboardEvent } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -150,6 +149,7 @@ export function CategoryModal({ open, onOpenChange, category }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        aria-describedby={undefined}
         className="max-w-md overflow-visible"
         onKeyDown={handleModalKeyDown}
       >
@@ -157,11 +157,6 @@ export function CategoryModal({ open, onOpenChange, category }: Props) {
           <DialogTitle>
             {isEdit ? "Editar categoria" : "Nova categoria"}
           </DialogTitle>
-          <DialogDescription>
-            {form.kind === "expense"
-              ? "Organiza as saídas — com orçamento mensal opcional."
-              : "Organiza as entradas do seu fluxo."}
-          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5 px-6 py-5">
@@ -248,9 +243,6 @@ export function CategoryModal({ open, onOpenChange, category }: Props) {
                 value={form.monthlyBudget}
                 onChange={(value) => set("monthlyBudget", value)}
               />
-              <p className="font-mono text-[10px] text-muted-foreground">
-                Acompanhe o consumo do mês nos relatórios.
-              </p>
             </div>
           )}
 
