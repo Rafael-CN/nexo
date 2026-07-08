@@ -26,6 +26,7 @@ import { dsHeroOverline, dsHeroValue } from "@/lib/designSystem";
 import { formatCurrency } from "@/lib/format";
 import { getInvoiceSummary } from "@/lib/invoice";
 import { getTodayIso, useFinanceStore } from "@/store/useFinanceStore";
+import { usePaletteContext } from "@/store/usePaletteContextStore";
 import { toast } from "@/store/useToastStore";
 import type { Transaction } from "@/types";
 
@@ -86,6 +87,33 @@ export function AccountDetailPage() {
     }, 0);
     return { inflow, outflow };
   }, [history, accountId]);
+
+  usePaletteContext(
+    useMemo(() => {
+      if (!account) return [];
+      return [
+        {
+          id: "account-detail-new-txn",
+          label: "Lançar nesta conta",
+          keywords: ["novo", "lançamento", account.name],
+          run: () => setNewTransactionOpen(true),
+        },
+        {
+          id: "account-detail-edit",
+          label: "Editar conta",
+          keywords: ["editar", account.name],
+          run: () => setEditOpen(true),
+        },
+        {
+          id: "account-detail-archive",
+          label: account.archived ? "Reativar conta" : "Arquivar conta",
+          keywords: ["arquivar", "reativar", account.name],
+          run: () => void toggleArchived(),
+        },
+      ];
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [account?.id, account?.archived, account?.name]),
+  );
 
   if (!account) {
     return <Navigate to="/contas" replace />;

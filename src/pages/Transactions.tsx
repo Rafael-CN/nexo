@@ -41,6 +41,7 @@ import {
 import { sortActiveAccounts } from "@/lib/balance";
 import { isEditableElement } from "@/lib/keyboardShortcuts";
 import { toast } from "@/store/useToastStore";
+import { usePaletteContext } from "@/store/usePaletteContextStore";
 import { cn } from "@/lib/utils";
 import type { Transaction } from "@/types";
 import { dsHeroOverline, dsHeroValue, dsShadow } from "@/lib/designSystem";
@@ -216,6 +217,24 @@ export function TransactionsPage() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [modalOpen]);
+
+  const hasFiltersForPalette = hasActiveTransactionFilters(filters);
+  usePaletteContext(
+    useMemo(
+      () =>
+        hasFiltersForPalette
+          ? [
+              {
+                id: "transactions-clear-filters",
+                label: "Limpar filtros",
+                keywords: ["filtros", "limpar", "resetar"],
+                run: () => setFilters(defaultFilters),
+              },
+            ]
+          : [],
+      [hasFiltersForPalette],
+    ),
+  );
 
   function openNew() {
     setEditing(null);

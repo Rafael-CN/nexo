@@ -30,6 +30,7 @@ import { formatCurrency } from "@/lib/format";
 import { getInvoiceSummary, type InvoiceSummary } from "@/lib/invoice";
 import { selectTotalBalance, useFinanceStore } from "@/store/useFinanceStore";
 import { toast } from "@/store/useToastStore";
+import { usePaletteContext } from "@/store/usePaletteContextStore";
 import type { Account, AccountType, Category } from "@/types";
 import { cn } from "@/lib/utils";
 import { dsHeroOverline, dsHeroValue } from "@/lib/designSystem";
@@ -94,6 +95,32 @@ export function AccountsPage() {
   const [transferModalOpen, setTransferModalOpen] = useState(false);
   const [invoiceDraft, setInvoiceDraft] =
     useState<Partial<TransactionModalFormState> | null>(null);
+
+  usePaletteContext(
+    useMemo(
+      () => [
+        {
+          id: "accounts-new-account",
+          label: "Nova conta",
+          keywords: ["criar", "conta"],
+          run: () => {
+            setEditingAccount(null);
+            setAccountModalOpen(true);
+          },
+        },
+        {
+          id: "accounts-new-category",
+          label: "Nova categoria",
+          keywords: ["criar", "categoria"],
+          run: () => {
+            setEditingCategory(null);
+            setCategoryModalOpen(true);
+          },
+        },
+      ],
+      [],
+    ),
+  );
 
   function openPayInvoice(account: Account, summary: InvoiceSummary) {
     const amount = summary.closed.total > 0 ? summary.closed.total : summary.open.total;

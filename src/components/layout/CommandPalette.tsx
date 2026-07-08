@@ -6,6 +6,7 @@ import { ptBR } from "date-fns/locale";
 import {
   ArrowRightLeft,
   Check,
+  CornerDownRight,
   EyeOff,
   FileUp,
   Flag,
@@ -34,11 +35,13 @@ import {
 } from "@/components/shared/transactionModalUtils";
 import { formatCurrency } from "@/lib/format";
 import { formatShortcut } from "@/lib/keyboardShortcuts";
-import { parseNaturalEntry } from "@/lib/naturalEntry";
+import { parseNaturalEntry, parseNaturalTransfer } from "@/lib/naturalEntry";
 import { appRoutes } from "@/lib/navigation";
 import { suggestCategory } from "@/lib/statement";
 import { cn } from "@/lib/utils";
+import { sortActiveAccounts } from "@/lib/balance";
 import { useFinanceStore } from "@/store/useFinanceStore";
+import { useContextActions } from "@/store/usePaletteContextStore";
 import { usePrivacyStore } from "@/store/usePrivacyStore";
 import type { Transaction } from "@/types";
 
@@ -55,6 +58,7 @@ type CommandPaletteProps = {
 
 type PaletteGroup =
   | "Criar"
+  | "Nesta página"
   | "Transações"
   | "Contas"
   | "Categorias"
@@ -102,6 +106,7 @@ export function CommandPalette({
   const accounts = useFinanceStore(useShallow((s) => s.accounts));
   const categories = useFinanceStore(useShallow((s) => s.categories));
   const goals = useFinanceStore(useShallow((s) => s.goals));
+  const contextActions = useContextActions();
 
   const actions = useMemo<PaletteAction[]>(
     () => [
@@ -182,8 +187,48 @@ export function CommandPalette({
     [navigate, onNewTransaction, onNewTransfer, onOpenHelp, onImportStatement],
   );
 
+  // H1: "transferir 500 para reserva" / "aporte 300 na reserva".
+  const quickTransferAction = useMemo<PaletteAction | null>(() => {
+    const parsed = parseNaturalTransfer(query);
+    if (!parsed) return null;
+
+    const target = normalize(parsed.targetText);
+    const active = sortActiveAccounts(accounts);
+    const destination =
+      active.find((account) => normalize(account.name) === target) ??
+      active.find((account) => normalize(account.name).includes(target));
+    if (!destination) return null;
+
+    const source = active.find(
+      (account) => account.type !== "credit" && account.id !== destination.id,
+    );
+    const dateLabel = format(parseISO(parsed.date), "dd MMM", { locale: ptBR });
+    const title =
+      parsed.intent === "aporte"
+        ? `Aporte ${destination.name}`
+        : `Transferência para ${destination.name}`;
+
+    return {
+      id: "quick-transfer",
+      label: `${parsed.intent === "aporte" ? "Aporte" : "Transferência"}: ${destination.name}`,
+      description: `${formatCurrency(parsed.amount)} · ${dateLabel}`,
+      icon: ArrowRightLeft,
+      group: "Criar",
+      run: () =>
+        onQuickCreate({
+          type: "transfer",
+          title,
+          amount: formatTransactionAmount(parsed.amount),
+          date: parsed.date,
+          accountId: source?.id ?? "",
+          transferAccountId: destination.id,
+        }),
+    };
+  }, [query, accounts, onQuickCreate]);
+
   // Ação de criação rápida a partir de linguagem natural ("mercado 54,90 ontem").
   const quickCreateAction = useMemo<PaletteAction | null>(() => {
+    if (quickTransferAction) return null;
     const parsed = parseNaturalEntry(query);
     if (!parsed) return null;
 
@@ -215,7 +260,7 @@ export function CommandPalette({
           categoryId: category?.id ?? "",
         }),
     };
-  }, [query, categories, onQuickCreate]);
+  }, [query, categories, onQuickCreate, quickTransferAction]);
 
   // Busca global: transações, contas, categorias e metas.
   const searchActions = useMemo<PaletteAction[]>(() => {
@@ -296,9 +341,23 @@ export function CommandPalette({
     return results;
   }, [query, transactions, accounts, categories, goals, navigate, onEditTransaction]);
 
+  const mappedContextActions = useMemo<PaletteAction[]>(
+    () =>
+      contextActions.map((action) => ({
+        id: `ctx-${action.id}`,
+        label: action.label,
+        description: action.description,
+        icon: CornerDownRight,
+        keywords: action.keywords,
+        group: "Nesta página" as const,
+        run: action.run,
+      })),
+    [contextActions],
+  );
+
   const filteredActions = useMemo(() => {
     const term = normalize(query);
-    if (!term) return actions;
+    if (!term) return [...mappedContextActions, ...actions];
 
     const matchedStatic = actions.filter((action) => {
       const haystack = normalize(
@@ -312,12 +371,28 @@ export function CommandPalette({
       return haystack.includes(term);
     });
 
+    const matchedContext = mappedContextActions.filter((action) => {
+      const haystack = normalize(
+        [action.label, action.description ?? "", ...(action.keywords ?? [])].join(" "),
+      );
+      return haystack.includes(term);
+    });
+
     return [
+      ...(quickTransferAction ? [quickTransferAction] : []),
       ...(quickCreateAction ? [quickCreateAction] : []),
       ...searchActions,
+      ...matchedContext,
       ...matchedStatic,
     ];
-  }, [actions, query, quickCreateAction, searchActions]);
+  }, [
+    actions,
+    query,
+    quickCreateAction,
+    quickTransferAction,
+    searchActions,
+    mappedContextActions,
+  ]);
 
   useEffect(() => {
     if (!open) return;

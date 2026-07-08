@@ -12,6 +12,7 @@ import {
   type TransactionModalFormState,
 } from "@/components/shared/transactionModalUtils";
 import { useFinanceStore } from "@/store/useFinanceStore";
+import { usePaletteContext } from "@/store/usePaletteContextStore";
 import { formatCurrency } from "@/lib/format";
 import { resolveGoals, type ResolvedGoal } from "@/lib/goals";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,23 @@ export function GoalsPage() {
   const [editing, setEditing] = useState<Goal | null>(null);
   const [contributionDraft, setContributionDraft] =
     useState<Partial<TransactionModalFormState> | null>(null);
+
+  usePaletteContext(
+    useMemo(
+      () => [
+        {
+          id: "goals-new",
+          label: "Nova meta",
+          keywords: ["criar", "meta", "objetivo"],
+          run: () => {
+            setEditing(null);
+            setModalOpen(true);
+          },
+        },
+      ],
+      [],
+    ),
+  );
 
   function openNew() {
     setEditing(null);
