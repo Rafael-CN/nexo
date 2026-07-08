@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { KbdGroup } from "@/components/ui/kbd";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { NumberInput } from "@/components/ui/number-input";
 import { ColorPicker } from "@/components/shared/ColorPicker";
 import { ConfirmDeleteButton } from "@/components/shared/ConfirmDeleteButton";
@@ -39,6 +40,7 @@ interface FormState {
   lastFour: string;
   closingDay: string;
   dueDay: string;
+  excludedFromTotal: boolean;
 }
 
 const accountTypes = [
@@ -61,6 +63,7 @@ function buildForm(account?: Account | null): FormState {
     lastFour: account?.lastFour ?? "",
     closingDay: account?.closingDay ? String(account.closingDay) : "",
     dueDay: account?.dueDay ? String(account.dueDay) : "",
+    excludedFromTotal: account?.excludedFromTotal ?? false,
   };
 }
 
@@ -135,6 +138,9 @@ export function AccountModal({ open, onOpenChange, account }: Props) {
       lastFour: form.lastFour.trim() || undefined,
       closingDay: isCredit ? parseDayOfMonth(form.closingDay) : undefined,
       dueDay: isCredit ? parseDayOfMonth(form.dueDay) : undefined,
+      archived: account?.archived ?? false,
+      sortOrder: account?.sortOrder ?? 0,
+      excludedFromTotal: form.excludedFromTotal,
     };
 
     try {
@@ -300,6 +306,13 @@ export function AccountModal({ open, onOpenChange, account }: Props) {
               />
             </div>
           </div>
+
+          <Checkbox
+            checked={form.excludedFromTotal}
+            onCheckedChange={(checked) => set("excludedFromTotal", checked)}
+          >
+            Fora do saldo efetivo — reserva/investimento
+          </Checkbox>
 
           {error && (
             <p role="alert" className="font-mono text-[11px] text-destructive">

@@ -127,17 +127,39 @@ function advance(date: Date, rule: RecurrenceRule): Date {
 }
 
 /**
+ * Delta que a transação causa no saldo efetivo projetado.
+ * Contas fora do saldo (arquivadas/reservas) não contam: entradas e
+ * saídas delas são ignoradas, e transferências só pesam quando cruzam
+ * a fronteira (aporte para reserva = saída; resgate = entrada).
+ */
+function effectiveDelta(
+  t: Transaction,
+  uncountedAccountIds: ReadonlySet<string>,
+): number {
+  if (t.type === "transfer") {
+    if (!t.transferAccountId) return 0;
+    const sourceCounted = !uncountedAccountIds.has(t.accountId);
+    const destinationCounted = !uncountedAccountIds.has(t.transferAccountId);
+    if (sourceCounted && !destinationCounted) return -t.amount;
+    if (!sourceCounted && destinationCounted) return t.amount;
+    return 0;
+  }
+  if (uncountedAccountIds.has(t.accountId)) return 0;
+  return t.type === "income" ? t.amount : -t.amount;
+}
+
+/**
  * Walks forward from tomorrow, accumulating net cash-flow from all future
  * transactions (store projected + expanded recurring). Returns a Map of
  * ISO-date → projected end-of-day liquid balance.
  *
  * baseBalance: total liquid balance as of end-of-today (from the store).
- * Credit card balances are excluded; transfers are ignored.
  */
 export function computeDailyBalances(
   baseBalance: number,
   allTransactions: Transaction[],
   horizonDays = PROJECTION_DAYS,
+  uncountedAccountIds: ReadonlySet<string> = new Set(),
 ): Map<string, number> {
   const todayIso = formatISO(new Date(), { representation: "date" });
   const horizonIso = formatISO(addDays(new Date(), horizonDays), {
@@ -148,7 +170,6 @@ export function computeDailyBalances(
   const byDate = new Map<string, Transaction[]>();
   for (const t of allTransactions) {
     if (t.date <= todayIso || t.date > horizonIso) continue;
-    if (t.type === "transfer") continue;
     const list = byDate.get(t.date) ?? [];
     list.push(t);
     byDate.set(t.date, list);
@@ -161,7 +182,7 @@ export function computeDailyBalances(
   while (formatISO(cursor, { representation: "date" }) <= horizonIso) {
     const iso = formatISO(cursor, { representation: "date" });
     for (const t of byDate.get(iso) ?? []) {
-      running += t.type === "income" ? t.amount : -t.amount;
+      running += effectiveDelta(t, uncountedAccountIds);
     }
     balances.set(iso, running);
     cursor = addDays(cursor, 1);

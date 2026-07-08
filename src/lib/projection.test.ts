@@ -226,3 +226,75 @@ describe("computeDailyBalances", () => {
     expect(balances.get("2026-05-20")).toBe(1_100);
   });
 });
+
+describe("computeDailyBalances com contas fora do saldo", () => {
+  const uncounted = new Set(["reserva-1"]);
+
+  it("aporte futuro para reserva reduz o saldo projetado", () => {
+    const balances = computeDailyBalances(
+      1000,
+      [
+        tx({
+          id: "aporte",
+          type: "transfer",
+          amount: 300,
+          date: "2026-04-25",
+          accountId: "account-1",
+          transferAccountId: "reserva-1",
+        }),
+      ],
+      30,
+      uncounted,
+    );
+
+    expect(balances.get("2026-04-24")).toBe(1000);
+    expect(balances.get("2026-04-25")).toBe(700);
+  });
+
+  it("resgate futuro da reserva aumenta o saldo projetado", () => {
+    const balances = computeDailyBalances(
+      1000,
+      [
+        tx({
+          id: "resgate",
+          type: "transfer",
+          amount: 200,
+          date: "2026-04-26",
+          accountId: "reserva-1",
+          transferAccountId: "account-1",
+        }),
+      ],
+      30,
+      uncounted,
+    );
+
+    expect(balances.get("2026-04-26")).toBe(1200);
+  });
+
+  it("movimentos internos da reserva e transferências entre contas contadas são neutros", () => {
+    const balances = computeDailyBalances(
+      1000,
+      [
+        tx({
+          id: "rendimento",
+          type: "income",
+          amount: 50,
+          date: "2026-04-25",
+          accountId: "reserva-1",
+        }),
+        tx({
+          id: "entre-contas",
+          type: "transfer",
+          amount: 400,
+          date: "2026-04-25",
+          accountId: "account-1",
+          transferAccountId: "account-2",
+        }),
+      ],
+      30,
+      uncounted,
+    );
+
+    expect(balances.get("2026-04-25")).toBe(1000);
+  });
+});

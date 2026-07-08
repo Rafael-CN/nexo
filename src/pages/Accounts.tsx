@@ -440,6 +440,11 @@ function AccountCard({
               <ArrowRight className="h-3 w-3" strokeWidth={1.5} />
             </button>
           </span>
+          {account.excludedFromTotal && (
+            <span className="border border-border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
+              fora do saldo
+            </span>
+          )}
           <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
             {meta.label}
           </span>

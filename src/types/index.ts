@@ -22,6 +22,8 @@ export interface Account {
   archived?: boolean;
   /** Posição manual na listagem de contas. */
   sortOrder?: number;
+  /** Reserva/investimento: ativa e transacionável, mas fora do saldo efetivo. */
+  excludedFromTotal?: boolean;
 }
 
 export type TransactionType = "income" | "expense" | "transfer";

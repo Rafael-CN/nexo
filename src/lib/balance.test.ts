@@ -180,3 +180,34 @@ describe("getTotalCurrentBalance", () => {
     expect(total).toBe(1_150);
   });
 });
+
+describe("contas fora do saldo efetivo", () => {
+  it("ignora contas com excludedFromTotal e arquivadas no total", () => {
+    const accounts = [
+      account({ id: "a-1", balance: 1000 }),
+      account({ id: "reserva", balance: 5000, excludedFromTotal: true }),
+      account({ id: "arquivada", balance: 200, archived: true }),
+    ];
+
+    expect(getTotalCurrentBalance(accounts, [])).toBe(1000);
+  });
+
+  it("transferência para reserva reduz o total (sai do pool contado)", () => {
+    const accounts = [
+      account({ id: "a-1", balance: 1000 }),
+      account({ id: "reserva", balance: 0, excludedFromTotal: true }),
+    ];
+    const txns = [
+      tx({
+        id: "aporte",
+        type: "transfer",
+        amount: 300,
+        accountId: "a-1",
+        transferAccountId: "reserva",
+        date: "2020-01-02",
+      }),
+    ];
+
+    expect(getTotalCurrentBalance(accounts, txns)).toBe(700);
+  });
+});

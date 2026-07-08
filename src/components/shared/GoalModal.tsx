@@ -15,9 +15,10 @@ import { ConfirmDeleteButton } from "@/components/shared/ConfirmDeleteButton";
 import { CurrencyInput } from "@/components/shared/CurrencyInput";
 import { DatePicker } from "@/components/shared/DatePicker";
 import {
-  formatTransactionAmount,
-  parseCurrencyInputValue,
-} from "@/components/shared/transactionModalUtils";
+  buildGoalPayload,
+  type GoalFormState,
+} from "@/components/shared/goalModalUtils";
+import { formatTransactionAmount } from "@/components/shared/transactionModalUtils";
 import {
   Select,
   SelectContent,
@@ -35,19 +36,8 @@ interface Props {
   goal?: Goal | null;
 }
 
-interface FormState {
-  name: string;
-  description: string;
-  targetAmount: string;
-  currentAmount: string;
-  deadline: string;
-  accountId: string;
-  monthlyContribution: string;
-  paused: boolean;
-}
 
-
-function buildForm(g?: Goal | null): FormState {
+function buildForm(g?: Goal | null): GoalFormState {
   return {
     name: g?.name ?? "",
     description: g?.description ?? "",
@@ -71,7 +61,7 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
   const removeGoal = useFinanceStore((s) => s.removeGoal);
 
   const isEdit = !!goal;
-  const [form, setForm] = useState<FormState>(() => buildForm(goal));
+  const [form, setForm] = useState<GoalFormState>(() => buildForm(goal));
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const targetRef = useRef<HTMLInputElement>(null);
@@ -92,7 +82,7 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
     return () => window.cancelAnimationFrame(frame);
   }, [open, goal]);
 
-  function set<K extends keyof FormState>(key: K, value: FormState[K]) {
+  function set<K extends keyof GoalFormState>(key: K, value: GoalFormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
@@ -105,22 +95,9 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
 
   async function handleSave() {
     setError(null);
-    if (!form.name.trim()) return setError("Informe o nome da meta.");
-    const target = parseCurrencyInputValue(form.targetAmount);
-    if (!target || target <= 0) return setError("Informe a meta em R$.");
-    const current = parseCurrencyInputValue(form.currentAmount) ?? 0;
-
-    const payload: Omit<Goal, "id"> = {
-      name: form.name.trim(),
-      description: form.description.trim() || undefined,
-      targetAmount: target,
-      currentAmount: Math.max(0, current),
-      deadline: form.deadline || undefined,
-      accountId: form.accountId || undefined,
-      monthlyContribution:
-        parseCurrencyInputValue(form.monthlyContribution) || undefined,
-      status: form.paused ? "paused" : "active",
-    };
+    const result = buildGoalPayload(form);
+    if (!result.ok) return setError(result.error);
+    const { payload } = result;
 
     try {
       setSaving(true);

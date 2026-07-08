@@ -6,12 +6,25 @@ import {
   expandRecurring,
   PROJECTION_DAYS,
 } from "@/lib/projection";
+import { isCountedInTotal } from "@/lib/balance";
 import { selectTotalBalance, useFinanceStore } from "@/store/useFinanceStore";
 
 export function useProjection() {
   const transactions = useFinanceStore(useShallow((s) => s.transactions));
   const rules = useFinanceStore(useShallow((s) => s.recurrenceRules));
+  const accounts = useFinanceStore(useShallow((s) => s.accounts));
   const baseBalance = useFinanceStore(selectTotalBalance);
+
+  // Contas fora do saldo efetivo (arquivadas/reservas) não pesam na projeção.
+  const uncountedAccountIds = useMemo(
+    () =>
+      new Set(
+        accounts
+          .filter((account) => !isCountedInTotal(account))
+          .map((account) => account.id),
+      ),
+    [accounts],
+  );
 
   const expanded = useMemo(
     () => expandRecurring(transactions, rules, PROJECTION_DAYS),
@@ -24,8 +37,9 @@ export function useProjection() {
         baseBalance,
         [...transactions, ...expanded],
         PROJECTION_DAYS,
+        uncountedAccountIds,
       ),
-    [baseBalance, transactions, expanded],
+    [baseBalance, transactions, expanded, uncountedAccountIds],
   );
 
   // All upcoming occurrences (store + expanded), sorted chronologically
