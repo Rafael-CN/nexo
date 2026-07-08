@@ -1,18 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
-import { Check, Landmark, Sparkles } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, ArrowRight, Check, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Kbd } from "@/components/ui/kbd";
 import { NumberInput } from "@/components/ui/number-input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { FinanceIcon } from "@/components/shared/IconPicker";
+import { SegmentedToggle } from "@/components/shared/SegmentedToggle";
 import { buildDemoDataset } from "@/lib/demoData";
+import { defaultCategories } from "@/lib/defaultCategories";
+import { dsError, dsHint, dsSectionLabel } from "@/lib/designSystem";
 import { saveLocalProfile, type LocalProfile } from "@/lib/profile";
 import { cn } from "@/lib/utils";
 import { useFinanceStore } from "@/store/useFinanceStore";
@@ -22,12 +19,12 @@ interface OnboardingProps {
   onComplete: (profile: LocalProfile) => void;
 }
 
-const accountTypes: { value: AccountType; label: string }[] = [
-  { value: "checking", label: "Conta corrente" },
+const accountTypes = [
+  { value: "checking", label: "Corrente" },
   { value: "savings", label: "Poupança" },
   { value: "cash", label: "Dinheiro" },
-  { value: "investment", label: "Investimento" },
-];
+  { value: "investment", label: "Invest." },
+] as const satisfies readonly { value: AccountType; label: string }[];
 
 const defaultRelevantCategoryIds = new Set([
   "cat-income-salary",
@@ -42,8 +39,11 @@ const defaultRelevantCategoryIds = new Set([
   "cat-expense-subscriptions",
 ]);
 
-const labelClass =
-  "text-[10px] uppercase tracking-[0.12em] text-muted-foreground";
+const steps = [
+  { id: 1, label: "Você" },
+  { id: 2, label: "Conta" },
+  { id: 3, label: "Categorias" },
+] as const;
 
 export function Onboarding({ onComplete }: OnboardingProps) {
   const categories = useFinanceStore((s) => s.categories);
@@ -58,6 +58,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
   const addGoal = useFinanceStore((s) => s.addGoal);
   const removeCategory = useFinanceStore((s) => s.removeCategory);
 
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [name, setName] = useState("");
   const [accountName, setAccountName] = useState("Conta principal");
   const [institution, setInstitution] = useState("");
@@ -69,6 +70,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
   const [initializedSelection, setInitializedSelection] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const firstFieldRef = useRef<HTMLInputElement>(null);
 
   const grouped = useMemo(
     () => ({
@@ -78,21 +80,44 @@ export function Onboarding({ onComplete }: OnboardingProps) {
     [categories],
   );
 
+  // No navegador o banco não semeia — garante as categorias padrão aqui.
+  const seededRef = useRef(false);
+  useEffect(() => {
+    if (seededRef.current || categories.length > 0) return;
+    seededRef.current = true;
+    void (async () => {
+      for (const category of defaultCategories) {
+        await addCategory(category);
+      }
+    })();
+  }, [categories.length, addCategory]);
+
   useEffect(() => {
     if (initializedSelection || categories.length === 0) return;
 
-    const initial = new Set(
-      categories
-        .filter(
-          (category) =>
-            defaultRelevantCategoryIds.has(category.id) ||
-            category.kind === "income",
-        )
-        .map((category) => category.id),
+    setSelectedCategoryIds(
+      new Set(
+        categories
+          .filter(
+            (category) =>
+              defaultRelevantCategoryIds.has(category.id) ||
+              category.kind === "income",
+          )
+          .map((category) => category.id),
+      ),
     );
-    setSelectedCategoryIds(initial);
     setInitializedSelection(true);
   }, [categories, initializedSelection]);
+
+  // Cada passo abre com o primeiro campo focado.
+  useEffect(() => {
+    setError(null);
+    const frame = window.requestAnimationFrame(() => {
+      firstFieldRef.current?.focus();
+      firstFieldRef.current?.select();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [step]);
 
   function toggleCategory(id: string) {
     setSelectedCategoryIds((current) => {
@@ -103,15 +128,38 @@ export function Onboarding({ onComplete }: OnboardingProps) {
     });
   }
 
+  function validateStep(target: 1 | 2): string | null {
+    if (target === 1) {
+      if (!name.trim()) return "Informe seu nome.";
+      return null;
+    }
+    if (!accountName.trim()) return "Informe o nome da conta.";
+    if (!institution.trim()) return "Informe a instituição.";
+    const parsedBalance = Number.parseFloat(balance.replace(",", "."));
+    if (!Number.isFinite(parsedBalance)) return "Saldo inválido.";
+    return null;
+  }
+
+  function goNext() {
+    if (step === 3) {
+      void handleComplete();
+      return;
+    }
+    const problem = validateStep(step);
+    if (problem) {
+      setError(problem);
+      return;
+    }
+    setStep((current) => (current + 1) as 2 | 3);
+  }
+
+  function goBack() {
+    if (step === 1) return;
+    setStep((current) => (current - 1) as 1 | 2);
+  }
+
   async function handleComplete() {
     setError(null);
-
-    if (!name.trim()) return setError("Informe seu nome.");
-    if (!accountName.trim()) return setError("Informe o nome da conta.");
-    if (!institution.trim()) return setError("Informe a instituição.");
-
-    const parsedBalance = Number.parseFloat(balance.replace(",", "."));
-    if (!Number.isFinite(parsedBalance)) return setError("Saldo inválido.");
 
     const selectedCategories = categories.filter((category) =>
       selectedCategoryIds.has(category.id),
@@ -128,7 +176,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
       name: accountName.trim(),
       institution: institution.trim(),
       type: accountType,
-      balance: parsedBalance,
+      balance: Number.parseFloat(balance.replace(",", ".")),
       color: "#6366F1",
       icon: accountType === "cash" ? "banknote" : "wallet",
     };
@@ -198,151 +246,200 @@ export function Onboarding({ onComplete }: OnboardingProps) {
     }
   }
 
+  function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Enter" && !saving && step !== 3) {
+      // No passo 3 os cards respondem ao Enter — o avanço é pelo botão.
+      if (
+        event.target instanceof HTMLElement &&
+        event.target.tagName === "BUTTON"
+      ) {
+        return;
+      }
+      event.preventDefault();
+      goNext();
+    }
+  }
+
   return (
-    <div className="min-h-full overflow-y-auto bg-background px-6 py-8">
-      <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-5xl flex-col justify-center">
-        <div className="mb-8 flex items-center gap-3 border-b border-border pb-5">
-          <div className="grid h-10 w-10 place-items-center border border-border bg-accent/40">
-            <Sparkles className="h-4 w-4 text-muted-foreground" strokeWidth={1.7} />
-          </div>
-          <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              Nexo / início
-            </p>
-            <h1 className="mt-1 text-2xl font-medium tracking-tight">
-              Vamos preparar seu painel
-            </h1>
-          </div>
+    <div
+      className="min-h-full overflow-y-auto bg-background px-6 py-10"
+      onKeyDown={handleKeyDown}
+    >
+      <div
+        className={cn(
+          "mx-auto flex min-h-[calc(100vh-5rem)] w-full flex-col justify-center",
+          step === 3 ? "max-w-3xl" : "max-w-md",
+        )}
+      >
+        {/* Progresso: 01 Você — 02 Conta — 03 Categorias */}
+        <div className="mb-10 flex items-center gap-3">
+          {steps.map((item, index) => (
+            <div key={item.id} className="flex items-center gap-3">
+              <span
+                className={cn(
+                  "flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em]",
+                  item.id === step
+                    ? "text-foreground"
+                    : "text-muted-foreground/60",
+                )}
+              >
+                <span
+                  className={cn(
+                    "grid h-5 w-5 place-items-center border text-[9px] tabular-nums",
+                    item.id === step
+                      ? "border-foreground bg-foreground text-background"
+                      : item.id < step
+                        ? "border-border text-muted-foreground"
+                        : "border-border text-muted-foreground/60",
+                  )}
+                >
+                  {item.id < step ? (
+                    <Check className="h-3 w-3" strokeWidth={2} />
+                  ) : (
+                    `0${item.id}`
+                  )}
+                </span>
+                {item.label}
+              </span>
+              {index < steps.length - 1 && (
+                <span className="h-px w-8 bg-border" aria-hidden />
+              )}
+            </div>
+          ))}
         </div>
 
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[360px_1fr]">
-          <section className="space-y-5">
-            <div className="border-t border-border pt-4">
-              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                Perfil
+        {step === 1 && (
+          <section
+            key="step-1"
+            className="space-y-8 animate-in fade-in-0 slide-in-from-bottom-1 duration-150"
+          >
+            <div className="space-y-2">
+              <p className={dsSectionLabel}>Nexo / início</p>
+              <h1 className="text-3xl font-medium tracking-tight">
+                Como devemos te chamar?
+              </h1>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="onboarding-name">Seu nome</Label>
+              <Input
+                ref={firstFieldRef}
+                id="onboarding-name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="Ex: Ana"
+                className="h-11 text-base"
+              />
+            </div>
+
+            {error && (
+              <p role="alert" className={dsError}>
+                {error}
               </p>
-              <div className="mt-3 space-y-1.5">
-                <Label htmlFor="onboarding-name" className={labelClass}>
-                  Seu nome
-                </Label>
-                <Input
-                  id="onboarding-name"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  placeholder="Ex: Ana Souza"
-                  autoFocus
-                  className="h-9 text-sm"
+            )}
+
+            <div className="flex items-center justify-between gap-4">
+              <button
+                type="button"
+                onClick={handleDemoStart}
+                disabled={saving}
+                className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground ui-focus-ring disabled:opacity-60"
+              >
+                <Sparkles className="h-3.5 w-3.5" strokeWidth={1.5} />
+                Explorar com dados de exemplo
+              </button>
+              <Button
+                size="sm"
+                className="gap-2 rounded-sm text-xs"
+                onClick={goNext}
+                disabled={saving}
+              >
+                Continuar
+                <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.5} />
+              </Button>
+            </div>
+          </section>
+        )}
+
+        {step === 2 && (
+          <section
+            key="step-2"
+            className="space-y-8 animate-in fade-in-0 slide-in-from-bottom-1 duration-150"
+          >
+            <div className="space-y-2">
+              <p className={dsSectionLabel}>Nexo / início</p>
+              <h1 className="text-3xl font-medium tracking-tight">
+                Sua primeira conta
+              </h1>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label>Tipo</Label>
+                <SegmentedToggle
+                  options={accountTypes}
+                  value={accountType}
+                  onChange={setAccountType}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="onboarding-account">Nome da conta</Label>
+                  <Input
+                    ref={firstFieldRef}
+                    id="onboarding-account"
+                    value={accountName}
+                    onChange={(event) => setAccountName(event.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="onboarding-institution">Instituição</Label>
+                  <Input
+                    id="onboarding-institution"
+                    value={institution}
+                    onChange={(event) => setInstitution(event.target.value)}
+                    placeholder="Ex: Nubank"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="onboarding-balance">Saldo atual (R$)</Label>
+                <NumberInput
+                  id="onboarding-balance"
+                  value={balance}
+                  onChange={(event) => setBalance(event.target.value)}
+                  className="h-11 font-mono text-base tabular-nums"
                 />
               </div>
             </div>
 
-            <div className="border-t border-border pt-4">
-              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                Primeira conta
-              </p>
-              <div className="mt-3 space-y-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="onboarding-account" className={labelClass}>
-                    Nome da conta
-                  </Label>
-                  <Input
-                    id="onboarding-account"
-                    value={accountName}
-                    onChange={(event) => setAccountName(event.target.value)}
-                    className="h-9 text-sm"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="onboarding-institution" className={labelClass}>
-                      Instituição
-                    </Label>
-                    <Input
-                      id="onboarding-institution"
-                      value={institution}
-                      onChange={(event) => setInstitution(event.target.value)}
-                      placeholder="Ex: Nubank"
-                      className="h-9 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className={labelClass}>Tipo</Label>
-                    <Select
-                      value={accountType}
-                      onValueChange={(value) =>
-                        setAccountType(value as AccountType)
-                      }
-                    >
-                      <SelectTrigger className="h-9 font-mono text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {accountTypes.map((type) => (
-                          <SelectItem key={type.value} value={type.value}>
-                            {type.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="onboarding-balance" className={labelClass}>
-                    Saldo inicial (R$)
-                  </Label>
-                  <NumberInput
-                    id="onboarding-balance"
-                    value={balance}
-                    onChange={(event) => setBalance(event.target.value)}
-                    className="h-9 font-mono tabular-nums"
-                  />
-                </div>
-              </div>
-            </div>
-
             {error && (
-              <p className="font-mono text-[11px] text-destructive">{error}</p>
+              <p role="alert" className={dsError}>
+                {error}
+              </p>
             )}
 
-            <Button
-              className="w-full rounded-sm"
-              onClick={handleComplete}
-              disabled={saving}
-            >
-              <Landmark className="h-4 w-4" strokeWidth={1.7} />
-              Criar meu painel
-            </Button>
-
-            <button
-              type="button"
-              onClick={handleDemoStart}
-              disabled={saving}
-              className="flex w-full items-start gap-3 border border-border bg-background p-4 text-left transition-colors hover:bg-accent/30 disabled:pointer-events-none disabled:opacity-60"
-            >
-              <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center border border-border bg-accent/40">
-                <Sparkles className="h-4 w-4 text-muted-foreground" strokeWidth={1.7} />
-              </span>
-              <span className="min-w-0">
-                <span className="block text-sm font-medium">
-                  Explorar com dados demo
-                </span>
-                <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                  Cria uma base realista com histórico, recorrências, metas e
-                  lançamentos futuros para testar relatórios e calendário.
-                </span>
-              </span>
-            </button>
+            <StepFooter
+              onBack={goBack}
+              onNext={goNext}
+              nextLabel="Continuar"
+              saving={saving}
+            />
           </section>
+        )}
 
-          <section className="space-y-5">
-            <div className="border-t border-border pt-4">
-              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                Categorias relevantes
-              </p>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                Escolha o que faz sentido agora. Você pode criar, editar ou
-                apagar categorias depois.
-              </p>
+        {step === 3 && (
+          <section
+            key="step-3"
+            className="space-y-8 animate-in fade-in-0 slide-in-from-bottom-1 duration-150"
+          >
+            <div className="space-y-2">
+              <p className={dsSectionLabel}>Nexo / início</p>
+              <h1 className="text-3xl font-medium tracking-tight">
+                O que você acompanha?
+              </h1>
             </div>
 
             <CategoryPickerGroup
@@ -357,9 +454,62 @@ export function Onboarding({ onComplete }: OnboardingProps) {
               selectedCategoryIds={selectedCategoryIds}
               onToggle={toggleCategory}
             />
+
+            {error && (
+              <p role="alert" className={dsError}>
+                {error}
+              </p>
+            )}
+
+            <StepFooter
+              onBack={goBack}
+              onNext={goNext}
+              nextLabel="Criar meu painel"
+              saving={saving}
+            />
           </section>
-        </div>
+        )}
       </div>
+    </div>
+  );
+}
+
+function StepFooter({
+  onBack,
+  onNext,
+  nextLabel,
+  saving,
+}: {
+  onBack: () => void;
+  onNext: () => void;
+  nextLabel: string;
+  saving: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <button
+        type="button"
+        onClick={onBack}
+        disabled={saving}
+        className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground ui-focus-ring disabled:opacity-60"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" strokeWidth={1.5} />
+        Voltar
+      </button>
+      <span className="flex items-center gap-3">
+        <span className={cn(dsHint, "hidden sm:flex items-center gap-1.5")}>
+          <Kbd>↵</Kbd> avança
+        </span>
+        <Button
+          size="sm"
+          className="gap-2 rounded-sm text-xs"
+          onClick={onNext}
+          disabled={saving}
+        >
+          {nextLabel}
+          <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.5} />
+        </Button>
+      </span>
     </div>
   );
 }
@@ -391,8 +541,9 @@ function CategoryPickerGroup({
               key={category.id}
               type="button"
               onClick={() => onToggle(category.id)}
+              aria-pressed={selected}
               className={cn(
-                "flex min-h-[80px] items-center gap-3 bg-background p-3 text-left transition-colors hover:bg-accent/40",
+                "flex min-h-[64px] items-center gap-3 bg-background p-3 text-left transition-colors hover:bg-accent/40 ui-focus-ring-inset",
                 selected && "bg-muted/70 ring-1 ring-inset ring-foreground/15",
               )}
             >
@@ -405,14 +556,14 @@ function CategoryPickerGroup({
                   className="h-4 w-4 text-background mix-blend-luminosity"
                 />
               </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm">{category.name}</span>
-                <span className="mt-0.5 block font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                  {selected ? "Ativa" : "Oculta"}
-                </span>
+              <span className="min-w-0 flex-1 truncate text-sm">
+                {category.name}
               </span>
               {selected && (
-                <Check className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.7} />
+                <Check
+                  className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                  strokeWidth={1.7}
+                />
               )}
             </button>
           );
