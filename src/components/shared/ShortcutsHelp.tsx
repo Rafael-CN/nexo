@@ -1,7 +1,6 @@
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -80,12 +79,9 @@ const groups: ShortcutGroup[] = [
 export function ShortcutsHelp({ open, onOpenChange }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl overflow-hidden p-0">
+      <DialogContent aria-describedby={undefined} className="max-w-xl overflow-hidden p-0">
         <DialogHeader className="border-b border-border px-6 py-5 pb-4">
           <DialogTitle>Atalhos de teclado</DialogTitle>
-          <DialogDescription>
-            Tudo no Nexo é acessível sem tocar no mouse.
-          </DialogDescription>
         </DialogHeader>
 
         <ScrollArea className="max-h-[26rem]">

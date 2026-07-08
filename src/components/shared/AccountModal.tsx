@@ -2,7 +2,6 @@ import { useEffect, useState, type KeyboardEvent } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -174,16 +173,12 @@ export function AccountModal({ open, onOpenChange, account }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        aria-describedby={undefined}
         className="max-w-lg overflow-visible"
         onKeyDown={handleModalKeyDown}
       >
         <DialogHeader className="border-b border-border px-6 py-5 pb-4">
           <DialogTitle>{isEdit ? "Editar conta" : "Nova conta"}</DialogTitle>
-          <DialogDescription>
-            {isEdit
-              ? "Ajuste tipo, saldo base e identidade visual."
-              : "Tipo, saldo inicial e identidade — tudo pelo teclado."}
-          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5 px-6 py-5">

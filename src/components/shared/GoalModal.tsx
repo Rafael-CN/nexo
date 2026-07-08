@@ -3,7 +3,6 @@ import { useShallow } from "zustand/react/shallow";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -163,14 +162,12 @@ export function GoalModal({ open, onOpenChange, goal }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        aria-describedby={undefined}
         className="max-w-md overflow-hidden"
         onKeyDown={handleModalKeyDown}
       >
         <DialogHeader className="border-b border-border px-6 py-5 pb-4">
           <DialogTitle>{isEdit ? "Editar meta" : "Nova meta"}</DialogTitle>
-          <DialogDescription>
-            Com conta vinculada, o acumulado segue o saldo dela em tempo real.
-          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5 px-6 py-5">
